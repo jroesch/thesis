@@ -1,8 +1,37 @@
 \chapter{Nimble: virtual machine for executing tensor programs}
 \label{ch:nimble}
-@Jared How do we justify the necessity of using VM to tackle this problem? Can you write down the argument here?
 
-Ahead of time
+Nimble's instruction set is designed as an abstract machine for executing tensor valued
+computations. We can realize this abstract machine by either interpreting it or generating
+machine code. This is a tried and true approach utilized by existing languages and languages
+runtime such as Java, or C#.
+
+By lowering the full language to an abstract machine we can reduce it to its core operations,
+resulting in a small set of operations we can implement. Our implementation uses a virtual
+machine design over an ahead of time compiler. In traditional virtual machines the key
+reason to perform ahead of time compilation is to reduce dispatch time, and specialize
+away dynamic features such as virtual dispatch.
+
+Due to the design of the Nimble instruction set, instruction dispatch is a very minimal
+part of the total runtime, the runtime is defined by kernel execution time.
+A virtual machine allows easier experimentation and modification at the cost of dynamically
+dispatching instructions, though nothing in our design prevents ahead of time compilation
+of the instruction set, but it provides little value for this reason.
+
+For example if we need to produce ahead of time
+compiled code, we either must generate calls into a runtime system (which is dynamic),
+only removing instruction dispatch, or statically schedule limiting flexibility and
+extensibility.
+
+Furthermore our use of TVM means all kernels are ahead of time compiled meaning the
+code which dominates execution time, remember most kernels are quadratic or cubic in
+complexity, have efficient implementations.
+
+Our extensions for dynamically sized kernels also utilize TVM code generation, enabling
+ahead compilation of kernels which perform a form of polymorphic inline caching for shapes,
+playing a similar role to what an ahead of time compiler does in traditional JITs.
+
+
 
 \subsection{Tensor Virtual Machine}
 
