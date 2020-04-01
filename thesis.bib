@@ -1271,12 +1271,7 @@ archivePrefix = "arXiv",
   howpublished = {\url{https://pytorch.org/docs/stable/jit.html}}
 }
 
-@misc{tf_lite_ops_compat,
-  title = {TensorFlow Lite Supported Datatypes},
-  author = {Google},
-  year = {2019},
-  url = {https://www.tensorflow.org/lite/guide/ops_compatibility#supported_types}
-}
+
 
 @misc{glow_quant,
   title = {Quantization in Glow},
@@ -1570,4 +1565,65 @@ month={March},
   pdf = 	 {http://proceedings.mlr.press/v70/selsam17a/selsam17a.pdf},
   url = 	 {http://proceedings.mlr.press/v70/selsam17a.html},
   abstract = 	 {Noisy data, non-convex objectives, model misspecification, and numerical instability can all cause undesired behaviors in machine learning systems. As a result, detecting actual implementation errors can be extremely difficult. We demonstrate a methodology in which developers use an interactive proof assistant to both implement their system and to state a formal theorem defining what it means for their system to be correct. The process of proving this theorem interactively in the proof assistant exposes all implementation errors since any error in the program would cause the proof to fail. As a case study, we implement a new system, Certigrad, for optimizing over stochastic computation graphs, and we generate a formal (i.e. machine-checkable) proof that the gradients sampled by the system are unbiased estimates of the true mathematical gradients. We train a variational autoencoder using Certigrad and find the performance comparable to training the same model in TensorFlow.}
+}
+
+@article{AutoGraph,
+  author    = {Dan Moldovan and
+               James M. Decker and
+               Fei Wang and
+               Andrew A. Johnson and
+               Brian K. Lee and
+               Zachary Nado and
+               D. Sculley and
+               Tiark Rompf and
+               Alexander B. Wiltschko},
+  title     = {AutoGraph: Imperative-style Coding with Graph-based Performance},
+  journal   = {CoRR},
+  volume    = {abs/1810.08061},
+  year      = {2018},
+  url       = {http://arxiv.org/abs/1810.08061},
+  archivePrefix = {arXiv},
+  eprint    = {1810.08061},
+  timestamp = {Tue, 30 Oct 2018 20:39:56 +0100},
+  biburl    = {https://dblp.org/rec/bib/journals/corr/abs-1810-08061},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+@inproceedings{eqsat,
+ author = {Tate, Ross and Stepp, Michael and Tatlock, Zachary and Lerner, Sorin},
+ title = {Equality Saturation: A New Approach to Optimization},
+ booktitle = {Proceedings of the 36th Annual ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages},
+ series = {POPL '09},
+ year = {2009},
+ isbn = {978-1-60558-379-2},
+ location = {Savannah, GA, USA},
+ pages = {264--276},
+ numpages = {13},
+ url = {http://doi.acm.org/10.1145/1480881.1480915},
+ doi = {10.1145/1480881.1480915},
+ acmid = {1480915},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+ keywords = {compiler optimization, equality reasoning, intermediate representation},
+}
+
+@article{autotvm,
+  author    = {Tianqi Chen and
+               Lianmin Zheng and
+               Eddie Q. Yan and
+               Ziheng Jiang and
+               Thierry Moreau and
+               Luis Ceze and
+               Carlos Guestrin and
+               Arvind Krishnamurthy},
+  title     = {Learning to Optimize Tensor Programs},
+  journal   = {CoRR},
+  volume    = {abs/1805.08166},
+  year      = {2018},
+  url       = {http://arxiv.org/abs/1805.08166},
+  archivePrefix = {arXiv},
+  eprint    = {1805.08166},
+  timestamp = {Mon, 13 Aug 2018 16:46:09 +0200},
+  biburl    = {https://dblp.org/rec/bib/journals/corr/abs-1805-08166},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
 }
