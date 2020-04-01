@@ -1,0 +1,105 @@
+\chapter{Nimble: virtual machine for executing tensor programs}
+\label{ch:nimble}
+@Jared How do we justify the necessity of using VM to tackle this problem? Can you write down the argument here?
+
+Ahead of time
+
+\subsection{Tensor Virtual Machine}
+
+Although \relay defines an IR and formal semantics
+  it does not provide an efficient execution mechanism for the full language.
+In the tradition of definitional interpreters we introduced
+  a simple interpreter for \relay which implements its formal semantics, which
+  we have separately formalized.
+Relay’s interpreter can execute the full language but has notable limitations
+  that make it unsuited for production deployments.
+It is structured as an inefficient interpreter that performs AST traversal to execute the program.
+This approach is conceptually simple but inefficient, as the AST traversal heavily relies on indirection.
+For example the initial \relay prototype reused the existing ``graph runtime'', to obtain
+  acceptable performance for vision tasks.
+The graph runtime can only execute simple control-free,
+  DAGs of operations.
+We can optimize \relay programs and map a subset of them
+  to the graph runtime, but any use of new \relay features
+  are unsupported.
+By introducing models which make use of new features such
+  as control flow, recursion, dynamic shapes, and dynamic allocation,
+  we must change how execution works.
+There are further challenges in compiling dynamic code, such as dynamic scheduling and allocation,
+  fully dynamic tensor shapes, and control flow.
+The interpreter offers simple solutions for these, but none is sufficiently compelling or optimized.
+The simplicity of the graph runtime provides attractive
+  properties such as simple serialization, straightforward
+  optimal memory layout, and ease of deployment.
+
+To address these challenges we designed a new \relay
+  virtual machine.
+The \relay virtual machine balances framework the competing approaches to execution,
+  providing a dynamic execution environment which can be extended, instrumented, and integrated with other approaches
+  like ahead-of-time compilation via a flexible extension mechanism.
+The virtual machine is designed to strike a balance between performance and flexibility
+  when deploying and executing Relay programs, without giving up the benefits of TVM.
+Virtual machine (VM) design is a well-studied area in programming languages and systems,
+  and there have been various virtual machine designs for both full-fledged and embedded programing languages.
+Previous language VM designs have been heavily tailored to the execution profile of traditional programs.
+Traditional programs manipulate small scalar values
+  and consist of a large number of low-level instructions.
+The sheer quantity of instructions requires instruction execution
+  and dispatch to be extremely efficient.
+In the context of machine learning we manipulate primarily tensor values,
+  using a (relatively) low number of high level instructions.
+ML programs’ cost centers are expensive operator invocations,
+  such as GEMM or convolution, over a large input.
+Due to the execution profile exhibited by ML programs,
+  micro-optimizations present in scalar VMs are dramatically less important.
+
+The \relay virtual machine implement a simple register based VM.
+
+The VM consists of three pieces:
+\begin{enumerate}
+  \item A tensor instruction set for a tensor virtual machine.
+  \item A compiler from \relay to the tensor VM.
+  \item An implementation of the virtual machine.
+\end{enumerate}
+
+\subsection{ISA}
+\begin{itemize}
+    \item \verb|ret| Returns a value.
+    \item \verb|invoke_packed| Invoke a packed function with the specified arguments.
+    \item \verb|alloc_tensor| Allocate a tensor of the given size.
+    \item \verb|alloc_datatype| Allocate a datatype with the fields.
+    \item \verb|alloc_closure| Allocate a closure.
+    \item \verb|get_field| Project a field.
+    \item \verb|if| Conditional jump based on the condition register.
+    \item \verb|get_tagi| Get the object's tag.
+    \item \verb|fatal|
+    \item \verb|invoke| Invoke a Relay function.
+    \item \verb|invoke_closure| Invoke a Relay closure.
+    \item \verb|load_const| Load a constant from the constant pool.
+    \item \verb|int_const| Store a constant integer in destination.
+
+\end{itemize}
+\subsection{VM Compiler}
+
+In order to execute on the VM we wrote a new compiler which
+  can lower \relay directly on to the VM bytecode, and then
+  executed.
+The compiler performs a set of transformations on the high-level
+  \relay program before generating code:
+\begin{itemize}
+  \item A-Normal Form, converts program in to a limited single-assignment form.
+  \item Lambda Lift, converts inline functions into top-level definitions,
+        ensuring that capture lists are now explicit.
+  \item Inline Primitives, ensures that fused functions are inlined into
+        the program to enables simplified code generation.
+  \item Inliner, general function inlining.
+  \item Constant Pool Layout, traverse program collecting all constant values
+        and layout them out in memory.
+  \item ADT Tag Allocation, allocate the tag assignment for compilation
+        to the VM.
+\end{itemize}
+
+\subsection{VM}
+
+These three pieces have been completed thus far, we discuss future work in Section
+\ref{sec:future}. I plan to submit the entire work to SysML 2020, in early September.

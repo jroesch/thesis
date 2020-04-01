@@ -1,0 +1,129 @@
+\chapter{Future Work}
+\label{ch:future_work}
+
+Relay and TVM are continuing to evolve.
+We look forward to the unified IR,
+    and other emerging directions in the TVM ecosystem based on Relay.
+
+    \section{Future Work}
+\label{sec:future}
+
+% 4. A description of proposed work remaining for your dissertation.  Describe
+% the main challenges and innovations that are needed to accomplish the
+% proposed hypotheses, with as much description as possible of how you will
+% tackle each one.
+
+My proposed future work consists of completing in progress work on the VM,
+and frontends, as well as work on automatic tensorization.
+
+\subsection{VM Next Steps}
+
+Current systems research has been focused on improving
+    a narrow subset of the models machine learning
+    researchers are producing.
+These models do not make use of
+    challenging semantic features such as unbounded
+    loops, dynamic control-flow, data types, or
+    closures.
+Existing state-of-the-art optimizing compilers for deep learning provide
+    limited support for efficiently compiling these type of operations.
+There are two clear levels to support full dynamism,
+    dynamism introduced by the frontend language
+    such as found in PyTorch and other expressive
+    dynamic neural network frameworks.
+The second level of dynamism is innate to models,
+    take for example a model which dynamically
+    produces the inputs for an inner RNN.
+Part of my recent work has been extending Relay's type system to
+    support dynamically sized tensors.
+Extending the type system is a simple change, we just introduce
+    a single new dimension \verb|Any| which represents a dimension
+    that is statically unknown.
+We can now assign types which commit to an unknown tensor shape.
+The real challenge is how to handle the efficient compilation,
+    and execution of code which makes use dynamism
+    specifically:
+\begin{itemize}
+    \item Recovery of static shape information from dynamic programs,
+          to increase chances for optimization.
+    \item Dynamically sized tensor code generation,
+          to emit efficient code for tensors with
+          unknown dimensions.
+    \item Efficient memory allocation, and reclamation
+          for dynamically sized computations.
+\end{itemize}
+
+\subsection{Beacon and PyTorch}
+
+Beacon demonstrates how to build a framework
+    by utilizing only TVM, instead of bespoke
+    platform specific libraries.
+Beacon's design enables whole program optimizations.
+We will continue to develop Beacon as a platform for training
+    research specifically training optimizations.
+Beacon provides complete control over the model definition, and the generated IR.
+\relay's current frontends do make use of novel \relay
+    features including data structures, control-flow, and
+    closures.
+Beacon is a way forward to explore these features and their optimization
+    and representation.
+To fully evaluate Beacon we require the Relay VM to efficiently
+    execute whole programs.
+Although Beacon is a compelling research prototype, it is still missing many
+    features compared to the industrial strength frameworks such as TensorFlow and PyTorch.
+In order to really understand the potential opportunities we would like to integrate
+    Relay into an existing framework to demonstrate its potential.
+There are two active efforts towards this goal, one is being lead at Amazon
+    to build a new version of MxNet which utilizes Relay as its execution
+    mechanism.
+The second effort is a collaboration I recently started with
+    the PyTorch team to use \relay to accelerate PyTorch.
+We plan to submit a paper on this work at the end of the year.
+The goal of the PyTorch effort is to demonstrate three important
+    ideas.
+First demonstrate the model dynamism occurs in practice, and is
+    essential to a large class of models.
+Second show that by using techniques from JIT compilation we
+    can find stable traces of execution that can be effectively
+    statically optimized.
+Finally that we can use \relay to optimize static traces effectively
+    resulting in state of the art performance.
+
+\subsection{Automatic Tensorization}
+
+The remaining piece of work to be done is mapping
+    computation to the hardware intrinsics manifested by the hardware.
+We have dubbed this process ``automatic tensorization'', the process by which we
+    we transform computations in an attempt to maximize performance on the target
+    hardware.
+Automatic tensorization is a challenging problem which introduces
+    semantic equivalence and phase ordering problems.
+I believe the first step towards this is the introduction of a unified
+    tensor IR, because tensorization depends on moving computation between
+    IR levels arbitrarily.
+We require explicit, and serializable scheduling IR which can be manipulated
+    programmatically.
+TVM today supports a simple form of tensorization today, a user may describe
+    an intrinsic in terms of a TVM expression, and then after several steps
+    of scheduling replace an equivalent computation with the intrinsic,
+    but only if the reference program, and loop nest match syntactically.
+This process is incredibly fragile, for example if I write my intrinsic with
+    indexing expression that is not identical, but semantically equivalent
+    it will fail for example $i + 1$ versus $1 + i + 0$.
+Although this challenge is easily surmountable by using a simplifier,
+    we can quickly engineer cases where it doesn't match, for example
+    if we too quickly apply another optimization we may permanently
+    remove that potential optimization.
+Unfortunately as the degrees of freedom in TVM continue to grow, we
+    will continue to face many more versions of this phase ordering
+    problem.
+We suggest to apply techniques from formal methods, and previous compiler
+    research specifically Equality Saturation~\cite{eqsat}, to enable searching
+    over equivalent programs.
+A challenge not previously solved in equality saturation is the ``extraction''
+    of a program.
+Previous work has relied on hand engineered cost models for extraction, but
+    advances in ML based cost models~\cite{autotvm} appears to show a path
+    forward.
+We plan to apply learning to help search over the equivalence structure to
+    extract the optimal program.

@@ -1,0 +1,115 @@
+\begin{figure}
+  \begin{center}
+    \begin{minipage}{0.5\textwidth}
+      \begin{minted}{ocaml}
+                    const(v, sh, dt)
+      \end{minted}
+    \end{minipage}
+  \end{center}
+  $\Downarrow$
+  \begin{center}
+    \begin{minipage}{0.5\textwidth}
+      \begin{minted}{ocaml}
+        (const(v, sh, dt), ref(const(0, sh, dt)))
+      \end{minted}
+    \end{minipage}
+  \end{center}
+  \vspace{0.25cm}
+  \begin{center}
+    \begin{minipage}{0.5\textwidth}
+      \begin{minted}{ocaml}
+    op : fn<>(a_1 : T1, ..., a_n : Tn) -> O
+      \end{minted}
+    \end{minipage}
+  \end{center}
+  $\Downarrow$
+  \begin{center}
+    \begin{minipage}{0.5\textwidth}
+      \begin{minted}[mathescape=true]{ocaml}
+def @op_grad<>(a_1 : type_transform(T1), ...,
+    a_n : type_transform(Tn))
+    -> type_transform(O) {
+  let %r = rev_op<>(a_1, ..., a_n);
+  let %ref = ref(zeros_like<>(r.0));
+  let %bpv = !bp;
+  let %nbp = def @bpf<>() -> () {
+    let %grad = (r.1)(!ref);
+    a_1.1 := add<>(!(a_1.1), grad.0);
+    ...
+    a_n.1 := add<>(!(a_n.1), grad.(n-1));
+    bpv()
+  }
+  bp := nbp;
+  (r.0, ref)
+}
+      \end{minted}
+    \end{minipage}
+  \end{center}
+  \caption{
+    The above depicts the AD expression
+      transformation macro.
+    The macro takes as an
+      argument an expression AST and a backpropagator
+      \texttt{bp}
+      (a reference to a function that takes no
+      arguments and returns unit,
+      which serves to update the reverse value references)
+      and recurses down the expression's AST,
+      making the above substitutions wherever
+      it encounters a tensor constant or an operator
+      \texttt{op}.
+    All other AST constructs are unchanged by the macro.
+    For simplicity, type arguments and relations
+      are omitted in this figure;
+      at present, \relay does not
+      support type arguments in gradients.
+    Note that the macro \texttt{type\_transform}$(T)$
+      similarly recurses down the AST of the type $T$
+      and replaces all tensor types with a
+      pair of a tensor type
+      and a reference to a tensor type
+      (the first member is the forward value;
+      the second, a reference to the reverse value)
+    For a given operator \texttt{op},
+      \texttt{rev\_op} refers to the registered reverse function.
+    Additionally, for brevity,
+      a semicolon without a \texttt{let}
+      is used above as a sequence operator,
+      namely a let node in which the bound
+      variable is disregarded.}
+  \label{fig:ad-expr-transform}
+\end{figure}
+
+\begin{figure}
+  \begin{minted}{ocaml}
+def @grad_f<>(a_1 : T1, ..., a_n : Tn)
+    -> (O, (T1, ..., Tn)) {
+  let %bp = ref(def @bpf<>() -> () { () });
+  let %p_1 = (a_1, ref(zeros_like<>(a_1)));
+  ...
+  let %p_n = (a_n, ref(zeros_like<>(a_n)));
+  let %c = (autodiff(bp, f))<>(p_1, ..., p_n);
+  c.1 := ones_like<>(c.0);
+  (!bp)();
+  (c.0, (!(p_1.1), ..., !(p_n.1)))
+}
+  \end{minted}
+  \caption{The gradient \relay{}'s AD produces
+    for a function \texttt{f} of type
+    \texttt{fn}$\langle\rangle(T_1, \ldots T_n) \rightarrow O$.
+  The gradient function returns a tuple of
+    the forward value of the function
+    (simply evaluating the function at the arguments)
+    and a tuple containing the
+    partial derivative with respect to each argument.
+  \texttt{autodiff} refers to the macro described in
+    Fig. \ref{fig:ad-expr-transform}.
+  As with Fig. \ref{fig:ad-expr-transform},
+    the present implementation of
+    \relay{}'s AD does not handle type relations or type arguments,
+    so they are omitted in this figure.
+  Also as in Fig. \ref{fig:ad-expr-transform},
+    semicolons wihout \texttt{let} bindings
+    are used as sequence operators for convenience.}
+  \label{fig:ad-gradient}
+\end{figure}

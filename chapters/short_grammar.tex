@@ -1,0 +1,73 @@
+% \begin{figure}[!t]
+%     \begin{jmpgrammar}
+%       \bnfrule{REAL}{\real} \is{\mathbb{R}}\\
+%       \bnfrule{NAT}{\nat} \is{\mathbb{N}}\\
+%       \bnfrule{NAME}{\rName} \is{\texttt{(}\text{`\_'}\inlineAlt[a-zA-Z]\texttt{)}\ \
+%       \atLeastZero{\text{`\_'}\inlineAlt[a-zA-Z]\inlineAlt[0-9]}}\\
+%       \bnfrule{TYPE NAME}{\typename} \is{[A-Z]\ \ \atLeastZero{\text{`\_'}\inlineAlt[a-zA-Z]\inlineAlt[0-9]}}\\
+%       \bnfrule{GLOBAL VAR}{\gvar} \is{\kwd{@}\rName}\\
+%       \bnfrule{LOCAL VAR}{\lvar} \is{\kwd{\%} \rName}\\
+%       \bnfrule{GRAPH VAR}{\graphVar} \is{\kwd{\%} \nat}\\
+%       \bnfrule{TYPE VAR}{\tyvar} \is{\rName}\\
+%       \bnfrule{OPERATOR}{\op} \is{\rName}\\\\
+%       \bnfrule{Program}{\program} \is{\atLeastOne{\defn\inlineAlt\typedef}}
+%         \alt{\expr}\\\\
+%       \bnfrule{Param}{\param} \is{\rParamRule}\\
+%       \bnfrule{Type Param}{\tyParam} \is{\rTyParamRule}\\\\
+%       \bnfrule{Definition}{\defn} \is{\rDefnRule}\\\\
+%       \bnfrule{Type Definition}{\typedef} \is{\rTypeDefRule}\\\\
+%       \bnfrule{Kind}{\kind} \is{\kwd{BaseType}}
+%         \alt{\kwd{Shape}}
+%         \alt{\kwd{Relation}}
+%         \alt{\kwd{ADT}}
+%         \alt{\kwd{Type}}\\\\
+%       \bnfrule{BaseType}{\basetype} \is{\kwd{int} \nat \maybe{\kwd{x} \nat}}
+%         \alt{\kwd{float} \nat \maybe{\kwd{x} \nat}}
+%         \alt{\kwd{bool} \maybe{\nat}}\\\\
+%       \bnfrule{Shape}{\shape} \is{\kwd{(} \seq{\nat} \kwd{)}}\\\\
+%       \bnfrule{Pattern}{\patt} \is[constructor]{\op \kwd{(} \seq{\patt} \kwd{)}}
+%         \alt[wildcard]{\wildcard}
+%         \alt[variable]{\lvar\ \maybe{\typeanno}}
+%     \end{jmpgrammar}
+%   \end{figure}
+  \begin{figure}[t]
+    % \ContinuedFloat
+    \begin{jmpgrammar}
+      \bnfrule{Expr}{\expr} \is[local var]{\lvar}
+        \alt[global variable]{\gvar}
+        \alt[constant tensor]{\kwd{const} \kwd{(} \texttt{(}\real\inlineAlt\bool\texttt{)} \kwd{,} \shape \kwd{,} \basetype \kwd{)}}
+        \alt[call]{\expr \maybe{\tyargs} \args\vspace{0.2em}}
+        \alt[let]{\rLetRule}
+        \alt[\kwd{let}\ \kwd{\%}\_\ \kwd{=}\ \expr\kwd{;}\ \expr]{\rAnonLetRule}
+        \alt[graph let]{\rGraphLetRule}
+        \altSpace{0.5em}{function}{\rFnRule}
+        % \altSpace{1em}{type cast?}{\kwd{(} \type \kwd{)} \expr}
+        \altSpace{1em}{tuple formation}{\rTupRule}
+        \alt[tuple proj.]{\rTupProjRule}
+        \alt[if-else]{\rIfElse{\expr}{\expr}{\expr}}
+        \altSpace{0.5em}{pattern match}{\rMatchRule}
+        \altSpace{1em}{operator}{\op}
+        % TODO: When will we have gradient as a first-class operator?
+        % \alt[gradient]{\kwd{grad}\kwd{(}\expr\kwd{)}}
+        \alt[new ref]{\kwd{ref}\kwd{(}\expr\kwd{)}}
+        \alt[get ref]{\kwd{!} \expr}
+        \alt[set ref]{\expr \kwd{:=} \expr}\\\\
+      \bnfrule{Type}{\type} \is[base type]{\basetype}
+        \alt[shape]{\shape}
+        \alt[tensor type]{\kwd{Tensor} \kwd{[} \shape \kwd{,} \basetype \kwd{]}}
+        \alt[type variable]{\tyvar}
+        \alt[function type]{
+          \begin{split}
+          \kwd{fn}\ &\rTyParamsRule\\
+          &\kwd{(} \seq{\type} \kwd{)}\ \rettype\\
+          &\maybe{\relations}
+          \end{split}
+          }
+        \alt[ref type]{\kwd{Ref} \kwd{[} \type \kwd{]}}
+        \alt[tuple type]{\kwd{(} \seq{\type} \kwd{)}}
+        \alt[type call]{\type \kwd{[} \seq{\type} \kwd{]}}
+        \alt[type name]{\typename}
+    \end{jmpgrammar}
+    \caption{\textmd{The BNF Grammar for the \relay{} language.}}
+    \label{fig:short_bnf}
+  \end{figure}

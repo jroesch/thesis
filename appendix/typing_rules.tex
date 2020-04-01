@@ -1,0 +1,149 @@
+\begin{figure}[H]
+  \begin{inference}
+  \jmpInfer{BaseType-T}
+      {width \in \mathbb{N} \andalso lanes \in \mathbb{N}}
+      {{\begin{array}{l}
+        \Delta \vdash \kwd{int} width \kwd{x} lanes : \texttt{BaseType} \\
+        \Delta \vdash \kwd{uint} width \kwd{x} lanes : \texttt{BaseType} \\
+        \Delta \vdash \kwd{float} width \kwd{x} lanes : \texttt{BaseType} \\
+        \Delta \vdash \kwd{bool} lanes : \texttt{BaseType} \\
+      \end{array}}}
+  \jmpInfer{Shape-T}
+    {\forall {i \in [1, n]}\colon \, d_i \in \mathbb{N}}
+    {\Delta \vdash \kwd{(} d_1 \kwd{,} d_2 \kwd{,} \ldots \kwd{,} d_n \kwd{)} : \texttt{Shape} }
+  \jmpInfer{Relation-T}
+    {\Delta, T_1 : \texttt{Type}, \ldots, T_n : \texttt{Type} \vdash (Rel(T_1, T_2, \ldots, T_n) \in \{ \top, \bot \}) }
+    {\Delta \vdash Rel : \texttt{Relation}}
+  \jmpInfer{Tensor-T}
+    {\Delta \vdash bt : \texttt{BaseType} \andalso \Delta \vdash s : \texttt{Shape}}
+    {\Delta \vdash \kwd{Tensor[}s\kwd{,} bt\kwd{]} : \texttt{Type} }
+  \jmpInfer{Function-T}
+    {\forall {i \in [1, r]}\colon \, \Delta \vdash R_i : \texttt{Relation}
+    \\ \forall {i \in [1, m]}\colon \, \Delta \vdash T_i : \texttt{Type}
+    \\ \forall {i \in [1, r]}\colon \, \Delta, T_{m+1} : \texttt{Type}, \ldots, T_{m+n} : \texttt{Type} 
+    \\ \hspace{1.5em} \vdash R_i(T_1, \ldots, T_m, O)[T_{m + 1} / V_1, \ldots, T_{m+n} / V_n] }
+    {\Delta \vdash \kwd{fn$\langl$} V_1 \kwd{,} \ldots\kwd{,} V_n \kwd{$\rangl$(} T_1 \kwd{,} \ldots \kwd{,} T_m
+    \kwd{) $\rightarrow$ } O \\ \kwd{ where } R_1, \ldots, R_r : \texttt{Type} }
+    \end{inference}
+  \end{figure}
+  \begin{figure}[H]
+    \ContinuedFloat
+    \begin{inference}
+  \jmpInfer{Product-T}
+    {\forall i \in [1,n] \colon \, \Delta \vdash T_i : \texttt{Type}}
+    {\Delta \vdash \kwd{(} T_1 \kwd{,} T_2 \kwd{,} \ldots \kwd{,} T_n\kwd{)} : \texttt{Type} }
+  \jmpInfer{Ref-T}
+    {\Delta \vdash T : \texttt{Type}}
+    {\Delta \vdash \texttt{RefType} \kwd{[} T \kwd{]} : \texttt{Type}}
+  \jmpInfer{ADT-T}
+    {\forall{i \in [1, n]} \, \Delta, T_{m+1} : \texttt{Type}, \ldots, T_{m+k} : \texttt{Type}, S : \texttt{ADT} 
+      \\ \hspace{1.5em} \vdash T_i[T_{m + 1} / V_1, \ldots, T_{m + k} / V_k] : \texttt{Type}
+      \\ S \mapsto \kwd{data} \langle V_1, \ldots, V_k \rangle \kwd{\{}C_1(T_1, \ldots, T_n) | \ldots | C_m(T_1, \ldots, T_n)\kwd{\}} \in \Delta}
+    {\Delta \vdash S : \texttt{ADT}}
+  \jmpInfer{TypeCall-T}
+      {\Delta \vdash S : \texttt{ADT} \andalso S \mapsto \kwd{data} \langle V_1, \ldots, V_k \rangle \kwd{\{} \ldots \kwd{\}} \in \Delta 
+      \\ \Delta \vdash T_1 : \texttt{Type}, \ldots, T_k : \texttt{Type}}
+  {\Delta \vdash S \kwd{[} T_1, \ldots, T_k \kwd{]} : \texttt{Type}}
+\end{inference}
+  \caption{Rules for constructing types, indicating kinds. Reference types are only generated internally by reverse-mode automatic differentiation and cannot be given in front-end user code. Relations cannot be defined in front-end user code either, and instead must be implemented and registered with operations. For simplicity, the rule for ADT definitions assumes that each ADT constructor takes the same $n$ arguments (whereas each constructor may take any number of arguments, so long as they are all of kind \texttt{Type}) and the rule for function types assumes that each relation $R$ takes the same $n$ arguments, whereas a relation may take any subset of the set of all type arguments, argument types, and the output type as arguments (so long as they are all of kind \texttt{Type}). 
+Note that the kind \texttt{ADT} corresponds to an ADT \textit{name} (implemented as a global type variable); 
+any ADT instance must instantiate all type parameters in the ADT definition, hence the use of a type call for 
+giving a type to ADT instances (that is, an ADT definition is treated as a type-level function).}
+  \label{fig:kind-rules}
+  \end{figure}
+
+  \begin{figure}[H]
+  \begin{inference}
+  \jmpInfer{Type-Constant}
+      {\Delta \vdash s : \texttt{Shape} \andalso \Delta \vdash bt : \texttt{BaseType} \andalso 
+        v \in \mathbb{R} \cup \{\texttt{True}, \texttt{False}\}}
+      {\Delta; \Gamma \vdash \kwd{const}(v, s, bt) : \kwd{Tensor[}s, bt\kwd{]}}
+  \jmpInfer{Type-Product}
+    {\forall i \in [1, n]\colon \, \Delta; \Gamma \vdash p_i : T_i}
+    {\Delta; \Gamma \vdash \kwd{(}p_1 \kwd{,} \ldots\kwd{,} p_n\kwd{)} : \kwd{(} T_1
+    \kwd{,}\ldots \kwd{,} T_n \kwd{)} }
+  \jmpInfer{Type-Projection}
+    {\Delta; \Gamma \vdash p : \kwd{(} T_1
+    \kwd{,}\ldots \kwd{,} T_n \kwd{)} \\ i \in \lbrack 0, n)}
+    {\Delta; \Gamma \vdash p \kwd{.} i : T_{i+1}}
+  \jmpInfer{Type-Let}
+    {\Delta; \Gamma \vdash v : T \andalso \Delta; \Gamma, id : T \vdash e : T^\prime}
+    {\Delta; \Gamma \vdash \kwd{let \%} id\ \kwd{=}\ v \kwd{;}\ e : T^\prime}
+  \jmpInfer{Type-Ref}
+    {\Delta; \Gamma \vdash n : T}
+    {\Delta; \Gamma \vdash \texttt{Ref}\ n : \texttt{RefType} \kwd{[} T \kwd{]} }
+  \jmpInfer{Type-Read-Ref}
+    {\Delta; \Gamma \vdash r : \texttt{RefType} \kwd{[} T \kwd{]}}
+    {\Delta; \Gamma \vdash\ !r : T }
+  \jmpInfer{Type-Write-Ref}
+    {\Delta; \Gamma \vdash r : \texttt{RefType} \kwd{[} T \kwd{]} \andalso \Delta; \Gamma \vdash v : T}
+    {\Delta; \Gamma \vdash r := v : () }
+  \jmpInfer{Type-If}
+    {\Delta; \Gamma \vdash c : \kwd{Tensor[}(), \kwd{bool}(1)\kwd{]} \\ \Delta; \Gamma \vdash b_1 : T \andalso \Delta; \Gamma \vdash b_2 : T}
+    {\Delta; \Gamma \vdash \kwd{if}\ c\ \kwd{then \{}\ b_1\ \kwd{\} else \{}\ b_2\ \kwd{\}} : T}
+  \jmpInfer{Type-Gradient}
+    {\Delta; \Gamma \vdash f : \kwd{fn$\langl\rangl$(}T_1, \ldots, T_n\kwd{) $\rightarrow$ } O}
+    {\Delta; \Gamma \vdash \texttt{Grad}\ f : \kwd{fn$\langl\rangl$(}T_1, \ldots, T_n\kwd{) $\rightarrow$ } (O, (T_1, \ldots, T_n))}
+  \jmpInfer{Type-ADT-Constructor}
+    {{\Delta \vdash S : \texttt{ADT}
+      \\ S \mapsto \kwd{data} \langl V_1, \ldots, V_k \rangl \kwd{\{} C_1(T_1, \ldots, T_n) | \ldots | C_m(T_1, \ldots, T_n) \kwd{\}} \in \Delta}}
+    {\forall i \in [1, m] \, \Delta; \Gamma \vdash C_i : \kwd{fn} \langl V_1, \ldots, V_k \rangl (T_1, \ldots, T_n) 
+      \rightarrow S \kwd{[} V_1, \ldots, V_k \kwd{]} }
+  \end{inference}
+\end{figure}
+\begin{figure}[H]
+  \ContinuedFloat
+  \begin{inference}
+  \jmpInfer{Type-Function-Definition}
+    {\Delta \vdash R_1 : \texttt{Relation}, \ldots, R_r : \texttt{Relation}
+      \\ \Delta \vdash T_1 : \texttt{Type}, \ldots, T_m : \texttt{Type}, O :
+      \texttt{Type}
+      \\ {\begin{array}{l}
+            \hspace{-0.5em} \Delta, T_{m+1} : \texttt{Type}, \ldots, T_{m+n} : \texttt{Type}, \\
+            \hspace{1.0em} (\forall {i \in [1, r]} \, R_i(T_1, \ldots, T_m, O) [T_{m + 1} / V_1, \ldots, T_{m + n} / V_n]); \\
+            \hspace{0.5em} \Gamma, (\forall {i \in [1, m]}, a_i : T_i [T_{m + 1} / V_1, \ldots, T_{m + n} / V_n]), \\
+            \hspace{2.0em} f : \kwd{fn$\langl$} V_1 \kwd{,} \ldots\kwd{,} V_n \kwd{$\rangl$(} T_1 \kwd{,} \ldots \kwd{,} T_m
+            \kwd{)} \rightarrow O \\
+            \hspace{3.0em} \kwd{ where } R_1, \ldots, R_r \\
+            \hspace{1.0em} \vdash body : O[T_{m + 1} / V_1, \ldots, T_{m + n} / V_n]
+          \end{array}}
+    }
+    {\Delta; \Gamma \vdash \kwd{def @} f \kwd{$\langl$} V_1\kwd{,} \ldots\kwd{,} V_n
+    \kwd{$\rangl$} \kwd{(}a_1\kwd{:} T_1\kwd{,} \ldots a_m\kwd{:} T_m\kwd{) $\rightarrow$ } O
+    \\ \kwd{ where } R_1, \ldots, R_r \kwd{ \{ } body \kwd{ \}} : \\ \kwd{fn$\langl$} T_{m+1} \kwd{,} \ldots\kwd{,} T_n \kwd{$\rangl$(} T_1 \kwd{,} \ldots \kwd{,} T_m
+    \kwd{) $\rightarrow$ } O \\ \kwd{ where } R_1, \ldots, R_r }
+  \jmpInfer{Type-Call}
+    {\\ \Delta; \Gamma \vdash f : \kwd{fn$\langl$} V_1 \kwd{,} \ldots\kwd{,} V_n \kwd{$\rangl$(} T_1 \kwd{,} \ldots \kwd{,} T_m
+    \kwd{) $\rightarrow$ } O \\ \kwd{ where } R_1, \ldots, R_r
+    \\ \Delta \vdash T_{m+1} : \texttt{Type}, \ldots, T_n : \texttt{Type}
+    \\ \forall{i \in [1, m]} \, \Delta; \Gamma \vdash a_i : T_i[\forall{j \in [1, n]} \, T_{m + j} / V_j]
+    \\ \forall{i \in [1, r]} \, \Delta; \Gamma \vdash R_i(T_1, \ldots, T_m, O)[\forall{j \in [1, n]} \, T_{m + j} / V_j]}
+    {\Delta; \Gamma \vdash f\kwd{$\langl$} T_{m+1}, \ldots, T_{m+n} \kwd{$\rangl$}(a_1, \ldots, a_m) : O [\forall{i \in [1, n]} \, T_{m + i} / V_i]}
+  \jmpInfer{Type-ADT-Match}
+    {\\ \Delta \vdash S : \texttt{ADT}, T_{m+1} : \texttt{Type}, \ldots,
+    T_{m+k} : \texttt{Type}
+      \\ S \mapsto \kwd{data} \langl V_1, \ldots, V_k \rangl 
+          \kwd{\{} C_1(T_1, \ldots, T_n) | \ldots | C_m(\ldots) \kwd{\}} \in \Delta
+      \\ \forall i \in [1, m] \, \Delta; \Gamma, (\forall j \in [1, n] \, a_j : T_{j+k} [T_1 / V_1, \ldots, T_k / V_k]) \vdash e_i : T^\prime
+      \\ \Delta; \Gamma \vdash s : S\kwd{[}T_1, \ldots, T_k\kwd{]} }
+    {\Delta; \Gamma \vdash
+    {\begin{array}{l}
+      \hspace{-0.5em} \kwd{match(}s\kwd{) \{} \\
+      \hspace{0.5em} \kwd{|} \, C_1 \langl T_{m+1}, \ldots, T_{m+k} \rangl \kwd{(}a_1\kwd{,} \ldots\kwd{,} a_n\kwd{) => } e_1 \\
+      \hspace{4.5em} \vdots \\
+      \hspace{0.5em} \kwd{|} \, C_m \langl T_{m+1}, \ldots, T_{m+k} \rangl
+      \kwd{(}a_1\kwd{,} \ldots\kwd{,} a_n\kwd{) => } e_m \\
+      \hspace{-0.5em} \kwd{\}}
+    \end{array}}
+    : T^\prime}
+  \end{inference}
+      \caption{Rules for deriving types of expressions and definitions. The unit type, $()$, is syntactic sugar
+              for a product type with zero members. For simplicity, the arguments to ADT constructors have been omitted in the
+              descriptions of the ADTs and each constructor is assumed to take the same $n$ argument types (similarly, the names
+              of the match parameters in the rule for match expressions are assumed to be the same in each branch. \relay{} also supports
+              more sophisticated pattern-matching in match expressions but these rules omit this for simplicity).
+              Type arguments and relations are omitted in the rule for gradient, as the present implementation of AD does not support them.
+              Note that ADT constructors are given ordinary function types and can thus be called according to the same rules
+              as any other function.}
+      \label{fig:inference-rules}
+ \end{figure}

@@ -1,0 +1,53 @@
+\newcommand{\relayKey}{\emph{\textbf{UG}}\xspace}
+\newcommand{\lanternKey}{L\xspace}
+\newcommand{\pytorchKey}{PT\xspace}
+\newcommand{\tfKey}{TF\xspace}
+\newcommand{\tvmKey}{\tvm\xspace}
+
+\begin{table}
+  \begin{center}
+    \tabulinesep=1.2mm
+    \begin{footnotesize}
+    \begin{tabu} to 0.45\textwidth { X[c,m] | X[2.1,c,m] X[1.9,c,m] X[1.1,c,m]  }
+              & Tensor Support
+              & ADTs, Control Flow, References
+              & Closures
+              \\
+\hline
+GPU/CPU \emph{(Interp.)}
+  & \relayKey, \tfKey, \tvmKey, \pytorchKey
+  & \relayKey, \lanternKey, \pytorchKey
+  & \relayKey, \lanternKey, \pytorchKey
+  \\
+CPU \emph{(AoT)}
+  & \relayKey, \tfKey, \tvmKey
+  & \relayKey, \lanternKey
+  & \lanternKey
+  \\
+GPU/CPU \emph{(AoT)}
+  & \relayKey, \tfKey, \tvmKey
+  & \relayKey
+  &
+  \\
+GPU \emph{(AoT)}
+  & \relayKey, \tfKey, \tvmKey
+  &
+  &
+  \\
+FPGA \emph{(AoT)}
+  & \relayKey, \tvmKey
+  &
+  &
+  \\
+    \end{tabu}
+    \end{footnotesize}
+  \end{center}
+  \caption{Comparison of model features,
+    hardware platform strategy (interpreted vs. ahead-of-time),
+    and supporting frameworks, where abbreviations are
+    \relay (\relayKey),
+    Lantern (\lanternKey),
+    TensorFlow (\tfKey),
+    and PyTorch (\pytorchKey).}
+  \label{fig:comparison-table}
+\end{table}

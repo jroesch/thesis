@@ -1,0 +1,92 @@
+\begin{figure}[H]
+   \judgbox{\rstep{\rstate{\rnamespace}{\rheap}{\expr}}{\rstate{\rnamespace'}{\rheap'}{\expr'}}}{}
+\begin{inference}
+   \jmpInfer{Semantics-Closure}
+      {}
+      {{\begin{array}{l}
+      \Gamma; \Delta \colon \texttt{def @} f \kwd{<} T_{m+1}, \ldots, T_n \kwd{>} (a_1 : T_1, \ldots a_m : T_m) \, \kwd{->} \, O \\
+      \kwd{ where } R_1, \ldots, R_r, body \Rightarrow \\
+      \Gamma; \Delta \colon \kwd{Closure}(f, body, \\
+      \{ v \mapsto V \, | \, v \in \kwd{FreeVars}(body) \land v \mapsto V \in \Gamma \})
+      \end{array}{l}}}
+\jmpInfer{Semantics-Id}
+      {id \mapsto V \in \Gamma}
+      {\rstep{\rstate{\rnamespace}{\rheap}{id}}{\rstate{\rnamespace}{\rheap}{V}}}
+\jmpInfer{Semantics-Product}
+      {\forall i \in [1, n],
+      \rstep{\rstate{\rnamespace}{\rheap_{i-1}}{E_i}}{\rstate{\rnamespace}{\rheap_i}{V_i}}}
+      {\rstep{\rstate{\rnamespace}{\rheap_0}{\kwd{(} E_1 \kwd{,} \ldots \kwd{,} E_n \kwd{)}}}{\rstate{\rnamespace}{\rheap_n}{(V_1, \ldots, V_n)}}}
+\jmpInfer{Semantics-Projection}
+      {\Gamma; \Delta \colon E \Rightarrow \Gamma; \Delta^\prime \colon \kwd{(}V_1 \kwd{,} \ldots \kwd{,} V_n \kwd{)} \andalso i \in [0, n)}
+      {\Gamma; \Delta \colon E \kwd{.} i, s \Rightarrow \Gamma; \Delta^\prime \colon V_{i + 1}}
+\jmpInfer{Semantics-If-True}
+      {\rstep{\rstate{\rnamespace}{\rheap}{C}}{\rstate{\rnamespace}{\rheap^\prime}{\rTrue}}\\
+      \rstep{\rstate{\rnamespace}{\rheap^\prime}{B_1}}{\rstate{\rnamespace}{\rheap^{\prime\prime}}{V}}}
+      {\rstep{\rstate{\rnamespace}{\rheap}{\rIfElse{C}{B_1}{B_2}}}{\rstate{\rnamespace}{\rheap^{\prime\prime}}{V}}}
+\jmpInfer{Semantics-If-False}
+      {\rstep{\rstate{\rnamespace}{\rheap}{C}}{\rstate{\rnamespace}{\rheap^\prime}{\rFalse}}\\
+      \rstep{\rstate{\rnamespace}{\rheap^\prime}{B_2}}{\rstate{\rnamespace}{\rheap^{\prime\prime}}{V}}}
+      {\rstep{\rstate{\rnamespace}{\rheap}{\rIfElse{C}{B_1}{B_2}}}{\rstate{\rnamespace}{\rheap^{\prime\prime}}{V}}}
+\jmpInfer{Semantics-Ref-Create}
+      {\Gamma; \Delta \colon C \Rightarrow \Gamma; \Delta^\prime \colon V}
+      {\Gamma; \Delta \colon \kwd{Ref}\ C \Rightarrow \Gamma; \Delta^\prime
+      \cup \{ v \mapsto V \} \colon \kwd{Ref}(v) \andalso \kwd{fresh}(v)}
+\jmpInfer{Semantics-Ref-Read}
+      {\Gamma; \Delta \colon C \Rightarrow \Gamma; \Delta^\prime \colon \kwd{Ref}(v) \andalso v \mapsto V \in \Delta^\prime}
+      {\Gamma; \Delta \colon \kwd{!} C \Rightarrow \Gamma; \Delta^\prime \colon V}
+\jmpInfer{Semantics-Ref-Write}
+      {\\ \Gamma; \Delta \colon C \Rightarrow \Gamma; \Delta^\prime \colon \kwd{Ref}(v)
+      \\ \Gamma; \Delta^\prime \colon N \Rightarrow \Gamma; \Delta^{\prime\prime} \colon V}
+      {\Gamma; \Delta \colon C := N \Rightarrow \Gamma; \Delta^{\prime\prime}
+      \cup \{ v \mapsto V \} \colon ()}
+\end{inference}
+\end{figure}
+
+\begin{figure}[H]
+   \ContinuedFloat
+   \begin{inference}
+\jmpInfer{Semantics-Let}
+      {\Gamma; \Delta \colon C \Rightarrow \Gamma; \Delta^\prime \colon V
+      \\ \Gamma \cup \{ id \mapsto V \}; \Delta^\prime \colon E \Rightarrow \Gamma \cup \{ id \mapsto V \}; \Delta^{\prime\prime} \colon V^\prime}
+      {\Gamma; \Delta \colon \kwd{let \%} id\ \kwd{=}\ C \kwd{;}\ E \Rightarrow \Gamma; \Delta^{\prime\prime} \colon V^\prime}
+\jmpInfer{Semantics-Call}
+      {{\begin{array}{l}
+      \Gamma; \Delta \colon C \Rightarrow \Gamma; \Delta_0^\prime \colon
+      \kwd{Closure}(f, body, vars) \\
+      \forall i \in [1, m], \Gamma; \Delta_{i - 1}^\prime \colon A_i
+      \Rightarrow \Gamma; \Delta_i^\prime \colon V_i \\
+      \end{array}}}
+      {{\begin{array}{l}
+      \Gamma; \Delta \colon C \kwd{<}T_{m + 1}, \ldots, T_n \kwd{>}(A_1,
+      \ldots, A_m) \Rightarrow \Gamma; \Delta_m^{\prime\prime} \colon
+      V^\prime \\
+      \hspace{-0.5em} \Gamma \cup vars \cup \{ a_i \mapsto V_i \, | \, i \in [1, m] \} \, \cup \\
+         \hspace{0.5em} \{ f \mapsto \kwd{Closure}(f, body, vars) \}; \Delta_m^\prime \colon body \Rightarrow \Gamma; \Delta_m^{\prime\prime} \colon V^\prime
+      \end{array}{l}}}
+\jmpInfer{Semantics-ADT-Constructor}
+      {\\ \forall i \in [1, n], \Gamma; \Delta_{i - 1} \colon A_i \Rightarrow \Gamma; \Delta_i \colon V_i}
+      {\Gamma; \Delta_0 \colon ADT_{C_j}(A_1, \ldots, A_n) \Rightarrow \Gamma; \Delta_n \colon ADT_{C_j}(V_1, \ldots, V_n)}
+\jmpInfer{Semantics-ADT-Match}
+      {\\ \Gamma; \Delta \colon s \Rightarrow \Gamma; \Delta^\prime \colon ADT_{C_i}(V_1, \ldots, V_n)
+      \\ \Gamma \cup \{ a_i \mapsto V_i \, | \, i \in [1, n] \}; \Delta^\prime \colon E \Rightarrow \Gamma; \Delta^{\prime\prime} \colon V^\prime}
+      {\Gamma; \Delta \colon
+      {\begin{array}{l}
+         \hspace{-0.5em} \kwd{match(}s\kwd{) \{}\\
+         \hspace{0.5em} \kwd{|} \, C_1\kwd{(}a_1\kwd{,} \ldots\kwd{,} a_n\kwd{) => } e_1 \\
+         \hspace{0.5em} \kwd{|} \, \ldots \, \kwd{|} \, C_i\kwd{(}a_1\kwd{,} \ldots\kwd{,} a_n\kwd{) => } E \\
+         \hspace{0.5em} \kwd{|} \, \ldots \, \kwd{|} \, C_m\kwd{(}a_1\kwd{,} \ldots\kwd{,} a_n\kwd{) => } e_m \\
+         \hspace{-0.5em} \kwd{\}}
+      \end{array}}
+      \Rightarrow \Gamma; \Delta^{\prime\prime} \colon V^\prime}
+   \end{inference}
+  \caption{A simplified operational semantics of \relay{}. All tensors are values, so boolean,
+    integer, and floating point literals are irreducible per the above rules, as are tensors of other shapes. Thus, the values in \relay{} are tensors,
+    closures, operators (functions whose bodies are opaque to \relay{}), products of values, references of values,
+    and algebraic data types (ADTs of different names and ADT constructors of different names are distinct from each other, thus two ADT values are
+    equal only if they are of the same ADT, the same constructor, and the same argument values).
+    Also omitted, for simplicity, are the effects of the type arguments in a function call; any such effects would be implemented by relations on
+    operators and thus would be opaque to all other constructs in \relay{} other than resulting in a different value returned by an operator
+    call. Note that since automatic differentiation is implemented as a macro over a \relay{} AST, the gradient expression has no semantics
+    of its own beyond expanding the macro.}
+  \label{fig:op_semantics}
+\end{figure}

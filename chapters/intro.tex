@@ -1,0 +1,355 @@
+\chapter{Introduction}
+\label{ch:intro}
+
+Traditional machine learning algorithms were carefully engineered in order to leverage limited data to obtain sufficient task performance. In the Big Data era, simpler algorithms were designed to scale to the abundantly available data [1]. The dramatic increase in data led to a number of systems for scaling traditional ML applications most notably MapReduce, Spark and other stream and graph processing systems.
+
+The emergence of deep learning resulted in larger models composed of compute-hungry tensor computations which require significantly more data to train. This new generation of machine learning applications demands a corresponding era of innovation in systems.
+
+The first innovation in deep learning systems are so called ‘deep learning frameworks’, such as TensorFlow and PyTorch. These monolithic systems can execute a subset of deep learning models efficiently on a subset of the available hardware devices. These rigid systems provide good baseline performance, but often fail when straying from well-used models.
+
+Scaling frameworks to span the scope of all models and backends is a human endeavor requiring deep expertise often not found in conjunction with the skills of a machine learning engineer. A single machine learning engineer cannot write code that scales across the growing sea of models, operators, optimizations, and devices while maintaining state-of-the-art performance.
+
+To combat this, DL frameworks have introduced compilers to close the performance gap. These compilers have made similar tradeoffs to those of frameworks accelerating a subset of models on a subset of devices. Even with these constraints designing a DL compiler is challenging.
+For example, popular state-of-the-art DL compilers such as XLA, can sometimes slow down a program instead of speeding it up (cite needed).
+
+Compilers for deep learning are an emerging area explored by a variety of solutions both industrial and academic. Existing solutions fall into one of two categories: a) disjoint and layered such as NNVM/TVM, Glow/CuDNN, XLA/CuDNN which utilize separate graph and operator level compilers, or b) whole language approaches such as Lift or Lantern.
+
+My thesis demonstrates a carefully designed high-level programming language with the correct semantics can provide state-of-the-art performance and performance portability for ML inference tasks.
+
+Show that it is possible to decompose ML models into HL declarative specifications (which can be written by ML engineers and *does not leak implementation details*) while providing performance portability.
+
+
+This thesis argues the solution for this is the introduction of a new separation of concerns, just as the schedule-compute split introduced by Halide.
+
+Today machine learning models are composed of a high-level declarative program composed of linear algebra and statistics primitives. An effective compiler must be able to optimize both the high-level declarative program, as well as the low-level kernels which dominate program runtime.
+
+Existing compilers are either tailored to high-level users, such as framework authors and model engineers, or low-level device and kernel engineers. The compilers produced by the large corporations sponsoring DL frameworks have been designed as “lego” blocks which can be composed together to form a full stack, the lack of an end-to-end view on programs limits the ability to fully optimize the program.
+
+In academia there has been work such as Lift IR to build a “gestalt” solution, i.e a single programming language which can be used to generate full programs manipulating tensors.
+The input programs are in Lift’s functional IR, and optimizations are done in via rewriting.
+
+These semantics are overly restrictive in a domain as performance sensitive deep learning, the best individual kernel performance still comes from systems such as Halide and TVM.  In order to obtain the best possible performance we require a system which enables combining the best techniques at each level of optimization.
+
+We realize a unified interface in the form of Relay a set of systems and APIs designed to compose together techniques across the stack to achieve state of the art performance.
+Instead of building a single IR and compiler to rule them all we carefully split the program optimization problem into a series of phases each focused on a specific optimization task.
+By doing this we are able to balance the tension between expressivity, composition and performance portability.
+
+Relay is a part of the TVM open source project, and catalystized a major redesign of TVM, in order to embrace and extend the ideas of this thesis. Relay is deployed in production at multiple large companies including Amazon, Facebook, and Microsoft. One notable impact is its use in optimizing Alexa’s wake word model.
+
+1.1 State of the Art
+
+Existing state of the art in deep learning compilers falls into one of two categories: a) layered “lego” blocks and “gestalt” solutions, with compilers such as NNVM/TVM, Glow/CuDNN, XLA/CuDNN being examples of the first, and tools such as Lift or Lantern being examples of the second.
+
+Layered systems are designed in a bottom up fashion, starting from the high-performance, device specific kernel libraries provided by hardware manufacturers. The use of an inflexible, and static interface at the bottom-most level has forced the design of higher level components. Practically this has introduced a strict separation between so-called ‘graph-compilers’ and so called ‘kernel libraries’.
+
+These graph compilers implement a simple DAG of operations which they then map down to kernels. The graph compilers are a passable solution, assuming the user can describe their program in a restrictive and awkward language, and only makes use of existing kernels. If the user model makes use of the well-optimized subset of kernels and well-optimized devices it can assume passable performance, but with many models this is not that case, with very little recourse for program authors.
+
+In the kernel domain there has been a large amount of existing work on ensuring individual kernels, or pipelines of them are efficient, but these DLSs are not integrated into a larger programming abstraction. There existing systems like TensorRT which solve this problem for a specific device, with a series of caveats.
+
+Gestalt approaches have attempted to resolve the host of issues with the above design, but have also failed to provide a solution. The best example of this is Lift IR, a functional language designed to bring a principled programming languages approach to generating high-performance code on a variety of devices.
+
+Although Lift provides impressive results for a system built on purely rewriting it provides a single programming model for end users, and requires all optimizations to either be written as a pass or phrased as a set of user rewrites. This design does not provide a way for users to incorporate outside implementations, prior knowledge or compose with their ML pipelines often written in Python.
+
+Existing approaches using both strategies have limitations. Compiler design using the first strategy are limited by each layer only having an opaque view of the layers above and below, each layer uses a single semantics with well-defined mappings between layers but limited communication between, or in the case of a single monolithic IR, which chooses a functional semantics the inability to use semantics which provide hardware specificity or hardware aware semantics.
+
+Imagine a not-so-hypothetical end-user’s desire to support a new Transformer based model on a previously unsupported device such as a microcontroller. In order to obtain best in class performance this task will be split across an engineering team. For example one user with the correct expertise may contribute code for importing this model into,  another with kernel expertise separately implements a kernel such as batched matrix multiplication and then optimizes it, and another user contributes the code generation, and another the runtime support.
+
+To accomplish this task in today’s ML frameworks a user must first design and train a model which accomplishes the task, know how to use framework tools such as XLA, or TorchScript, be able to modify their complex source bases, and write a complex code generator or LLVM backend and finally modify the runtime to execute on the device, if even possible.
+
+Many engineers in this domain believe that human effort is required to obtain competitive performance that is demonstrated by today’s bleeding edge development, my thesis demonstrated this is not the case.
+
+1.2 A two-sided interface: Relay
+
+Relay addresses the challenges laid out in the previous section by using the composition multiple distinct IR dialects, notably an ML-style high-level dialect, and the use of TVM’s compute language as a low-level dialect, in conjunction with carefully designed runtime and system APIs.
+
+The hypothetical story of the user needing to extend the entire stack is derived from a true sequence of events that occured in the development of Relay. A process like this requires diverse expertise that is often non-compositional. It is nearly impossible to find a single individual who has the ability to do all these tasks at a state-of-the-art level.  One user introduced framework support, another added a kernel, another optimized it, and another added compiler and runtime support for a new target.
+
+We were able to do this in a way where each user was able to make these changes independently and then compose them.
+
+Relay is able to provide this by introducing a set of key interfaces, a high-level extensible IR which can be used to encode various IR dialects, for example we can leverage Relay’s type system to provide the illusion of functional operators until a later dialect in which we change to a destination passing stye.
+
+Although this work began in 2017, the introduction of MLIR project (2018), a framework for composing layered dialects with different semantics, is one validation point of Relay’s design. This thesis argues that future compilers will gain a variety of dialects which must mutually interoperate in order to provide optimal performance.
+
+If we attempt to use existing end-to-end tools such as Lift, they provide a single functional unified-semantics. By embracing a split semantics, with the ability to introduce new dialects we provide different views of the program at different points in order to solve each optimization task independently.
+
+
+1.3 Thesis Organization
+
+My thesis is organized as follows, we first explore existing work and its limitations in addressing this problem, we then introduce the Relay IR, and IR designed to act as the interface between layers, we then explore the design of the Relay compiler and various optimizations, how to execute the programs …
+
+The remainder of my thesis is organized as follows
+Ch 0. Introduction
+Ch 1. Challenges of existing solutions
+Ch 3. Compiling Relay
+Ch 4. Extensions for dynamic neural networks
+Ch 5. A runtime system for deep learning
+Ch 6. Relay as a DL framework building block
+Ch 7. Automatic Differentiation
+Ch 8. Program optimization for non-experts: Dataflow Rewriting
+Ch 9. Bring Your Own Codegeneration
+Ch 9. Future Work
+
+% Bibliography
+
+% [1] "We don’t have better algorithms. We just have more data.”
+
+% [2] data and model size the amount of compute is exponentially growing, roughly doubling every 3.4 months (see https://twitter.com/OpenAI/status/1192481690741903360).
+
+% [3] https://arxiv.org/pdf/1911.05289.pdf
+
+% THESES TO LOOK AT:
+% https://people.csail.mit.edu/jrk/jrkthesis.pdf
+% https://homes.cs.washington.edu/~djg/theses/sampson_thesis.pdf
+% https://llvm.org/pubs/2005-05-04-LattnerPHDThesis.pdf
+
+
+\section{Introduction}
+\label{sec:intro}
+
+Deep learning (DL) has radically transformed domains like
+  computer vision and
+  natural language processing (NLP)~\cite{yolo, recent_trends_in_nlp}.
+Inspired by these successes,
+  researchers and companies are continually
+  developing increasingly sophisticated DL models and
+  specialized hardware backends.
+DL frameworks for writing, optimizing, and compiling DL models
+  reduce the complexity of these tasks,
+  which in turn accelerates DL research and product development.
+Popular DL frameworks offer different tradeoffs between
+  expressivity, composability, and portability in their design.
+In order to balance these tradeoffs DL frameworks have
+  evolved into sophisticated compilers.
+
+Let us consider a hypothetical scenario that makes explicit
+  the design tensions of modern DL frameworks, and by
+  extension compilers.
+Suppose a computational linguist wants to write
+  an Android app that uses sentiment analysis to
+  determine the mood of its users.
+To maintain privacy, the app must run completely on-device,
+  i.e., no work can be offloaded to the cloud.
+The linguist decides to use a variant of TreeLSTM,
+  a deep learning model that uses a tree structure~\cite{tree_lstm}.
+
+Unfortunately, current framework IRs cannot directly encode trees,
+  so she must use a framework extension
+  such as TensorFlow \verb|fold|~\cite{tensorflowfold}.
+% After adapting the model to run on her phone,
+%   the out-of-the-box performance of her particular combination
+%   of model and platform is not satisfactory, requiring her to optimize the model.
+% She chooses to employ \textit{quantization}, an optimization that
+%   potentially trades accuracy for performance by replacing
+%   floating-point operators with ones that operate on
+%   low-precision datatypes.
+% Although researchers have developed a variety of quantization
+%   strategies, each of which makes use of different bit-widths, rounding
+%   modes, and datatypes, our researcher must use a strategy supported
+%   by existing frameworks~\cite{gustafson2015end, tf_lite_ops_compat, glow_quant}.
+
+Unfortunately, popular frameworks only provide support for a small number
+  of strategies, and supporting new quantization strategies is non-trivial.
+Each tuple of operator, datatype, bit-width, and
+  platform requires a unique operator implementation.
+These are not the only optimization choices available
+  to user, the number of implementations is further
+  increased by each optimization (e.g., operator fusion).
+Furthermore, if the target phone
+  is not supported by the framework,
+  the researcher's operators,
+  quantized or not,
+  cannot take advantage of specialized deep learning instructions
+  provided by the phone's instruction set architecture (ISA)~\cite{apple_neural_engine}.
+
+The challenges faced by end-to-end deep learning compilers are far
+  different then the constraints faced by traditional compilers.
+In order to serve the needs of deep learning, frameworks have designed new
+  unique intermediate representations (IRs)~\cite{tensorflow, pytorch_ad, chainer_learningsys2015, tangent, theano, glow}.
+Framework IRs have solved subset of these problems,
+  but no tool provides an extensible,
+  and end-to-end solution for this challenge.
+
+\section{Proposal}
+
+My proposed thesis: \textbf{To develop an intelligent (1) end-to-end deep learning compiler that can
+automatically adapt (2) high-level programs to run on new hardware devices automatically
+with (3) human level performance.}
+
+The design of such a system requires \textbf{four} main components:
+\begin{enumerate}
+  \item An extensible IR for describing \textbf{complete} deep learning models,
+        including an intelligent optimization framework, and novel optimizations.
+  \item A flexible runtime system for executing models.
+  \item A frontend framework designed with compilation in mind.
+  \item A solution to the tensorization problem, analogous to vectorization from traditional
+        compilers, mapping down high-level program statements to complex hardware intrinsics.
+\end{enumerate}
+
+\subsection{Relay: A high-level IR for Deep Learning}
+
+The essential piece of generic compiler infrastructure is
+  its intermediate representation.
+In order to construct the proposed compiler we designed Relay: a generic, and
+  extensible IR that can evolve with the rapidly changing
+  machine learning landscape.
+Relay is the high-level intermediate representation of the TVM,
+  and serves as its entry IR.
+Relay's design and implementation is the main focus of Section \ref{sec:past}.
+
+\subsection{Tensor VM: Putting the VM in TVM}
+
+Relay is intermediate representation, providing both
+  syntax and semantics usable by other tools, but
+  does not provide efficient execution by itself.
+Previous executors for deep learning have supported
+  limited semantics which can not execute features such as closures.
+We implement a high performance virtual machine which
+  outperforms MxNet's executor, a state of the art deep
+  learning framework in use at Amazon Web Services.
+We discuss its current state in Section \ref{sec:past},
+  and remaining work to be done on it in Section \ref{sec:future}.
+
+\subsection{Beacon: A compiler based machine learning framework}
+
+Beacon is an experimental deep learning framework built from the ground up
+  using Relay.
+Beacon is a Python embedded DSL which can capture
+  complex language features including datatypes, control-flow, closures
+  as well as standard operations from deep learning.
+We discuss its design and implementation in \ref{sec:past}, as well as \ref{sec:future}.
+
+\subsection{Automatic Tensorization}
+
+Tensorization is the key piece of future work proposed by this thesis.
+The goal of automatic tensorization is to produce a compiler for new
+hardware architecture automatically given a description of the semantics
+of the underlying ISA.
+This problem is part compilation, part synthesis, and part verification based,
+  we hope to employ learning to help solve this problem.
+
+This proposal is organized as follows:
+  Section \ref{sec:related} describes the large body of related work,
+  Section \ref{sec:past} discusses completed progress towards this goal,
+  Section \ref{sec:future} the remaining work of my thesis,
+  Section \ref{sec:eval} how to evaluate,
+  and then finally conclusions in Section \ref{sec:conclusion}.
+
+  \section{Introduction}
+\label{sec:intro}
+
+Deep learning (DL) has radically transformed domains like
+  computer vision and
+  natural language processing (NLP)~\cite{yolo, recent_trends_in_nlp}.
+Inspired by these successes,
+  researchers and companies are continually
+  experimenting with increasingly sophisticated DL models and
+  developing specialized hardware backends.
+DL frameworks for writing, optimizing, and compiling DL models
+  reduce the complexity of these tasks,
+  which in turn accelerates DL research and product development.
+
+Popular DL compiler intermediate representations (IRs) offer different tradeoffs
+  between expressivity, composability, and portability~\cite{
+    tensorflow, pytorch_ad, chainer_learningsys2015, tangent, theano, glow}.
+Early frameworks adopted IRs
+  specialized for then-state-of-the-art models and/or
+  emerging hardware accelerators.
+As a result, non-trivial extensions require
+  patching or even forking frameworks~\cite{
+    tf_fold, tf_lite, tangent, tf_eager, xla, glow, torchscript}.
+Such \textit{ad hoc} extensions can improve expressivity
+  while maintaining backwards compatibility with existing execution mechanisms.
+However, they are difficult to design, reason about, and implement,
+  often resulting in modifications that are mutually incompatible.
+
+Let us consider a hypothetical scenario that exemplifies
+  IR design tensions in DL compilers.
+Suppose a machine learning engineer wants to write
+  an Android app that uses sentiment analysis to
+  determine the moods of its users.
+To maintain privacy, the app must run completely on-device,
+  i.e., no work can be offloaded to the cloud.
+The engineer decides to use a variant of TreeLSTM,
+  a deep learning model that uses a tree structure~\cite{tree_lstm}.
+Unfortunately, current frameworks' IRs cannot directly encode trees,
+  so she must use a framework extension
+  like TensorFlow Fold~\cite{tensorflowfold}.
+
+Suppose that after adapting the model to run on her phone,
+  the out-of-the-box performance of her
+  model on her particular platform is not satisfactory, requiring her to optimize it.
+She chooses to employ \textit{quantization}, an optimization that
+  potentially trades accuracy for performance by replacing
+  floating-point datatypes with low-precision ones.
+Although researchers have developed a variety of quantization
+  strategies, each of which makes use of different bit-widths, rounding
+  modes, and datatypes, our engineer must use a strategy supported
+  by existing frameworks~\cite{gustafson2015end, tf_lite_ops_compat, glow_quant}.
+Unfortunately, frameworks only provide support for a small number
+  of strategies, and supporting new quantization strategies is non-trivial.
+Each combination of operator, datatype, bit-width, and
+  platform requires unique operator implementations.
+Optimizations like operator fusion exacerbate this combinatorial explosion,
+  further increasing
+  the number of unique implementations required.
+Furthermore, if a framework doesn't have specific support for
+  the target phone model she cannot take advantage of specialized deep learning
+  instructions or coprocessors~\cite{apple_neural_engine}.
+
+The scenario above highlights the three-pronged \textit{extensibility challenge}
+  for DL IRs:
+% \begin{enumerate}[label=\arabic*.]
+%   \item \textit{Expressivity}: It should be straightforward to write models involving
+%     control flow, first-class functions and data structures (e.g., trees, graphs, and lists).
+%   \item \textit{Composability}: It should be straightforward to add and compose new optimizations
+%     with existing ones (e.g., quantization, operator fusion, and partial evaluation).
+%   \item \textit{Portability}: It should be straightforward to add new hardware targets
+%     (e.g., TPU, Inferentia)~\cite{tpuv1, inferentia}.
+% \end{enumerate}
+
+Previous IRs have struggled to address these challenges, treating each
+  component of the framework as a disconnected set of programming tasks.
+Operators are defined in low-level languages like C++,
+  connected by a dataflow graph, and then scripted
+  in a host language like Python.
+Consequently,
+  program analyses cannot cross language boundaries between components,
+  inhibiting optimization and deployment.
+Learning from previous IRs, we have designed \relay,
+  which features a principled approach to addressing extensibility
+  and improves expressivity, composability, and portability
+  over previous frameworks.
+We make the following contributions:
+\begin{itemize}
+  \item The \relay IR, a tensor-oriented, statically typed
+    functional IR,
+    which we describe in Section \ref{sec:design}.
+  \relay's design is motivated by the insight that functional IRs, used by
+  languages from the ML family\footnote{``ML'' as in ``Meta Language,'' not
+  ``Machine Learning''} can be readily adapted to support DL.
+  With its \textit{expressive} semantics,
+    including control flow, data structures, and first-class functions,
+    \relay can represent entire state-of-the-art models.
+  \item The insight that common features in ML frameworks,
+    such as quantization and shape inference,
+    can be reframed as standard compiler passes.
+  By using this reframing we can tap into
+    decades of traditional compilers research to design
+    \textit{composable} optimization passes.
+  \item
+    A platform-agnostic representation of operators and domain specific
+      optimizations which work in concert to provide \textit{portability}
+      across hardware backends.
+\end{itemize}
+
+We evaluate \relay on several systems and over a diverse set of vision and NLP workloads to
+  demonstrate that (1) \relay enables \emph{expressive} programs via a large breadth
+  of models, (2) \relay supports \emph{composition} of program-level optimizations
+  such as quantization and fusion, and (3) \relay provides
+  \emph{portability} by targeting a number of hardware backends.
+Not only does \relay provide these three properties, we do so while also demonstrating
+  competitive performance.
+\relay is an open-source academic project.\footnote{\relay is publicly available at [redacted for review].}
+  It has been deployed at a popular web service provider,
+    a telecommunications and consumer electronics manufacturer,
+    and a social media company, among others.

@@ -1,0 +1,183 @@
+\usepackage{xspace}
+\usepackage{amsmath}
+\usepackage{bcprules}
+\usepackage{color}
+\usepackage{graphicx}
+\graphicspath{.}
+\usepackage{alltt}
+\usepackage{lineno}
+\usepackage{proof}
+\usepackage{verbatim}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{minted}
+\def\OPTIONConf{1}%
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{booktabs}
+% \usepackage{caption}
+% \usepackage{subcaption}
+\usepackage{joshuadunfield}
+% \usepackage{natbib}
+% \usepackage{enumitem}
+% \usepackage[nounderscore]{syntax}
+\usepackage{tabu}
+\usepackage{amssymb}
+\usepackage{mathtools}
+
+% \usepackage{txfonts}
+
+\newcommand{\makered}[1]{\textcolor{red}{#1}}
+\newcommand{\redbold}[1]{\makered{\textbf{#1}}}
+\newcommand{\makegreen}[1]{\textcolor{green}{#1}}
+\newcommand{\greenbold}[1]{\makegreen{\textbf{#1}}}
+\newcommand{\note}[1]{\redbold{[#1]}}
+\newcommand{\nnvm}[0]{NNVM\xspace}
+\newcommand{\tvm}[0]{TVM\xspace}
+% \newcommand{\relay}[0]{Relay}
+\newcommand{\relay}[0]{InterNeuron\xspace}
+\newcommand{\vta}[0]{VTA\xspace}
+% \newcommand{\kwd}[1]{\,\fcolorbox{gray!30}{gray!30}{\texttt{#1}}\,}
+% \newcommand{\kwd}[1]{\texttt{#1}}
+% TODO: doesn't seem to produce the exact color. also contrast is a little low
+\definecolor{sampldark}{RGB}{72, 71, 135}
+\definecolor{uwpurp}{RGB}{51, 0, 111}
+\definecolor{uwpurplight}{RGB}{94, 0, 204}
+\newcommand{\kwd}[1]{\textcolor{uwpurplight}{\texttt{#1}}}
+\def\checkmark{\tikz\fill[scale=0.4](0,.35) -- (.25,0) -- (1,.7) -- (.25,.15) -- cycle;}
+\newcommand{\Cross}{\tikz [x=1.4ex,y=1.4ex,line width=.2ex] \draw (0,0) -- (1,1) (0,1) -- (1,0);}%
+
+% https://math.berkeley.edu/~gbergman/misc/hacks/langl_rangl.html
+\usepackage{graphics}
+\newcommand{\langl}{\begin{picture}(4.5,7)
+\put(1.1,2.5){\rotatebox{60}{\line(1,0){5.5}}}
+\put(1.1,2.5){\rotatebox{300}{\line(1,0){5.5}}}
+\end{picture}}
+\newcommand{\rangl}{\begin{picture}(4.5,7)
+\put(.9,2.5){\rotatebox{120}{\line(1,0){5.5}}}
+\put(.9,2.5){\rotatebox{240}{\line(1,0){5.5}}}
+\end{picture}}
+
+\usepackage{todonotes}
+\newcommand{\jgr}[1]{\todo[color=blue, size=\tiny]{#1}}
+\newcommand{\jmp}[1]{\todo[color=green, size=\tiny]{#1}}
+\newcommand{\ssl}[1]{\todo[color=yellow, size=\tiny]{#1}}
+
+\newcommand{\jdiff}[2]{\redbold{#1}\greenbold{Jared: #2}}
+
+\newcommand{\CaptionLabel}[2]{
+  \caption{#1}
+  \label{#2}}
+
+% BNF
+\newcommand{\is}[2][]{&::=&#2\ifthenelse{\equal{#1}{}}{}{&\text{(#1)}}}
+\newcommand{\isEtc}{\is{\cdots}}
+\newcommand{\inlineAlt}{~\vert~}
+\newcommand{\alt}[2][]{\\&&\vert&#2\ifthenelse{\equal{#1}{}}{}{&\text{(#1)}}}
+\newcommand{\altEtc}{\\&&\vdots}
+\newcommand{\altSpace}[3]{\\[#1]&&\vert&#3\ifthenelse{\equal{#2}{}}{}{&\text{(#2)}}}
+\newcommand{\grammarname}[1]{\textit{#1}}
+\newcommand{\grammarword}[1]{\texttt{#1}}
+\newcommand{\op}{\grammarname{op}}
+\newcommand{\gvar}{\kwd{@}\grammarname{g}}
+\newcommand{\type}{\grammarname{$\tau$}}
+\newcommand{\expr}{\grammarname{e}}
+\newcommand{\lvar}{\kwd{\%}\grammarname{l}}
+\newcommand{\graphVar}{\kwd{\%}\grammarword{graph}}
+\newcommand{\real}{\grammarname{r}}
+\newcommand{\bool}{\grammarname{b}}
+\newcommand{\nat}{\grammarname{n}}
+\newcommand{\Item}{\grammarname{i}}
+\newcommand{\defn}{\grammarword{def}}
+\newcommand{\rettype}{\kwd{$\rightarrow$}\ \type}
+\newcommand{\seq}[1]{#1\kwd{,}\ \ldots \kwd{,}\ #1}
+\newcommand{\relations}{\kwd{where}\ \seq{\type}}
+\newcommand{\tyvar}{\grammarname{tv}}
+\newcommand{\tyParam}{\grammarword{T}}
+\newcommand{\typarams}{\grammarword{tyParams}}
+\newcommand{\typeanno}{\kwd{:}\, \type}
+\newcommand{\kind}{k}
+\newcommand{\kindanno}{\kwd{:}\, \kind}
+\newcommand{\maybe}[1]{\texttt{(}#1\texttt{)?}}
+\newcommand{\atLeastZero}[1]{\texttt{(}#1\texttt{)*}}
+\newcommand{\atLeastOne}[1]{\texttt{(}#1\texttt{)+}}
+\newcommand{\body}[1]{\kwd{\{} #1 \kwd{\}}}
+\newcommand{\param}{\grammarword{x}}
+\newcommand{\params}{\grammarword{params}}
+\newcommand{\tyargs}{\kwd{$\langl$} \seq{\type} \kwd{$\rangl$}}
+\newcommand{\args}{\kwd{(} \seq{\expr} \kwd{)}}
+\newcommand{\bnfrule}[2]{\textsf{#1} & #2}
+\newcommand{\basetype}{\grammarname{bt}}
+\newcommand{\shape}{\grammarname{s}}
+\newcommand{\patt}{\grammarname{p}}
+\newcommand{\wildcard}{\kwd{\_}}
+\newcommand{\typename}{\grammarname{tn}}
+\newcommand{\rName}{\grammarword{name}}
+\newcommand{\rTrue}{\kwd{true}}
+\newcommand{\rFalse}{\kwd{false}}
+\newcommand{\rFnRule}{\begin{split}
+  \kwd{fn}\ &\maybe{\rTyParamsRule}\\&\rParamsRule\ \maybe{\rettype}\\&\body{\expr}
+\end{split}}
+\newcommand{\rDefnRule}{\begin{split}
+  \kwd{def}\ \gvar&\maybe{\rTyParamsRule}\\&\rParamsRule\ \maybe{\rettype}\\&\maybe{\relations}\ \body{\expr}
+\end{split}}
+\newcommand{\rTupRule}{\kwd{(} \seq{\expr} \kwd{)}}
+\newcommand{\rTupProjRule}{e \kwd{.} \nat}
+\newcommand{\rIfElse}[3]{\kwd{if}\ \kwd{(} #1 \kwd{)}\ \body{#2}\ \kwd{else}\
+\body{#3}}
+\newcommand{\rLetRule}{\kwd{let}\ \lvar\ \maybe{\typeanno}\ \kwd{=}\ \expr \kwd{;}\ \expr}
+\newcommand{\rAnonLetRule}{\expr \kwd{;}\ \expr}
+\newcommand{\rGraphLetRule}{\graphVar\ \kwd{=}\ \expr \kwd{;}\ \expr}
+\newcommand{\rLet}[4]{\kwd{let}\ #1\ifthenelse{\equal{#2}{}}{}{\ \kwd{:}\, #2}\ \kwd{=}\ #3 \kwd{;}\ifthenelse{\equal{#4}{}}{}{\ #4}}
+\newcommand{\rTyParamsRule}{\kwd{$\langl$} \seq{\tyParam} \kwd{$\rangl$}}
+\newcommand{\rParamsRule}{\kwd{(} \seq{\param} \kwd{)}}
+\newcommand{\rParamRule}{\lvar\ \maybe{\typeanno}}
+\newcommand{\rParam}[2]{#1\kwd{:}\ #2}
+\newcommand{\rTyParamRule}{\tyvar\ \maybe{\kindanno}}
+\newcommand{\typedef}{\grammarword{type}}
+\newcommand{\rTypeDefRule}{\begin{aligned}
+  &\kwd{type}\ \typename \rTyParamsRule\ \kwd{\{}\\
+  &\quad\kwd{|}\ \op\kwd{(} \seq{\type} \kwd{)}\\
+  &\quad \vdots\\
+  &\quad\kwd{|}\ \op\kwd{(} \seq{\type} \kwd{)}\\
+  &\kwd{\}}
+\end{aligned}}
+\newcommand{\rMatchRule}{\begin{aligned}
+  &\kwd{match}\ \kwd{(} \expr \kwd{)}\ \kwd{\{}\\
+  &\quad\kwd{|}\ \patt\ \kwd{$\rightarrow$}\ \expr \\
+  &\quad \vdots\\
+  &\quad\kwd{|}\ \patt\ \kwd{$\rightarrow$}\ \expr \\
+  &\kwd{\}}
+\end{aligned}}
+\newcommand{\program}{\grammarword{program}}
+
+% Draw a pentagram and summon Knuth for a varargs intercalate macro.
+\makeatletter
+\newcommand{\intercalate}[4]{%
+    #2#4\intercCheckNext{#1}{#3}}
+\newcommand{\intercCheckNext}[2]{\@ifnextchar\bgroup{\intercGobbleNext{#1}{#2}}{}}
+\newcommand{\intercGobbleNext}[3]{#1 #3\@ifnextchar\bgroup{\intercGobbleNext{#1}{#2}}{#2}}
+\makeatother
+
+\newcommand{\rTuple}{%
+    \intercalate{\kwd{,}}{\kwd{(}}{\kwd{)}}}
+
+% typecheck
+\newcommand{\typecheck}[4]{#1 ; #2 \entails #3 : #4}
+\newcommand{\typeCtx}{\grammarname{$\Delta$}}
+\newcommand{\varCtx}{\grammarname{$\Gamma$}}
+
+% semantics
+\newcommand{\rstep}[2]{#1 \Rightarrow #2}
+\newcommand{\rstate}[3]{#1; #2\colon #3}
+\newcommand{\rheap}{\grammarname{$\Gamma$}}
+\newcommand{\rnamespace}{\grammarname{$\Delta$}}
+
+% AD Figure
+\newcommand{\pluseq}{\mathrel{+}=}
+\newcommand{\revv}[1]{\overset{\leftharpoonup} #1}
+\newcommand{\sens}[1]{\overset{\leftharpoondown} #1}
+\newcommand{\bper}[1]{\overline{#1}}
+
+\newcommand{\affiliation}[1]{//\texttt{#1}}
+\newcommand{\email}[1]{//\texttt{#1}}

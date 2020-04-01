@@ -1,0 +1,43 @@
+\chapter{Supporting Hardware Accelerators}
+\label{ch:accel}
+
+BYOC
+
+\subsection{VTA}
+
+Hardware specialization is a powerful way to accelerate
+  a known set of applications and workloads.
+A component of \relay is lowering high-level programs down
+  to the bespoke semantics of emerging hardware accelerators.
+Unfortunately, deep learning (DL) is anything but a static field, and the machine learning (ML) community
+  rapidly changes how they use to write models, the architecture of models themselves, the operators
+  used by said models, and the data types they operate over.
+Initial programmable accelerators~\cite{tpuv1} offer potentially huge performance
+  improvements at the cost of complex specialized compilation.
+Furthermore the churn of machine learning has lead to an interest
+  in customizable designs, with features such as new numeric representations,
+  new hardware engines, and more.
+In order to customize the behavior of accelerators designs, even when open-sourced,
+  there is a need for the availability of a transparent and modular software stack.
+An end-to-end approach requires integration of frameworks, systems, compilers,
+  and architecture in order to execute state-of-the-art ML using hardware acceleration.
+Peak FLOPs provide value only if a programmer can access them.
+In order to tackle this problem I have collaborated on the design for \vta (Versatile Tensor Accelerator),
+  an explicitly programmed accelerator paired with a compiler and runtime that can evolve
+  in tandem with deep learning models without sacrificing the advantages of specialization.
+
+\vta makes following contributions:
+
+\begin{itemize}
+    \item \emph{A programmable accelerator design} that exposes a two-level programming interface: a high-level task ISA to allow explicit task scheduling by the compiler stack, and a low-level microcode ISA to provide software-defined operational flexibility.
+    In addition, the \vta architecture is fully parameterizable: the hardware intrinsics, memories, and data types can be customized to adapt the hardware backend requirements.
+    \item \emph{An extensible runtime system} for heterogeneous execution that performs JIT compilation of microcoded kernels to provide operational flexibility. For example, the \vta runtime lets us extend the functionality of \vta's original computer-vision-centric design to support operators found in style transfer applications without requiring any hardware modifications.
+    \item \emph{A schedule auto-tuning platform} that optimizes data access and reuse in order to rapidly adapt to changes to the underlying hardware and to workload diversity.
+\end{itemize}
+
+We recently published a paper on VTA in IEEE Micro Journal Special Issue
+  on Deep Learning Acceleration.
+\vta is a powerful part of doing research, and \relay is a critical part of the research agenda
+  being pursued in the SAMPL lab, with recent funding to explore directly mapping \relay programs
+  on to \vta as well as a diverse set of accelerators, and is related to the final topic of my
+  thesis automatic tensorization.
