@@ -44,7 +44,7 @@ In the early days of deep learning, practitioners and researchers would program
   scientific computing libraries like NumPy,
   which provide low-level \textit{operators} such as matrix multiplication.
 In order to accelerate model execution,
-    frameworks supporting accelerators such as GPU were introduced~\cite{theano} .
+    frameworks supporting accelerators such as GPU were introduced~\citep{theano} .
 Early frameworks represented models as directed ``computation graphs'',
     where each node represents an operator,
     and each edge represents the flow of data from one operator to another.
@@ -55,9 +55,9 @@ Large technology companies,
     drive the development of frameworks,
     and consequently,
     each company has its own stack consisting
-    of the core framework (TensorFlow~\cite{tensorflow}, PyTorch~\cite{pytorch}, MxNet~\cite{mxnet}),
-    compilers(XLA~\cite{xla}, Glow~\cite{glow}, TVM~\cite{tvm_osdi18}),
-    and hardware accelerators (TPU~\cite{tpuv1}, GraphCore, Inferentia~\cite{inferentia}).
+    of the core framework (TensorFlow~\citep{tensorflow}, PyTorch~\citep{pytorch}, MxNet~\citep{mxnet}),
+    compilers(XLA~\citep{xla}, Glow~\citep{glow}, TVM~\citep{tvm_osdi18}),
+    and hardware accelerators (TPU~\citep{tpuv1}, GraphCore, Inferentia~\citep{inferentia}).
 Frameworks can be roughly categorized into those which support \textit{static} computation graphs
   and those which support \textit{dynamic} computation graphs.
 Frameworks which use static graphs are said to be \textit{define-and-run} frameworks,
@@ -65,7 +65,7 @@ Frameworks which use static graphs are said to be \textit{define-and-run} framew
 
 \subsection*{Define-And-Run Frameworks}
 
-TensorFlow, Caffe~\cite{caffe}, and Theano~\cite{theano} are define-and-run frameworks.
+TensorFlow, Caffe~\citep{caffe}, and Theano~\citep{theano} are define-and-run frameworks.
 Static graphs represent a whole-program,
   enabling optimization and simplified deployment,
   by removing the need for a host language like Python.
@@ -73,7 +73,7 @@ TensorFlow (TF) extends pure dataflow graphs with \textit{control edges}
       to emulate the functionality of \verb|if| and \verb|while|.
 TF's representation captures many state-of-the-art models,
       provides support for heterogeneous hardware back-ends,
-      and enables reverse-mode automatic differentiation~{\cite{ad_survey, tensorflow}}.
+      and enables reverse-mode automatic differentiation~{\citep{ad_survey, tensorflow}}.
 TF's encoding of control has limitations, as control-flow structures
     do not clearly map to familiar control-structures, instead using specialized
     encodings which make adapting traditional optimizations challenging.
@@ -81,7 +81,7 @@ Furthermore,
     unmodified TensorFlow does not support building models where the shape of
     the computation graph is dependent on the input,
     frustrating researchers who wish to experiment with complex models.
-TensorFlow Fold addresses this \textit{particular} limitation~\cite{tensorflowfold}
+TensorFlow Fold addresses this \textit{particular} limitation~\citep{tensorflowfold}
     but offers no general and extensible solution.
 % The encoding also requires \textit{ad hoc}, special-purpose operators such
 %     as \verb|NextIteration| and the addition of special control edges to the graph.
@@ -93,8 +93,8 @@ The crux of the problem is the lack of generic mechanisms for users to
 %     and does not scale.
 
 \subsection*{Define-By-Run Frameworks}
-PyTorch~\cite{pytorch_ad}, Gluon~\cite{gluon}, Chainer~\cite{chainer_learningsys2015},
-    and TensorFlow eager-mode~\cite{tf_eager} are define-by-run frameworks which
+PyTorch~\citep{pytorch_ad}, Gluon~\citep{gluon}, Chainer~\citep{chainer_learningsys2015},
+    and TensorFlow eager-mode~\citep{tf_eager} are define-by-run frameworks which
     attempt to address the challenges of previous work.
 The approach popularized by PyTorch is to use a host language (e.g., Python)
     to eagerly execute operations while simultaneously building a computation graph
@@ -114,8 +114,8 @@ Low-level tensor compilers are focused on the production
     operations such as matrix multiplication or convolution.
 There are a number of competing approaches,
     both from academic and commercial entities, such as
-    TVM~\cite{tvm_osdi18}, Halide~\cite{halide}, Tensor Comprehensions(TC)~\cite{tensor_comprehensions},
-    and Diesel~\cite{diesel}.
+    TVM~\citep{tvm_osdi18}, Halide~\citep{halide}, Tensor Comprehensions(TC)~\citep{tensor_comprehensions},
+    and Diesel~\citep{diesel}.
 The most notable designs are either inspired by the
     compute-schedule split introduced by Halide
     and adapted by TVM, or the polyhedral framework,
@@ -132,8 +132,8 @@ Operator compilers perform code generation for sets of scalar loop nests,
 DL frameworks have adopted compilers
     to tackle both performance and portability
     for existing applications, most notably
-    XLA~\cite{xla}, Glow~\cite{glow}, nGraph~\cite{ngraph}, ONNC~\cite{onnc},
-    PlaidML~\cite{plaidml}, and ModelCompiler.
+    XLA~\citep{xla}, Glow~\citep{glow}, nGraph~\citep{ngraph}, ONNC~\citep{onnc},
+    PlaidML~\citep{plaidml}, and ModelCompiler.
 These \textit{graph compilers} use computation graph IRs and provide
     lowering onto a variety of targets.
 Often graph compilers only perform high-level optimizations
@@ -207,10 +207,10 @@ In recent years, the design of new programming languages,
     or the augmentation of existing ones, has become
     a popular area of research.
 New languages designed for machine learning and related
-    tasks include Lantern~\cite{lantern}, Lift~\cite{lift_lang}, Flux.jl~\cite{fluxjl}
-    AutoGraph~\cite{moldovan2018autograph}, Swift for TensorFlow~\cite{tf_swift},
-    and JAX~\cite{jax}.
-Lantern \cite{lantern} is the most related work to \relay as it can
+    tasks include Lantern~\citep{lantern}, Lift~\citep{lift_lang}, Flux.jl~\citep{fluxjl}
+    AutoGraph~\citep{moldovan2018autograph}, Swift for TensorFlow~\citep{tf_swift},
+    and JAX~\citep{jax}.
+Lantern \citep{lantern} is the most related work to \relay as it can
     be used as a code generator.
 Lantern is a deep learning DSL in Scala
     that uses lightweight modular staging (LMS) to lower code into C++ and CUDA.
@@ -284,7 +284,7 @@ Google is developing an ML stack comprised of
   TensorFlow, XLA, TPU, and a host of satellite projects.
 Facebook is developing an ML stack comprised of
   many projects including PyTorch,
-  Glow~\cite{glow}, and Caffe2~\cite{pytorch_caffe2}.
+  Glow~\citep{glow}, and Caffe2~\citep{pytorch_caffe2}.
 Amazon Web Services has been developing a stack
   comprised of many projects including
   MxNet, TVM, and Inferentia.
@@ -306,7 +306,7 @@ While a machine learning framework may be written as a library in a high-level l
 To obtain better performance, researchers began utilizing specialized
   accelerators such as GPUs to accelerate the execution of models.
 In order to accessibly provide acceleration to end-users
-  researchers designed frameworks like Theano~\cite{theano}.
+  researchers designed frameworks like Theano~\citep{theano}.
 Frameworks such as Theano and Torch introduced a model of
   computation graphs, dataflow graphs composed of nodes of
     variables, and operations on data.
@@ -343,7 +343,7 @@ Reasoning about text requires context-sensitive analysis and data of
  To allow for context-sensitive analysis, DL researchers have developed networks with persistent
   state, known as \textit{recurrent neural networks}  (RNNs).
 Recurrent neural networks have found use not only in NLP, but also in speech recognition, music
-  transcription, eSports, and other areas \cite{lstm, speech_recognition, OpenAI_dota}.
+  transcription, eSports, and other areas \citep{lstm, speech_recognition, OpenAI_dota}.
 Unfortunately, since most machine learning frameworks rely on computation graphs,
   which cannot directly represent recursion, RNNs are usually finitely unrolled to a fixed depth.
 This is acceptable if the depth can be determined statically and the loop unrolled
@@ -371,7 +371,7 @@ There are no generic mechanisms for users to define new control flow
   combinators (e.g., \verb|fold|) or data types.
 TensorFlow's representation is sufficient for many state-of-the-art models,
   is easily ported to heterogeneous hardware back-ends,
-  and allows for reverse-mode automatic differentiation~{\cite{ad_survey, tensorflow}}.
+  and allows for reverse-mode automatic differentiation~{\citep{ad_survey, tensorflow}}.
 
 The second approach is used by PyTorch, where the host language (e.g. Python) dynamically
   constructs a computation graph.
@@ -384,10 +384,10 @@ Not only does this leave performance on the table, but it prevents deployment to
   edge devices, since they may have control flow or memory requirements that cannot be
   guaranteed by a fully dynamic control plane.
 
-Dynamic frameworks such as  PyTorch~\cite{pytorch_ad},
-    Gluon~\cite{gluon},
-    Chainer~\cite{chainer_learningsys2015},
-    and TensorFlow eager-mode~\cite{tf_eager} are attempts to alleviate the
+Dynamic frameworks such as  PyTorch~\citep{pytorch_ad},
+    Gluon~\citep{gluon},
+    Chainer~\citep{chainer_learningsys2015},
+    and TensorFlow eager-mode~\citep{tf_eager} are attempts to alleviate the
     challenges of static graph representations
 These dynamic frameworks must re-optimize and rebuild as graph topology changes, costing
     CPU cycles and incurring communication overhead between the host machine and accelerators.
@@ -398,9 +398,9 @@ There is work from frameworks on trying to balance tradeoffs, most of which has
   been realized using advanced compilers.
 There are a large number of deep learning compilers being
   developed today but have relatively similar designs.
-The Glow compiler~\cite{glow} provides a graph-based IR designed for lowering
+The Glow compiler~\citep{glow} provides a graph-based IR designed for lowering
   to hardware accelerators.
-XLA~\cite{xla}, within Google's TensorFlow, supports lowering statically sized
+XLA~\citep{xla}, within Google's TensorFlow, supports lowering statically sized
   loops nests down to existing vendor provided libraries or generating customized
   code platforms such as the Google TPU.
 Intel's nGraph provides a similar graph-based IR, focused on representing DAGs
@@ -428,18 +428,18 @@ Many existing IRs also do not support data-dependent control flow.
 
 Engineers design these platform specific model variants
   through tedious experimentation and framework-specific tweaks
-  to achieve acceptable performance~\cite{mobilenet}. % xnor_net, squeezenet}.
+  to achieve acceptable performance~\citep{mobilenet}. % xnor_net, squeezenet}.
 For example,
   engineers may need to \textit{quantize} models
   by manually reducing numerical precision for a particular platform,
-  sacrificing some accuracy for better performance~\cite{xnornet}.
+  sacrificing some accuracy for better performance~\citep{xnornet}.
 Manually tuning models requires
   that engineers learn the details of
   each platform's
-  unique data types, intrinsics, and memory systems~\cite{fb_fp_hw, tpuv1, brainwave, nn_on_si}.
+  unique data types, intrinsics, and memory systems~\citep{fb_fp_hw, tpuv1, brainwave, nn_on_si}.
 
 The landscape of specialized hardware
-  accelerators is also rapidly growing~\cite{
+  accelerators is also rapidly growing~\citep{
     moreau2018vta, OpenTPU, tpuv1}.
 Accelerators provide an attractive way to decrease
   the execution time, memory and power consumption of models, as well
@@ -455,7 +455,7 @@ Hardware vendors need software stacks, often extending a deep learning
 It is essential that frameworks can adapt to new hardware devices
   with minimal changes to applications.
 Relay provides an extensible framework for hardware accelerators,
-  and implements a backend for \vta an emerging hardware accelerator\cite{moreau2018vta}.
+  and implements a backend for \vta an emerging hardware accelerator\citep{moreau2018vta}.
 We demonstrate how we can use an expressive general-purpose deep learning IR, plus
   a few platform specific optimizations
 
@@ -467,12 +467,12 @@ My work is focused on the end-to-end compilation of deep learning, and for
 Instead my work is focused on optimizing programs which make use of low-level operations
   and optimizations around programs which combine them with higher-level abstractions,
   like closures and datatypes.
-In particular \relay is designed as an extension to \tvm~\cite{tvm_osdi18},
+In particular \relay is designed as an extension to \tvm~\citep{tvm_osdi18},
   a tensor expression language used for specifying dense array
   operations, to support full models.
 Previous work on the \tvm focused on producing efficient operators
   (dense linear algebra kernels), such as generalized matrix multiplication (GEMM) and convolutions.
-In theory \relay could use other high performance DSLs such as Halide~\cite{halide},
+In theory \relay could use other high performance DSLs such as Halide~\citep{halide},
     which \tvm derived its IR, and its split computation and schedule model.
 \todo{HALIDE EXPAND HERE}
 Tensor Comprehensions (TC) shares common goals with the \tvm framework, but achieves its goal
@@ -485,7 +485,7 @@ schedules. TC could replace \tvm in \relay{}'s compilation.
 My work is not the first attempt to apply programming language
     techniques to machine learning or problems such automatic differentiation.
 \todo{LANTERN EXPAND}
-Lantern \cite{lantern} is a deep learning DSL in Scala
+Lantern \citep{lantern} is a deep learning DSL in Scala
     that uses lightweight modular staging (LMS) to lower code into C++.
 LMS takes a graph as input from the user and converts it to an AST
     representation, similar to \relay's graph mode.
@@ -493,10 +493,10 @@ LMS removes unnecessary abstractions.
 Going one step further than Lantern,
     \relay supports accelerators.
 
-\verb|Flux.jl| \cite{fluxjl} is a DL library written in Julia \cite{julia}, a numerical
+\verb|Flux.jl| \citep{fluxjl} is a DL library written in Julia \citep{julia}, a numerical
 computing language. Like \relay, \verb|Flux.jl| adds shapes to the type system; however, unlike \relay, it
 uses a mixture of compile-time inference and runtime checks to enforce shape constraints
-\cite{jlmlpl} and cannot perform platform-specific optimizations. Unlike \verb|Flux.jl|, which
+\citep{jlmlpl} and cannot perform platform-specific optimizations. Unlike \verb|Flux.jl|, which
 tightly coupled with Julia, \relay is language agnostic and decouples frontend and IR
 considerations.
 \relay's features, such as type inference and deployment to multiple back-ends, can
@@ -505,9 +505,9 @@ considerations.
 Additionally, previous work in higher-order differentiation from the PL community
 has informed \relay's design.
 In particular, we draw inspiration from various implementations of
-automatic differentiation \cite{beautiful_diff, ad_survey, haskell_ad, toplas_reverse, wang_reverse, DLS, DDF},
+automatic differentiation \citep{beautiful_diff, ad_survey, haskell_ad, toplas_reverse, wang_reverse, DLS, DDF},
 with particular attention to techniques that can compute higher-order gradients of higher-order programs.
-\verb|Zygote.jl| \cite{zygotejl}, like \relay, uses source code transformations to
+\verb|Zygote.jl| \citep{zygotejl}, like \relay, uses source code transformations to
     implement automatic differentiation.
 
 % end related
@@ -627,7 +627,7 @@ Our evaluation demonstrates that
 
   Deep learning (DL) has radically transformed domains like
     computer vision and
-    natural language processing (NLP)~\cite{yolo, recent_trends_in_nlp}.
+    natural language processing (NLP)~\citep{yolo, recent_trends_in_nlp}.
   Inspired by these successes,
     researchers and companies are continually
     experimenting with increasingly sophisticated DL models and
@@ -637,13 +637,13 @@ Our evaluation demonstrates that
     which in turn accelerates DL research and product development.
 
   Popular DL compiler intermediate representations (IRs) offer different tradeoffs
-    between expressivity, composability, and portability~\cite{
+    between expressivity, composability, and portability~\citep{
       tensorflow, pytorch_ad, chainer_learningsys2015, tangent, theano, glow}.
   Early frameworks adopted IRs
     specialized for then-state-of-the-art models and/or
     emerging hardware accelerators.
   As a result, non-trivial extensions require
-    patching or even forking frameworks~\cite{
+    patching or even forking frameworks~\citep{
       tf_fold, tf_lite, tangent, tf_eager, xla, glow, torchscript}.
   Such \textit{ad hoc} extensions can improve expressivity
     while maintaining backwards compatibility with existing execution mechanisms.
@@ -658,10 +658,10 @@ Our evaluation demonstrates that
   To maintain privacy, the app must run completely on-device,
     i.e., no work can be offloaded to the cloud.
   The engineer decides to use a variant of TreeLSTM,
-    a deep learning model that uses a tree structure~\cite{tree_lstm}.
+    a deep learning model that uses a tree structure~\citep{tree_lstm}.
   Unfortunately, current frameworks' IRs cannot directly encode trees,
     so she must use a framework extension
-    like TensorFlow Fold~\cite{tensorflowfold}.
+    like TensorFlow Fold~\citep{tensorflowfold}.
 
 %   Suppose that after adapting the model to run on her phone,
 %     the out-of-the-box performance of her
@@ -672,7 +672,7 @@ Our evaluation demonstrates that
 %   Although researchers have developed a variety of quantization
 %     strategies, each of which makes use of different bit-widths, rounding
 %     modes, and datatypes, our engineer must use a strategy supported
-%     by existing frameworks~\cite{gustafson2015end, tf_lite_ops_compat, glow_quant}.
+%     by existing frameworks~\citep{gustafson2015end, tf_lite_ops_compat, glow_quant}.
   Unfortunately, frameworks only provide support for a small number
     of strategies, and supporting new quantization strategies is non-trivial.
   Each combination of operator, datatype, bit-width, and
@@ -682,7 +682,7 @@ Our evaluation demonstrates that
     the number of unique implementations required.
   Furthermore, if a framework doesn't have specific support for
     the target phone model she cannot take advantage of specialized deep learning
-    instructions or coprocessors~\cite{apple_neural_engine}.
+    instructions or coprocessors~\citep{apple_neural_engine}.
 
   The scenario above highlights the three-pronged \textit{extensibility challenge}
     for DL IRs:
@@ -692,7 +692,7 @@ Our evaluation demonstrates that
 %     \item \textit{Composability}: It should be straightforward to add and compose new optimizations
 %       with existing ones (e.g., quantization, operator fusion, and partial evaluation).
 %     \item \textit{Portability}: It should be straightforward to add new hardware targets
-%       (e.g., TPU, Inferentia)~\cite{tpuv1, inferentia}.
+%       (e.g., TPU, Inferentia)~\citep{tpuv1, inferentia}.
 %   \end{enumerate}
 
   Previous IRs have struggled to address these challenges, treating each
@@ -756,7 +756,7 @@ Our evaluation demonstrates that
         (including control flow, first-class functions, and data types)
         and have clearly specified semantics (e.g., lexical scope and controlled effects).
       By borrowing from PL literature,
-        we can apply program analysis and optimization techniques from decades of research~\cite{haskell_vector}.
+        we can apply program analysis and optimization techniques from decades of research~\citep{haskell_vector}.
 
       \relay's IR takes a small functional core and enriches it with domain-specific additions---namely,
         the inclusion of tensors and operators as expressions
@@ -818,7 +818,7 @@ Our evaluation demonstrates that
         like first-class functions and control flow,
         and reduces the precision of traditional analyses,
         such as liveness,
-        because the high-level program structure is absent~\cite{funarg, funarg_sol}.
+        because the high-level program structure is absent~\citep{funarg, funarg_sol}.
       The addition of a humble \verb|let| binding, a central concept in functional languages,
         provides explicit sharing and a solution to the problems outlined above.
 
@@ -888,7 +888,7 @@ Our evaluation demonstrates that
       Emerging models, particularly in the domain of natural language processing, increasingly
         rely on data-dependent control flow, forcing frameworks based on computation graph IRs
         to incorporate control flow, often through \textit{ad hoc} and difficult-to-extend constructs.
-      For example, TensorFlow Fold~\cite{tf_fold} extends TF with special combinators that
+      For example, TensorFlow Fold~\citep{tf_fold} extends TF with special combinators that
         dynamically compute a graph for each shape permutation;
         these high-level constructs are opaque to further optimizations.
       The functional programming community has demonstrated that recursion and pattern matching are sufficient
@@ -916,7 +916,7 @@ Our evaluation demonstrates that
 
       \subsection*{Data Abstraction}
       Many models make use of additional data types beyond
-        tuples, such as lists, trees, and graphs~\cite{char-rnn, tree_lstm, graph_lstm}.
+        tuples, such as lists, trees, and graphs~\citep{char-rnn, tree_lstm, graph_lstm}.
       \relay borrows from functional languages
         a generic and principled method of extension:
         algebraic data types (ADTs).
@@ -945,7 +945,7 @@ Our evaluation demonstrates that
         dynamically, inhibiting certain types of optimizations.
 
       It is possible to model arbitrarily complex static properties, such
-        as shape information, with a dependent type theory~\cite{selsam_certigrad}, but such
+        as shape information, with a dependent type theory~\citep{selsam_certigrad}, but such
         a design incurs significant user complexity.
       By incorporating shape analysis into a broader type system,
         \relay's type system balances the desire for static tensor shapes
@@ -1105,7 +1105,7 @@ Our evaluation demonstrates that
       \relay produces machine-specific code
         by decomposing the problem of code generation into multiple distinct phases.
       \relay translates all operators into \tvm expressions
-        to produce dense linear algebra kernels~\cite{tvm_osdi18, tensor_comprehensions, halide}.
+        to produce dense linear algebra kernels~\citep{tvm_osdi18, tensor_comprehensions, halide}.
       \tvm produces low-level operators that expect a fixed calling convention,
         as well as preallocated inputs and outputs.
       The result is an object file containing hardware-specific implementations of all
@@ -1174,7 +1174,7 @@ We evaluated \relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx 
     performance on ImageNet detection tasks in 2015;
     \textit{VGG-16} (named for the Visual Geometry Group
     at Oxford), a CNN used for image recognition tasks
-    \cite{dqn, mobilenet, resnet, vgg}.
+    \citep{dqn, mobilenet, resnet, vgg}.
 
   We evaluated the following NLP models:
     \textit{CharRNN}, a generator character-level
@@ -1183,7 +1183,7 @@ We evaluated \relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx 
     tree-structured network topologies;
     \textit{RNN, GRU, and LSTM}, a selection of models from the Gluon
     model zoo
-    \cite{pytorch_rnn_tut, tree_lstm, gluon_model_zoo}.
+    \citep{pytorch_rnn_tut, tree_lstm, gluon_model_zoo}.
 
   \subsection{Experimental Methodology}
   % Because we only evaluate inference in this paper,
@@ -1254,9 +1254,9 @@ We evaluated \relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx 
   %   \texttt{-O0} as \relay applies optimizations more aggressively.
   % Average performance improves by up to 2$\times$ when all optimizations are applied.
   % Most networks benefit greatly from operator fusion.
-  % Nature-DQN~\cite{dqn} has simple operators, which don't benefit from optimizations
+  % Nature-DQN~\citep{dqn} has simple operators, which don't benefit from optimizations
   %   such as layout transform, explaining why its performance doesn't improve beyond \texttt{-O1}.
-  % ResNet-18~\cite{resnet} and VGG-16~\cite{vgg} are two dense convolutional neural
+  % ResNet-18~\citep{resnet} and VGG-16~\citep{vgg} are two dense convolutional neural
   %   networks which benefit from \texttt{-03} optimizations.
   % These networks contain dense \texttt{conv2d} operators that benefit
   %   from the \texttt{AlterOpLayout} pass.
@@ -1297,7 +1297,7 @@ We evaluated \relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx 
     impacts the global performance of the system.
   We set out to build zero-cost abstractions for \relay,
     governed by Stroustrup's principle, ``What you don't use, you don't pay
-    for'' \cite{bjarne}.
+    for'' \citep{bjarne}.
   We demonstrate that we can achieve competitive performance on both CPUs and
     GPUs on a wide set of CNNs that are well supported by existing frameworks.
   We evaluated inference time for two classes of workloads: computer vision and natural language processing.
@@ -1377,18 +1377,18 @@ We evaluated \relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx 
   We evaluate the effects of quantized inference applied by \relay on vision workloads running
   on the Raspberry-Pi3 and Firefly RK3399 ARM-based platforms.
   Figure~\ref{fig:arm-eval} shows the effects of different levels
-    of quantization applied to low-power devices~\cite{relay_arixv}.
+    of quantization applied to low-power devices~\citep{relay_arixv}.
   The numbers show that as we opt for a more aggressive quantization scheme such as \texttt{int8/16} (i.e. 8-bit multiplication and 16-bit accumulation), we achieve much improved performance.
 
   \paragraph{Targeting Deep Learning Accelerators on FPGAs}
-  We evaluated inference time on five models including MobileNet-G \cite{mobilenet}, a grouped variant of the MobileNet architecture; ResNet-18, ResNet-34, and ResNet-50\cite{resnet}; and Deep Convolutional Generative Adversarial Networks \cite{dcgan}, a generative DNN used in unsupervised learning.
+  We evaluated inference time on five models including MobileNet-G \citep{mobilenet}, a grouped variant of the MobileNet architecture; ResNet-18, ResNet-34, and ResNet-50\citep{resnet}; and Deep Convolutional Generative Adversarial Networks \citep{dcgan}, a generative DNN used in unsupervised learning.
   Overall, \relay helps us efficiently offload deep learning operators onto specialized accelerators like VTA.
   Our results in Figure~\ref{fig:fpga-eval} show that we can achieve between 2.5 to 11.7$\times$ reduction in single-batch inference latency by offloading critical operators to the FPGA accelerator.
   These experiments demonstrate \relay's ability to target current and future deep learning architectures:
   \begin{enumerate}
     \item \textit{Heterogeneous FPGA/CPU offloading}: \relay lets us define the rules for offloading specific operators to the FPGA-based accelerator.
     \item \textit{Push-button quantization}: \relay can take a \texttt{fp32} model and convert its parameters to \texttt{int8} in order to enable inference on specialized accelerators.
-    \item \textit{Accelerator-friendly data packing:} \relay reorganizes data so it can be effortlessly consumed by a specialized TPU-like accelerator~\cite{tpuv1}.
+    \item \textit{Accelerator-friendly data packing:} \relay reorganizes data so it can be effortlessly consumed by a specialized TPU-like accelerator~\citep{tpuv1}.
   \end{enumerate}
 
 \subsection{Tensor VM: Putting the VM in TVM}
@@ -1440,7 +1440,7 @@ Many early DL IR designs made then-convenient design tradeoffs that
   now impede expressing state-of-the-art models and/or
   targeting hardware accelerators.
 As a result, frameworks repeatedly
-  patch or even fork core framework IRs~\cite{
+  patch or even fork core framework IRs~\citep{
     tf_fold, tf_lite, tangent, tf_eager, xla, glow, torchscript}.
 Such \textit{ad hoc} extensions improve expressivity and
   maintain backwards compatibility with existing execution mechanisms.
@@ -1454,7 +1454,7 @@ The scenario presented in the introduction demonstrates the three-pronged \textb
 %   \item \textit{Composability}: It should be straightforward to add and compose new optimizations
 %     with existing ones (e.g., quantization, operator fusion, and automatic differentiation).
 %   \item \textit{Portability}: It should be straightforward to add new hardware backends
-%     (e.g., TPU, Inferentia, and FPGAs)~\cite{tpuv1, inferentia}.
+%     (e.g., TPU, Inferentia, and FPGAs)~\citep{tpuv1, inferentia}.
 % \end{enumerate}
 
 Previous IRs have struggled to address these challenges because they treat
@@ -1554,7 +1554,7 @@ It is used to deploy efficient machine learning to
   % See Figure~\ref{fig:pipeline} for a visual overview of each stage.
   Since \relay is a high-level IR, it depends on a low-level code generator,
     such as \tvm or Halide,
-    to produce dense linear algebra kernels~\cite{tvm_osdi18, halide}.
+    to produce dense linear algebra kernels~\citep{tvm_osdi18, halide}.
   We use \tvm in our experiments.
   Low-level kernel compilers focus on generating highly efficient operators.
   The generated kernels have a fixed calling convention and do not
@@ -1628,7 +1628,7 @@ It is used to deploy efficient machine learning to
   For example, TensorFlow's eager mode inserts dummy control edges
     in its generated graphs to impose an ordering on effects.
   The lack of lexical scope in traditional graphs complicates language features
-    such as first-class functions and control-flow~\cite{funarg, funarg_sol}.
+    such as first-class functions and control-flow~\citep{funarg, funarg_sol}.
   The lack of explicit scoping information also weakens the ability
     to provide precise versions of traditional analyses, such as liveness.
   The addition of a humble \verb|let| binding, well studied in programming languages,
@@ -1732,7 +1732,7 @@ It is used to deploy efficient machine learning to
     compilers like automatic deforestation.
   First-class functions enable passes such as
     automatic differentiation, and simplify
-    the framework importers which map higher-level programs to our IR~\cite{myia}.
+    the framework importers which map higher-level programs to our IR~\citep{myia}.
   For example, an instance of TensorFlow's looping construct \verb|tf.while_loop|
     can be represented as a single specialized loop function
     or a generic fold over the full loop state.
@@ -1743,7 +1743,7 @@ It is used to deploy efficient machine learning to
   Earlier, we extended the language with tuples to
     emulate behavior of existing IRs.
   Deep networks require additional data types like lists,
-    trees, and graphs~\cite{char-rnn, tree_lstm, graph_lstm}.
+    trees, and graphs~\citep{char-rnn, tree_lstm, graph_lstm}.
   \relay borrows a generic and principled way to
     extend a language with new data types:
     algebraic data types (ADTs).
@@ -1956,5 +1956,5 @@ It is used to deploy efficient machine learning to
   Luckily, in practice, the number of type relations needed to express most of \relay's
     operators is relatively small, and their implementations are generally straightforward
     and amenable to exhaustive testing.
-The above sections discuss the core of \relay, a full-length paper under submission\cite{relay_arixv}
+The above sections discuss the core of \relay, a full-length paper under submission\citep{relay_arixv}
   details its design and implementation.

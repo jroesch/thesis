@@ -29,7 +29,7 @@ It would require hundreds, if not thousands, of human-hours of work and dozens o
 write any of those programs by hand, and there is no guarantee it will perform well.
 By contrast, deep learning has, with relatively little code, been
 used to approximate this entire recognition task with a single model. The learned system
-outperforms all hand-crafted solutions \cite{streetview}.
+outperforms all hand-crafted solutions \citep{streetview}.
 
 A programmer solving a problem with DL performs three steps. First, she specifies a parametric
 function (often called a \textit{model}, \textit{neural network}, or simply \textit{network})
@@ -95,7 +95,7 @@ While a machine learning framework may be written as a library in a high-level l
 
 In order to obtain better performance, researchers began utilizing specialized accelerators.
 To expose accelerators to end-users without needing to write in low-level languages,
-such as CUDA, researchers designed frameworks like Theano~\cite{theano}.
+such as CUDA, researchers designed frameworks like Theano~\citep{theano}.
 These frameworks represent computations using dataflow graphs
   (treating mathematical operations on data as nodes)
   and compile these graphs to deploy to
@@ -151,7 +151,7 @@ produce an additional output known as the \textit{hidden state}. Beginning with 
 state and a list of inputs (for example, characters from a source text), one can produce a
 list of outputs (for example, a translation of the source text). %, as in Fig.~\ref{fig:rnn_graph}.
 Recurrent neural networks have found use not only in NLP, but also in speech recognition, music
-transcription, eSports, and other areas \cite{lstm, speech_recognition, OpenAI_dota}.
+transcription, eSports, and other areas \citep{lstm, speech_recognition, OpenAI_dota}.
 
 Unfortunately, since most machine learning frameworks rely on computation graphs,
   which cannot represent recursion, RNNs are usually finitely unrolled to a fixed depth.
@@ -234,7 +234,7 @@ In order to effectively use these devices,
 % %   useful models, but limit future extensibility.
 % % For example there are no generic mechanisms for users
 % %   to define new control flow combinators (e.g., \verb|fold|) or data types.
-%   % ~\cite{
+%   % ~\citep{
 %   %   tf_fold, tangent, tf_eager, xla, glow, pytorch_caffe2}.
 % % The deep learning community has seen multiple iterations
 % %   of popular model architectures, and there
@@ -260,20 +260,20 @@ In order to effectively use these devices,
 %   to achieve the best performance.
 % Engineers design these platform specific model variants
 %   through tedious experimentation and framework-specific tweaks
-%   to achieve acceptable performance~\cite{mobilenet, xnor_net, squeezenet}.
+%   to achieve acceptable performance~\citep{mobilenet, xnor_net, squeezenet}.
 % For example,
 %   engineers may need to \textit{quantize} models
 %   by manually reducing numerical precision for a particular platform,
-%   sacrificing some accuracy for better performance~\cite{xnor_net}.
+%   sacrificing some accuracy for better performance~\citep{xnor_net}.
 % Manually tuning models requires
 %   that engineers learn the details of
 %   each platform's
-%   unique data types, intrinsics, and memory systems~\cite{fb_fp_hw, tpuv1, brainwave, nn_on_si}.
+%   unique data types, intrinsics, and memory systems~\citep{fb_fp_hw, tpuv1, brainwave, nn_on_si}.
 
 % While a small number of transformations have been automated, they often lack flexibility and
 % composibility. Consider quantization, the transformation that replaces floating point numbers with
 % lower-precision fixed point numbers to trade model accuracy for speed and size. This transformation
-% has been automated in TensorFlow with TensorFlow Lite~\cite{tflite}. To convert a TensorFlow model
+% has been automated in TensorFlow with TensorFlow Lite~\citep{tflite}. To convert a TensorFlow model
 % to a TensorFlow Lite model, a developer either runs quantization-aware training or converts a model
 % directly to TensorFlow Lite. In either case, the bulk of the work is done by a translation from a
 % TensorFlow computation graph to a TensorFlow Lite computation graph with 8-bit quantized operators.
@@ -311,7 +311,7 @@ In order to effectively use these devices,
 % % Many deployment targets, such as mobile phones, are a heterogenous system
 % %   consisting of a CPU, GPU, and customized machine learning accelerator.
 % % The number of specialized hardware
-% %   accelerators available is rapidly growing~\cite{moreau2018vta, OpenTPU, tpuv1}.
+% %   accelerators available is rapidly growing~\citep{moreau2018vta, OpenTPU, tpuv1}.
 % % Accelerators provide an attractive way to decrease
 % %   the execution time, memory and power consumption of models while
 % %   increasing the number of contexts deep learning can be deployed in.

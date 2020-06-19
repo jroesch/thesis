@@ -147,7 +147,7 @@ Quantization is particularly essential for supporting many accelerators due to
 
 State-of-the-art work on quantization demonstrates a number of tradeoffs
   between different quantization techniques,
-  with the best often determined by platform and model type~\cite{krishnamoorthi18}.
+  with the best often determined by platform and model type~\citep{krishnamoorthi18}.
 Most DL frameworks have chosen a specific set of fixed quantization
   schemes and datatypes due to the effort required to manually implement operators for
   each pairing.
@@ -254,7 +254,7 @@ A partial evaluator (PE) allows the use of high-level abstractions
   compiled to a particular target.
 \relay is the first compiler to apply partial evaluation
   techniques to deep learning, the
-  core approach of which is based on \cite{pe_ref}.
+  core approach of which is based on \citep{pe_ref}.
 Partial evaluation, when composed with other
   optimizations like fusion, yields a variety
   of useful optimizations without requiring
@@ -321,7 +321,7 @@ The multiplication by a scalar is moved through a convolution towards
   its constant inputs, such as parameters.
 By moving the scaling operation to a constant weight, we are able
   to compute away the scale using the partial evaluator.
-This optimization is required for certain accelerators that lack scalar multipliers~\cite{moreau2018vta}.
+This optimization is required for certain accelerators that lack scalar multipliers~\citep{moreau2018vta}.
 In order to target these accelerators,
   we must eliminate \textit{all} scalar operations.
 
@@ -329,7 +329,7 @@ In order to target these accelerators,
   optimization that fuses multiple 2D convolutions that share the same input.
 The goal of this pass is to produce a larger kernel for the GPU,
   as each kernel launch on the GPU has overhead.
-It was designed with the Inception network \cite{inception} in mind, as it
+It was designed with the Inception network \citep{inception} in mind, as it
   contains blocks of convolutions that share the same input.
 The entire parallel convolution combination pass,
   including documentation and tests,

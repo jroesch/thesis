@@ -65,7 +65,7 @@ We evaluated the following vision models:
     a CNN for image recognition that achieved top-2 performance in the 2014 ImageNet Challenge.
   % and \textit{Deep Convolutional Generative Adversarial Networks (DCGAN)},
   %   a generative CNN used in unsupervised learning.
-  \cite{dqn, mobilenet, resnet, vgg}.
+  \citep{dqn, mobilenet, resnet, vgg}.
 We evaluated the following NLP models:
   \textit{CharRNN}, a generator character-level
   RNN from a PyTorch tutorial;
@@ -73,7 +73,7 @@ We evaluated the following NLP models:
   tree-structured network topologies;
   and \textit{RNN}, \textit{GRU}, and \textit{LSTM}, a selection of models from the Gluon
   Model Zoo
-  \cite{pytorch_rnn_tut, tree_lstm, gluon_model_zoo}.
+  \citep{pytorch_rnn_tut, tree_lstm, gluon_model_zoo}.
 
 \subsection{Experimental Methodology}
 Because we only evaluate inference in this paper,
@@ -94,7 +94,7 @@ For the vision workloads,
   we used \relay's AoT compiler.
 The low-power vision experiments from Section~\ref{sec:low-power} were run on multiple edge-class ARM development boards: a Raspberry Pi 3, a Firefly RK3399, and an Pynq-Z1 FPGA platform.
 We implement our DNN accelerators on a Zynq-7020 low-cost FPGA, and clock them at 100MHz.
-% We evaluated \relay's handling of accelerators on VTA~\cite{moreau2018vta}, the versatile
+% We evaluated \relay's handling of accelerators on VTA~\citep{moreau2018vta}, the versatile
 %   open-source deep learning accelerator.
 % We implemented a VTA design with a $16\times16$ matrix-vector 8-bit tensor core clocked
 %   at 333MHz on the Ultra-96 platform.
@@ -113,7 +113,7 @@ An age-old story in compilers literature is that increasing expressivity
   impacts the global performance of the system.
 We set out to build zero-cost abstractions for \relay,
   governed by Stroustrup's principle, ``What you don't use, you don't pay
-  for'' \cite{bjarne}.
+  for'' \citep{bjarne}.
 We demonstrate that we achieve competitive performance on a wide set of CNNs that are well supported by existing frameworks.
 We evaluated inference time for two classes of workloads: computer vision and natural language processing.
 We compared \relay to \nnvm,
@@ -265,7 +265,7 @@ arranged differently to expose different compute intrinsics to the compiler.
 
 We evaluate batch-size-normalized inference time on the accelerator designs
   on a mix of vision and NLP workloads:
-  ResNet-18, ResNet-34, ResNet-50, ResNet-101 \cite{resnet};
+  ResNet-18, ResNet-34, ResNet-50, ResNet-101 \citep{resnet};
   and TreeLSTM in Figure~\ref{fig:portability-eval}.
 The ResNets have high arithmetic intensity
 due to 2D convolutions, while the NLP workload is memory bound due to the lower-intensity vector-matrix
@@ -301,13 +301,13 @@ and make informed decision on what hardware design to choose across different wo
 % \begin{enumerate}
 %   \item \textit{Heterogeneous FPGA/CPU offloading}: \relay lets us define the rules for offloading specific operators to the FPGA-based accelerator.
 %   \item \textit{Push-button quantization}: \relay can take a \texttt{fp32} model and convert its parameters to \texttt{int8} in order to enable inference on specialized accelerators.
-%   \item \textit{Accelerator-friendly data packing:} \relay reorganizes data so it can be effortlessly consumed by a specialized TPU-like accelerator~\cite{tpuv1}.
+%   \item \textit{Accelerator-friendly data packing:} \relay reorganizes data so it can be effortlessly consumed by a specialized TPU-like accelerator~\citep{tpuv1}.
 % \end{enumerate}
 
 % We compared \relay (using \tvm's graph runtime environment) to \nnvm and TensorFlow
 % on a Raspberry Pi 3 ARM CPU and a Titan X GPU.
-% Additionally, we also compared against the TensorFlow (v1.7) XLA (Accelerated Linear Algebra) compiler \cite{xla}, backed by cuDNN v7
-% on the GPU and TensorFlow Lite (commit: 7558b085) \cite{tf_lite}, TensorFlow's mobile-optimized framework, backed by the ARM Compute Library (v18.03)
+% Additionally, we also compared against the TensorFlow (v1.7) XLA (Accelerated Linear Algebra) compiler \citep{xla}, backed by cuDNN v7
+% on the GPU and TensorFlow Lite (commit: 7558b085) \citep{tf_lite}, TensorFlow's mobile-optimized framework, backed by the ARM Compute Library (v18.03)
 % on the ARM CPU.
 % We ran each model 100 times on each target with batch size 1, a common
 % setting in inference tasks.
@@ -320,14 +320,14 @@ and make informed decision on what hardware design to choose across different wo
 % \subsection{\relay Improves Performance for Dynamic Models}
 % We demonstrate how \relay can be used to compile the style of programs written by PyTorch
 % programmers, and achieve strong performance results at the same time.
-% We compared \relay to PyTorch on a set of generative Char-RNNs \cite{char-rnn}, in order
+% We compared \relay to PyTorch on a set of generative Char-RNNs \citep{char-rnn}, in order
 % to use them as a generate model we required control flow, recursion, and ADTs.
 % We evaluate these results on a computer with 16-core AMD Ryzen Threadripper 1950X Processor.
 % When using a Char-RNN to perform text generation we use a recurrent cell executed in a loop.
 % We evaluated this model in four configurations:
 % \begin{enumerate}[label=(\arabic*)]
 %   \item \relay interprets the Char-RNN cell and the outer loop runs in Python (similar to default PyTorch);
-%   \item \relay AoT compiles the Char-RNN cell and the outer loop runs in Python (similar to PyTorch's JIT compiler, \cite{glow});
+%   \item \relay AoT compiles the Char-RNN cell and the outer loop runs in Python (similar to PyTorch's JIT compiler, \citep{glow});
 %   \item \relay interprets the entire model; and
 %   \item \relay ahead-of-time compiles the entire model.
 % \end{enumerate}
@@ -346,13 +346,13 @@ and make informed decision on what hardware design to choose across different wo
 % }
 % \subsection{\relay Handles Customized Hardware}
 % Finally we evaluated \relay's ability to target custom accelerators.
-% Custom accelerators like Google's Cloud TPU~\cite{tpuv1} present a challenge to computational graph compilers for two reasons.
+% Custom accelerators like Google's Cloud TPU~\citep{tpuv1} present a challenge to computational graph compilers for two reasons.
 % First, accelerators favor narrow integer types for inference tasks, requiring graph compiler support for quantization from \texttt{fp32} down to \texttt{int8} types or lower.
 % Second, data has to be \emph{packed} and \emph{tiled} in order to match the data layout requirements imposed by the computational core of the accelerator.
 % It is common to find tensor computation lanes in accelerators that can perform single-cycle matrix-matrix or matrix-vector multiplication.
 % To sustain this tremendously high rate of computation, the data has to be arranged correctly in memory to match the specifications of the accelerator's tensor core.
 % The data layout constraints imposed by accelerator hardware can be expressed in \relay to take full advantage of hardware specialization.
-% We evaluated \relay's handling of accelerators on VTA~\cite{moreau2018vta}, the versatile open-source deep learning accelerator.
+% We evaluated \relay's handling of accelerators on VTA~\citep{moreau2018vta}, the versatile open-source deep learning accelerator.
 % We implemented a VTA design with a $16\times16$ matrix-vector 8-bit tensor core clocked at 333MHz on the Ultra-96 development board.
 % The Ultra-96 is based on a Zynq Ultrascale+ MPSoC, which comprises an ARM Cortex A53 CPU and an 16nm FinFET+ Xilinx FPGA.
 % These MPSoCs offer tight integration between the CPU and FPGA via a shared, coherent memory interface.
@@ -363,7 +363,7 @@ and make informed decision on what hardware design to choose across different wo
 %   \item \textit{Push-button quantization}: \relay can take a \texttt{fp32} model and convert its parameters to \texttt{int8} in order to facilitate inference on specialized accelerators.
 %   \item \textit{Accelerator-friendly data packing:} \relay reorganizes data in memory so it can be effortlessly consumed by a specialized accelerator.
 % \end{enumerate}
-% We evaluated inference time on five models including MobileNet-G \cite{mobilenet}, a grouped variant of the MobileNet architecture, ResNet-18, ResNet-34 and ResNet-50\cite{resnet}, and Deep Convolutional Generative Adversarial Networks \cite{dcgan}, a generative DNN used in unsupervised learning.
+% We evaluated inference time on five models including MobileNet-G \citep{mobilenet}, a grouped variant of the MobileNet architecture, ResNet-18, ResNet-34 and ResNet-50\citep{resnet}, and Deep Convolutional Generative Adversarial Networks \citep{dcgan}, a generative DNN used in unsupervised learning.
 % Overall, \relay helps us efficiently offload deep learning operators onto specialized accelerators.
 % Our results in Figure~\ref{fig:fpga-eval} show that we can achieve between 2.4 to 11.7$\times$ reduction in single-batch inference latency by offloading critical operators to the FPGA accelerator.
 % These experiments demonstrate \relay's ability to target future architectures.

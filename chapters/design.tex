@@ -12,7 +12,7 @@ These IRs are expressive enough to capture general-purpose programs
   (including control flow, first-class functions, and data types)
   and have clearly specified semantics (e.g., lexical scope and controlled effects).
 By borrowing from PL literature,
-  we can apply program analysis and optimization techniques from decades of research~\cite{haskell_vector}.
+  we can apply program analysis and optimization techniques from decades of research~\citep{haskell_vector}.
 
 \relay's IR takes a small functional core and enriches it with domain-specific additions---namely,
   the inclusion of tensors and operators as expressions
@@ -74,7 +74,7 @@ The lack of lexical scope in computation graphs complicates language features,
   like first-class functions and control flow,
   and reduces the precision of traditional analyses,
   such as liveness,
-  because the high-level program structure is absent~\cite{funarg, funarg_sol}.
+  because the high-level program structure is absent~\citep{funarg, funarg_sol}.
 The addition of a humble \verb|let| binding, a central concept in functional languages,
   provides explicit sharing and a solution to the problems outlined above.
 
@@ -144,7 +144,7 @@ tf.while_loop(c, b, loop_vars=[i, j, k])
 Emerging models, particularly in the domain of natural language processing, increasingly
   rely on data-dependent control flow, forcing frameworks based on computation graph IRs
   to incorporate control flow, often through \textit{ad hoc} and difficult-to-extend constructs.
-For example, TensorFlow Fold~\cite{tf_fold} extends TF with special combinators that
+For example, TensorFlow Fold~\citep{tf_fold} extends TF with special combinators that
   dynamically compute a graph for each shape permutation;
   these high-level constructs are opaque to further optimizations.
 The functional programming community has demonstrated that recursion and pattern matching are sufficient
@@ -172,7 +172,7 @@ See Figure~\ref{fig:tf_to_relay_loop} for an example of this conversion (via
 
 \subsection*{Data Abstraction}
 Many models make use of additional data types beyond
-  tuples, such as lists, trees, and graphs~\cite{char-rnn, tree_lstm, graph_lstm}.
+  tuples, such as lists, trees, and graphs~\citep{char-rnn, tree_lstm, graph_lstm}.
 \relay borrows from functional languages
   a generic and principled method of extension:
   algebraic data types (ADTs).
@@ -201,7 +201,7 @@ Symbolic shapes (i.e., shape polymorphism) are only handled
   dynamically, inhibiting certain types of optimizations.
 
 It is possible to model arbitrarily complex static properties, such
-  as shape information, with a dependent type theory~\cite{selsam_certigrad}, but such
+  as shape information, with a dependent type theory~\citep{selsam_certigrad}, but such
   a design incurs significant user complexity.
 By incorporating shape analysis into a broader type system,
   \relay's type system balances the desire for static tensor shapes
@@ -361,7 +361,7 @@ The \relay compiler supports traditional optimizations
 \relay produces machine-specific code
   by decomposing the problem of code generation into multiple distinct phases.
 \relay translates all operators into \tvm expressions
-  to produce dense linear algebra kernels~\cite{tvm_osdi18, tensor_comprehensions, halide}.
+  to produce dense linear algebra kernels~\citep{tvm_osdi18, tensor_comprehensions, halide}.
 \tvm produces low-level operators that expect a fixed calling convention,
   as well as preallocated inputs and outputs.
 The result is an object file containing hardware-specific implementations of all
