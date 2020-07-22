@@ -254,7 +254,6 @@ The rest of the paper is organized as follows. \autoref{sec:background} reviews 
 %     \item A set of optimizations to improve code generation.
 % \end{itemize}
 
-\vspace{-1em}
 \section{A System Perspective to Dynamism}
 \label{sec:nimble-background}
 
@@ -264,7 +263,6 @@ Dynamism is now common in state-of-the-art deep learning models in various forms
 In the presence of these features, it becomes impossible to pre-compute certain program properties ahead of time, hence only a limited subset of optimizations available for static models can be directly reused.
 In this section, we first review the existing systems to support dynamism, followed by the discussion of supporting dynamic models using deep learning compilation techniques. Based on the observation, we propose our system Nimble and give an overview of it.
 
-\vspace{-1em}
 \subsection{Existing systems}
 \label{sec:background:existing}
 Researchers working on dynamic models typically use flexible deep learning frameworks to build proof of concept models, and then attempt to optimize the model using the builtin capabilities of the framework when deploying at scale.
@@ -291,7 +289,6 @@ Also, as it is still based on the framework, this solution inherits the drawback
 Specific runtime systems were recently proposed to handle dynamic models~\citep{xu2018cavs, gao2018low}. These systems are designed to address system-level issues that plague framework-based approaches, e.g., large overhead introduced by data flow graph construction.
 However, other issues, such as software dependencies, remain, which makes these runtime systems not standalone, but a customized component of a larger deep learning framework.
 
-%\vspace{-1em}
 \subsection{Limitation of Deep Learning Compilers}
 \label{sec:background:dlc}
 As discussed in~\ref{sec:background:existing}, existing solutions to dynamic models have various limitations, the most pressing of which is the lack of portability and cross-platform support.
@@ -307,7 +304,6 @@ With these goals in mind, deep learning compilers are a promising direction to e
 %   %\protect\yida{Can delete this figure if running out of space.}
 %   A generic deep learning compiler workflow in multiple stages. Existing deep learning compilers are unable to process dynamic models due to lacking of the functionalities listed in each stage.}
 %   \label{fig:dlc}
-%   %\vspace{-2em}
 % \end{figure}
 
 However, current deep learning compilers are not able to process dynamic models due to missing the following dynamism-specific features.% in the \emph{type system}, \emph{codegen}, and \emph{runtime}, along with dynamism-oriented optimizations such as \emph{memory planning} and \textit{heterogeneous device placement}.
@@ -331,7 +327,6 @@ Meanwhile, kernel tuning under symbolic shape settings become more challenging a
 
 Figure~\ref{fig:dlc} summarizes a generic deep learning compiler workflow in multiple stages, with the missing parts to supporting dynamism listed in each stage.  %\zhicomment{Figure needs to be updated, add heterogeneous device placement to optimization}.
 
-%\vspace{-1em}
 \section{System Overview}
 \label{sec:nimble-overview}
 
@@ -340,7 +335,6 @@ Figure~\ref{fig:dlc} summarizes a generic deep learning compiler workflow in mul
 %   \includegraphics[width=\linewidth]{figs/nimble.pdf}
 %   \captionof{figure}{Nimble overview. Nimble consists of a compiler that handles model with dynamism and a runtime that executes dynamic models in multiple platforms. Both components have multiple modules, which will be introduced in detail in the corresponding sections.}
 %   \label{fig:vm}
-%   %\vspace{-1em}
 % \end{figure}
 
 After reviewing systems for dynamic deep learning models, this section gives an overview of Nimble, a high-performance and flexible system for compiling and optimizing dynamic models for multiple platforms. In general, the design goals of Nimble are:
@@ -368,7 +362,6 @@ Third, a memory planning optimization is employed to reduce amount of memory con
 Fourth, a heterogeneous device placement mechanism is designed to place IR nodes on ``the-best'' device to reduce expensive cross-device data transferring and synchronization (\autoref{sec:compliation:hetero}).
 Finally, the compiler features a code generator that is capable of specializing the code generation of certain likely shapes (\autoref{sec:compliation:codegen}). Once the executable with dynamic behavior is compiled, the VM-based runtime can load and interpret it with intelligent dynamic kernel dispatching (\autoref{sec:runtime}). We detail the design and implementation of each of these features in the followed sections.
 
-%\vspace{-1.2em}
 \section{Compiler Support for Dynamism}
 \label{sec:nimble-compliation}
 
@@ -386,7 +379,6 @@ In this section, we detail three key components required to compile dynamic mode
     \item A set of codegen techniques for producing code for kernels with dynamic input and output shapes.
 \end{itemize}
 
-%\vspace{-2em}
 \subsection{Typing}
 \label{sec:compliation:typing}
 Deep learning compilers use type systems to represent, check and infer the data types and shapes of tensors. In some frameworks and compilers this is separated into two steps, shape inference and data type inference. TVM~\citep{roesch2019relay} performs both simultaneously and refer to them as type inference, terminology we will use throughout the section.
@@ -421,12 +413,10 @@ Second, when input shapes of a type relation contain Any~dimension, the type rel
 %For example, type relation for {\tt broadcasting} operators determines the compatibility between corresponding dimensions from both inputs if they are equal or one of them is 1 according to the Numpy broadcasting rule.
 For example, the rules
 for broadcast type relation given the matching dimension from two inputs when having Any~are defined as follows:
-\vspace{-6pt}
 \begin{align*}
   \textrm{broadcast\_rel}(Any, 1) &\rightarrow Any \\
   \textrm{broadcast\_rel}(Any, d) &\rightarrow d ~~~~~~(d > 1) \\
   \textrm{broadcast\_rel}(Any, Any) &\rightarrow Any.
-  \vspace{-12pt}
 \end{align*}
 Note that due the presence of dynamic shapes these type relation rules can no longer rule out all type errors at compile-time.
 For example, for the second rule shown above, when Any~is neither 1 nor $d$ at runtime, it then violates the broadcast type constraints.
@@ -448,9 +438,7 @@ Further, we perform extra analysis on each Any~dimension to detect if two Any~di
 %   \textrm{union}(T_i, T'_i) &\rightarrow T_i \\
 %   \textrm{join}(T_i, T'_i) &\rightarrow T'_i
 % \end{align*}
-%\vspace{-1em}
 
-%\vspace{-1em}
 \subsection{Shape Function}
 \label{sec:compilation:shape-func}
 %Existing deep learning compilers only deal with static shapes, enabling all shape computation to occur at compile-time.
@@ -481,7 +469,6 @@ As a result, we explicitly define the fusion policy to prevent this from happeni
 
 %Due to our definition of shape functions we are able to perform fusion using a generalized version of the algorithm used for standard operator fusion which handles passing the appropriate input shape or input depending on the shape function. For example imagine that the fuse operator has a single input that was originally used an operator that requires the input, and the second fused operator requires the input shape. Depending on the type of the shape function defined above, we handle operator fusion in the following manner. Any data independent shape functions could be fused with other operators. Any fused group can only have at most one shape function and it should be fused together with the operator that needs shape function.
 
-%\vspace{-1em}
 \subsection{Memory Planning}
 \label{sec:compliation:memory}
 Deep learning workloads are dominated by two key aspects, compute-intensive kernels and memory allocation. Many deep learning compilers use a form of static memory planning which tries to coalesce memory and minimize allocations. For devices such as GPUs these optimizations are essential for reducing memory fragmentation and ensuring allocation does not hamper kernel performance. Existing deep learning compiler IRs hide memory allocation behind a functional interface, where each operator implicitly allocates their output storage. Then before execution, the system performs static-memory planning on the data-flow graph enabling efficient pre-allocation of the required memory. Due to this ``out-of-band'' nature of memory allocation, it is challenging to customize, modify or compose memory optimizations with other passes. For example, if one needs to adjust memory allocation for heterogeneous execution, modifications to the runtime are required.
@@ -557,7 +544,6 @@ case on dynamic programs, for example we have implemented a storage coalescing p
 into a larger region which we can then multiplex tensor allocations on to.
 
 
-%\vspace{-1em}
 \subsection{Heterogeneous Device Placement}
 \label{sec:compliation:hetero}
 As discussed in Section \autoref{sec:compilation:shape-func}, shape functions are executed at runtime to calculate the output shape of an operator. These functions must execute on the CPU due to the host-interaction model of GPU like devices. In the case of heterogeneous execution (i.e., CPU and GPU) it is essential to carefully schedule the execution of shape functions and kernels as improper scheduling can be disastrous for performance. For instance, considerable overhead will occur if inputs to shape functions must be copied from GPU due to the cost of data transfers and synchronization. To minimize the performance penalty, we analyze the program allocations to place sub-expressions on the most suitable devices.
@@ -576,7 +562,6 @@ We introduce a unification based analysis for computing the correct device place
 
 Based on the rules defined above, we use a union-find data structure to bidirectionally propagate and unify the device placement of each IR node. We introduce two operations, \texttt{union(s, t)} and \texttt{find(s)}, to achieve \texttt{DeviceDomain} unification throughout the entire program. \texttt{union(s,t)} unions the equivalence device domains of \texttt{s} and \texttt{t} into one equivalence domain when the device types match. \texttt{find(s)} returns the representative of the device domain that \texttt{s} belongs to. These two operations are applied until all IR nodes are annotated. The result of the heterogeneous device placement composes with memory planning and shape function insertion resulting in correctly placed allocations.
 
-%\vspace{-1em}
 \subsection{Symbolic Codegen}
 \label{sec:compliation:codegen}
 %\yida{Should we mention the mechanism of invoking third-party libraries in this subsection?}
@@ -603,13 +588,11 @@ A known issue to machine learning based tuning is that it may take a long time (
 %by building on the techniques explored in based~\citep{chen2018learning}.
 We observe that a good configuration for one shape usually performs well on other shapes. Based on this observation, we devise the following mechanism to tune the kernel for symbolic shapes.
 
-\vspace{-6pt}
 \begin{enumerate}[leftmargin=*]
     \itemsep 0em
     \item First replace the symbolic dimensions by a large enough value (e.g., 64) such that the search space can cover most possibilities, and run the tuning algorithm on the static shape for a sufficient number of iterations.
     \item Pick top $k$ configurations, apply them to a selection of other shapes, and evaluate their performance.
     \item Pick the configuration that performs best on average among shapes previously evaluated.
-    \vspace{-6pt}
 \end{enumerate}
 
 We found that $k=100$ covers most of the best configurations for other shapes. Current popular dynamic models usually only require kernels with one symbolic variable. As a result, we choose the values of power of two up to 256 in the cross evaluation of other shapes. If there is more than one symbolic variable, a more sophisticated selection approach might be required to limit the evaluation time of step 2. We leave this to the future work. Further, if the workload distribution is known, we could adjust the weighting of known shapes when picking the best configuration for step 3.
@@ -642,7 +625,6 @@ The bytecode consists of a series of instructions that predicate the order of ke
 This design compliments conventional runtime's capability for executing highly optimized kernels but not directly handling orchestration between kernels.
 %The VM compiler lowers dynamic models to VM instructions, while kernels are lowered to native code via our modified version of TVM.
 
-%\vspace{-1em}
 \subsection{VM ISA}
 
 %The implementation of the VM compiler is straightforward, with the interesting design decisions found in our instruction set's design.
@@ -666,7 +648,6 @@ Instructions are represented using a traditional tagged union containing the op-
 
 % This design has the following benefits. First, both CISC instructions and variable length encoding contribute to better code density. This is a significant advantage for edge devices that only have limited resources. Second, allowing multiple addressing modes to execute a single instruction can reduce the amount of data fetched from cache hierarchy and main memory. It may also lead to better spatial locality as the data (e.g. the tensor value) may remain in the cache. Third, a variable-length instruction encoding paves the way for extending extra information to instructions, e.g. debugging and even branch prediction. Last but not least, the instruction designed in Nimble effectively separates hardware-dependent kernels from model control logic. The Nimble bytecode is hardware-independent which eases bytecode serialization, and can be paired with hardware-dependent kernels being invoked by the \texttt{InvokePacked} instruction.
 
-%\vspace{-1em}
 \subsection{Interpreter}
 
 After we have generated a VM executable,
@@ -742,7 +723,6 @@ void RunLoop() {
 \end{figure}
 \end{comment}
 
-\vspace{-1.5em}
 \subsection{Discussion}
 
 %\haichen{compare against AOT. discuss other use cases for vm, e.g., resource isolation, security, integration into a larger system}
@@ -765,57 +745,6 @@ For example, VM can provide resource isolation where multiple inference instance
 %\zhicomment{@haichen,  Do you still need push and pop? I think we probably don't need them now, instead we use \textit{Move} to manage stack. Am I right?}
 %\textit{stack-based} and \textit{register-based} virtual machines are the two major types of VM in programming languages. Stack-based VM aims at simplicity, using \textit{push} and \textit{pop} instructions to maintain a unified stack. However, it complicates tasks such as dataflow analysis and enforces certain orders in the execution. Instead, register-based VM design manages registers to designate the operands and results rather than the stack. This type of VM simplifies the calling convention as values are carried by registers. But it may bring some cost in terms of code size as it needs to decode instructions to fetch the values at specific positions. As aforementioned that our VM mainly targets tensor-level instructions instead of low-level machine instructions. The code size is thus generally small. Furthermore, we would emphasize the convenience of optimizations, such as liveness analysis and memory allocation in the model inference scenario. Therefore, the register-based VM provides more benefits which meets our selection.
 
-%\vspace{-1em}
-\section{Related Work}
-\label{sec:relwk}
-
-Systems for machine learning is an active research area with a variety of techniques for ML inference engines which support dynamic features, cross-platform execution, and per-platform code generation. We discuss related work below.
-
-% \hide{
-% \begin{table}[tbp]
-% \begin{tabular}{|c||c|c|c|}
-% \hline
-% Frameworks      & \makecell{Multi-platform \\ Portability}  & \makecell{Model \\ Dynamism} & Compilation \\ \hline
-% TF/TF Fold      &             \xmark                     &         \cmark              &  \xmark     \\ \hline
-% PyTorch         &             \xmark                     &         {\bf !}              &  \xmark     \\ \hline
-% MXNet         &               \xmark                     &         \cmark              &  \xmark     \\ \hline
-% DyNet           &             \xmark                     &         {\bf !}              &  \xmark     \\ \hline
-% Cavs            &             \xmark                     &         \cmark              &  \xmark     \\ \hline
-% Glow            &             \cmark                     &         \xmark              &  \cmark     \\ \hline
-% TVM             &             \cmark                     &         \xmark              &  \cmark     \\ \hline
-% XLA             &             \cmark                     &         \xmark              &  \cmark     \\ \hline
-% Nimble         &             \cmark                     &         \cmark              &  \cmark     \\ \hline
-% \end{tabular}
-% \caption{Summary of popular machine learning systems, in terms of whether or not being easy to port to multiple platforms, performant for dynamic model inference ({\bf !} means supported but not efficient), and capable of compiling kernels.}
-% \label{tab:ml_systems}
-% \end{table}
-% }
-
-\noindent
-{\bf Deep learning frameworks} As a framework, TensorFlow~\citep{tensorflow} supports dynamism via the addition of control flow primitives such as \emph{switch} and \emph{merge} in its graph representation~\citep{yu2018dynamic}. Similarly, MXNet~\citep{mxnet, mxnet-control} uses operators such as {\em foreach}, {\em cond}, and {\em while\_loop} to support control flow. The main drawback of this approach is requiring a runtime that uses an inefficient and complex control flow encoding such as TesorFlow, or a hybrid runtime such as MxNet which is inflexible for deploying to edge devices. As a separate effort, TensorFlow Fold~\citep{tensorflowfold} adds front-end syntactic sugar to TensorFlow for simplifying dynamic models via dynamic batching. Specifically, TensorFlow Fold conducts an analysis of the user's provided computation graphs and identifies dynamic operations that can be batched together. Once such operations are found, it transforms them into an intermediate representation (IR) that can be ingested by TensorFlow for evaluation. The nature of this approach can introduce large overhead as each path must be executed as a different sub-computation graph, as well as limiting further optimizaiton.
-
-Dynet~\citep{neubig2017dynet} and PyTorch~\citep{pytorch} use host language features to dynamically (i.e., Python's control flow) to construct a dynamic model architecture. This allows a friendly and flexible programming model.
-%as users can conveniently write code which appears no different then standard Python.
-However, it requires the creation of new static data flow graph for each path through the program introducing control flow overhead, and limiting the scope of optimization to a single trace through the program, a trace which often only executed once~\citep{xu2018cavs}. These challenges were similarly faced by tracing-JIT based systems in the JIT compiler literature. JAX~\citep{jax2018github} also supports both control flow and dynamic features in its programming model, but is fundamentally limited by the ability for XLA, TensorFlow's deep learning compiler to optimize and compile dynamic code. To the best of our knowledge XLA still requires all loop nests to be static at code generation time.
-
-%JANUS~\citep{jeong2019janus} optimizes the dynamic model execution in TensorFlow via speculative execution. It converts an imperative program that contains control flow defined in the host language (Python) into a symbolic data graph in TensorFlow for better performance. However, the conversion is incomplete due to dynamic typing, control flow, etc. Therefore, Janus falls back to imperative execution in the host environment when certain assumption breaks, which can lead to performance loss. In addition, JANUS shares the limitation in portability with the underlying framework.
-Jeong et al.~\citep{jeong2018improving} and JANUS~\citep{jeong2019janus} both extend TensorFlow to improve the performance for dynamic models. Jeong et al.~\citep{jeong2018improving} introduces the recursive data structure in the programming model to replace the control flow primitives in the tree-like models. The solution is hard to generalize to other dynamic models though. JANUS~\citep{jeong2019janus} optimizes the dynamic model execution in TensorFlow via speculative execution. However, the conversion from imperative programs in Python to symbolic data graph in TensorFlow is incomplete due to dynamic typing, control flow, etc. Therefore, JANUS suffers the performance loss when it falls back to imperative execution. In addition, both work share the limitation in portability with the underlying framework.
-
-%is an extension on top of TensorFlow to address the execution challenges led by dynamic models. It aimed to take the advantage of expressiveness provided by frameworks to represent dynamic models and the performance benefit of ahead of time optimization. JANUS takes the model defined in TF Eager and relies on speculative execution to remove control flow for speeding up the execution. It works well on certain models that could be executed speculatively but still suffers from performance loss on the other models that fail for speculative execution\yida{also mention it is limited by the framework?}.
-
-Deep learning frameworks rely on third-party libraries to implement operators with different data shapes, namely, they achieve good performance for models with dynamic shapes on a specific hardware platform only if the corresponding high-performance third-party library is both used and supports an operation. Therefore, frameworks generally perform poorly on devices, such as ARM CPU, which are not in the first tier of device support such such as Google's TPU or Nvidia GPU in TensorFlow.
-
-\noindent
-{\bf Runtime systems} To address frameworks' challenges with dynamism, e.g. prohibitively high overhead in reconstruction of computation graphs and difficulties in batching together computations with similar input shapes recent works has proposed deep learning runtime systems~\citep{xu2018cavs, gao2018low}. These techniques exhibited effectiveness in improving the performance of dynamic models. However, these approaches suffer from a common limitation--they all heavily rely on the third party libraries, such as cuDNN~\citep{cudnn} and MKL-DNN~\citep{mkldnn}, raising concerns about portability. In addition, they usually only support a narrow subset of dynamic models on each platform.
-
-\noindent
-{\bf Deep learning compilers} Unlike the deep learning frameworks, Nimble is designed as an end-to-end deep learning compiler The existing deep learning compilers, including XLA~\citep{xla}, TVM~\citep{tvm_osdi18}, and Glow~\citep{glow}, offer a means to compile deep learning models to run on multiple hardware platforms, but only focus on static models and fail to support models with dynamism.
-MLIR~\citep{lattner2020mlir} provides compiler infrastructure for deep learning workloads which allows developers to implement new dialects and combine them into a sing application. Its graph-level dialect has the support for dynamism, but has not yet produced work demonstrating how to achieve good performance in dynamic scenarios.
-Nimble enables a deep learning compiler to support dynamism in an efficient and flexible way by adding a dynamic type system, a dynamic code generator, a VM-based runtime and a series of dynamic-specific optimizations.
-
-Nimble's compilation and VM design is largely inspired by production compilers and VMs, such as LLVM~\citep{llvm}, GCC~\citep{gcc}, and JVM~\citep{jvm}. These generic solutions are able to easily handle dynamic behaviors, such as control flow and variable-length input arrays. However, the design of these compilers are heavily tailored to the optimization and execution profile of traditional programs. These programs manipulate small scalar values and consist of a large number of low level instructions. These VMs have a large number of instructions, which requires instruction execution and dispatch to be extremely efficient. Instead, deep learning compilers like Nimble manipulate primarily tensor values using a relatively small number of coarse-grained instructions, i.e. 16 instructions are sufficient for the Nimble VM. The execution hotspots of DL workloads are the compute-intensive operators (i.e. convolution) over large tensors. Thus, the micro-optimization of VM instruction dispatch is not essential to overall performance.
-
-\vspace{-1.5em}
 \section{Evaluation}
 \label{sec:eval}
 
@@ -829,7 +758,6 @@ This section evaluates the performance of Nimble on dynamic models against exist
 
 %\yida{Evaluate the execution time of the bytecode as a portion of the total execution time, to show that VM overhead is negligible}
 %\note{End-to-end: BERT, LSTM, Tree-LSTM on Intel CPU, ARM CPU, NVidia GPU; Nimble-runtime vs. graph runtime. Optimization implication: Kernel dispatch or not; memory planning or not; number of dispatched kernels.}
-%\vspace{-1.5em}
 \subsection{Experiment setup}
 \label{sec:eval:setup}
 
@@ -849,7 +777,6 @@ For LSTM and BERT, we used Microsoft Research's Paraphrase Corpus (MRPC)~\citep{
 %\note{missing model size, e.g. LSTM number of layers, length, BERT size}
 %For the measurement of the overhead on static models, we completed model inference for ResNet~\citep{he2016deep}, MobileNet~\citep{howard2017mobilenets}, VGG~\citep{simonyan2014very}, and SqueezeNet~\citep{iandola2016squeezenet} on the ImageNet dataset~\citep{deng2009imagenet}. Only one input is needed to feed to the system each time for the task of model inference.
 
-%\vspace{-1em}
 \subsection{Overall performance}
 \label{sec:eval:overall}
 We compare the overall performance of Nimble against baselines for each dynamic models. Nimble successfully accomplished inference for all models on all platforms. However, not all baseline systems could perform inference for these models. For instance, TensorFlow Fold was not designed to process LSTM and BERT hence no result was obtainable, and Tree-LSTM only runs on PyTorch and TensorFlow Fold as other frameworks cannot handle dynamic data structures. Finally the model inference of Tree-LSTM on Nvidia GPU was omitted as it's hard to saturate GPU compute capability due to too many control flows and its model size, making GPUs less favorable deployment targets.
@@ -881,7 +808,6 @@ TF & 301.4 & 304.7 & 978.3 & 687.3 & 406.9 & 2192.8 \\
 \end{tabular}
 \caption{LSTM model inference latency of Nimble, PyTorch (PT), MXNet (MX), and TensorFlow (TF) on Intel CPU, Nvidia (NV) GPU, and ARM CPU.}
 \label{tab:lstm}
-\vspace{-1em}
 \end{table}
 
 Next, we inspect the performance of model inference on Tree-LSTM as exhibited in \autoref{tab:treelstm} by comparing Nimble with PyTorch and TensorFlow Fold. The table shows that Nimble runs substantially faster than the baselines. On PyTorch, the performance speedups are $\fpeval{round(701.1/40.3, 1)}\times$ on Intel CPU and $\fpeval{round(1711.1/86.3, 1)}\times$ on ARM CPU as PyTorch uses Python to handle the tree data structure. TensorFlow Fold is $\fpeval{round(209.9/40.3, 1)}\times$ slower than Nimble on Intel CPU because it has to re-compile upon every input.
@@ -898,7 +824,6 @@ TF Fold & 209.9 & --  \\
 \end{tabular}
 \caption{Tree-LSTM model inference latency on Intel CPU and ARM CPU. TensorFlow Fold was not built successfully on ARM CPU.}
 \label{tab:treelstm}
-%\vspace{-2em}
 \end{table}
 
 Third, \autoref{tab:bert} summarizes the performance of BERT for Nimble, MXNet, and TensorFlow. The results indicate that Nimble outstrips the baselines for all frameworks on all platforms in the experiment. The reduction in latency compared to the best framework on each platform is $\fpeval{round(455.8/307, 1)}\times$, $\fpeval{round(2995.4/2862.6, 2)}\times$, and $\fpeval{round(125.2/95.2, 1)}\times$ on Intel CPU, ARM CPU, and Nvidia GPU, respectively.
@@ -920,7 +845,6 @@ TensorFlow & 768.7 & 125.2 & 2995.4 \\
 \end{tabular}
 \caption{BERT model inference latency on Intel CPU, Nvidia GPU, and ARM CPU.}
 \label{tab:bert}
-\vspace{-1em}
 \end{table}
 
 % \begin{figure}[t]
@@ -935,7 +859,6 @@ TensorFlow & 768.7 & 125.2 & 2995.4 \\
 %\subsubsection{Memory planning}
 
 %\subsubsection{Dynamic kernel dispatch}
-%\vspace{-1em}
 \subsection{Microbenchmark}
 
 % \begin{table}[t]
@@ -973,7 +896,6 @@ TensorFlow & 768.7 & 125.2 & 2995.4 \\
     \caption{Relative latency comparison between symbolic codegen and static codegen of 3 dense operators on ARM CPU. The latency of kernel compiled with static shapes is used as the baseline. ``dispatch/$k$'' indicates that we generate $k$ symbolic kernels to be dispatched at runtime. ``no dispatch'' means that only one symbolic kernel is generated and therefore no dispatching is needed. %\protect\yida{The labels of x-axis, can we make them Dense 1, Dense 2 and Dense 3? L1, L2, L3 are like cache level to me at the first glance}
     }
     \label{fig:sym-codegen}
-%\vspace{-1em}
 \end{figure}
 
 This section analyzes the performance gain of Nimble by using BERT as the microbenchmark. Three studies will be conducted to examine (a) the overhead introduced by the VM, %(b) the effectiveness of operator fusion\yida{Can we somehow relate this to any proposed techniques? For example, op fusion is enabled by carefully taking care of shape functions?},
@@ -1019,7 +941,6 @@ We observe similar trends in dense operators with different shapes, other operat
 % \end{figure}
 
 % \begin{figure}
-% %\vspace{-0.3in}
 % \centering
 % \input{figs/memory}
 % \caption{Memory usage comparison between Nimble and TVM on static models. Nimble was done with and without optimization on memory planning. The results were obtained on Intel CPUs. Nvidia GPUs and ARM CPUs would lead to the identical results. The amount of memory used by TVM was normalized to 1, the lower the better.}

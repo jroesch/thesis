@@ -198,7 +198,6 @@ Each input or output to be quantized is passed to \texttt{sim$Q$},
   and then scales it to the target type.
 By computing on the unquantized type, \relay can later calibrate the parameters to
   \texttt{sim$Q$} a necessary step to preserve accuracy of the model.
-\vspace{-0.025in}
 \[
   \texttt{sim$Q$}\left(x, \beta, \sigma, \rho\right) = \dfrac{\texttt{clip}\left(\texttt{round}\left(x / \rho \cdot 2^{\beta - \sigma}\right)\right) \cdot \rho}{2^{\beta - \sigma}}
 \]
@@ -227,7 +226,6 @@ Finally, after the algorithm has set the parameters appropriately,
   it applies realization,
   which transforms the \texttt{sim$Q$} operator into the below
   quantization operator.
-\vspace{-0.05in}
 \[
   Q\left(x, \rho, \beta, \sigma\right) = \texttt{cast}\left(\texttt{clip}\left(\texttt{round}\left(x / \rho \cdot 2^{\beta-\sigma}\right), \texttt{qtype}\right)\right)
 \]
