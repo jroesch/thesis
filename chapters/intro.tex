@@ -3,54 +3,76 @@
 
 Traditionally machine learning algorithms were carefully engineered by humans
 in order to leverage limited data to obtain sufficient task performance.
-During the Big Data era, these hand engineered algorithms were displaced by simpler algorithms applied
-to the abundantly available data [1]. In order to scale these algorithms a number of systems were
+During the Big Data era, these hand engineered algorithms were displaced by
+simpler algorithms applied to the abundantly available data [1].
+In order to scale these algorithms a number of systems were
 designed most notably MapReduce, Spark and other stream and graph processing systems.
-In the early 2010s the emergence of deep learning changed the paradigm again replacing simple regular
-computation over streams of data with large models composed of compute-hungry tensor computations.
+In the early 2010s the emergence of deep learning changed the paradigm again
+replacing simple regular computation over streams of data with large models
+composed of compute-hungry tensor computations.
 
-This new generation of machine learning applications demanded a corresponding era of innovation in systems.
-The first innovation in deep learning systems were so called ‘deep learning frameworks’ such
-as TensorFlow and PyTorch.
-
+This new generation of machine learning applications demanded a corresponding era of
+innovation in systems.
+The first innovation in deep learning systems were so called
+‘deep learning frameworks’ such as TensorFlow and PyTorch.
 These monolithic systems can execute a subset of deep learning models
-efficiently on a subset of the available hardware devices. These rigid systems provide good baseline
-performance, but often fail when straying from well-used models.
-Scaling frameworks to span the scope of all models and backends is a human endeavor
-requiring deep expertise often not found in conjunction with the skills of a machine learning engineer.
-A single machine learning engineer cannot write code that scales across the growing sea of models,
-operators, optimizations, and devices while maintaining state-of-the-art performance.
-To combat this, DL frameworks have introduced compilers to close the performance gap.
-These compilers have made similar tradeoffs to those of frameworks accelerating a subset of models
-on a subset of devices. Even with these constraints designing a DL compiler is challenging.
-For example, popular state-of-the-art DL compilers such as XLA, can sometimes slow down a program
-instead of speeding it up (cite needed).
+efficiently on a subset of the available hardware devices.
+These rigid systems provide good baseline performance, but often fail
+when straying from well-used models.
+
+Scaling frameworks to span the scope of all models and targets is a human endeavor
+requiring deep expertise often not found in conjunction with the skills of a
+machine learning engineer.
+
+A single machine learning engineer cannot write code that scales across the growing
+sea of models, operators, optimizations, and devices while maintaining state-of-the-art
+performance. From the early days of deep learning frameworks researchers realized the
+potential for apply compilation to this problem.
+
+Deep learning compilers as they are often referred to has made similar tradeoffs to
+those of frameworks accelerating a subset of models on a subset of devices.
+
+Designing a deep learning compiler even for this constrained subset is challenging.
+For example, a popular state-of-the-art DL compiler, Google's XLA, can famously
+slow down a programs on CPU instead of speeding them up (cite needed).
 
 Compilers for deep learning are an emerging area explored by a variety of solutions both
 industrial and academic.
-Part of my thesis work in graduate school is meaningful contributions to
-the design of deep learning compilers, but one aspect that has remained under explored is dynamism.
+Part of my thesis work in graduate school was meaningful contributions to
+the design of and implementation of deep learning compilers in the form of TVM,
+a state-of-the-art deep learning compiler.
 
-My thesis is focused on the principled optimization and execution of dynamic neural networks, we shou
+In particular I have spent the last several years focused on the representation,
+optimization, differentiation, and execution of dynamic neural networks.
+In this thesis I propose that we can generalize the overspecialized optimizations
+and insights applied to static dataflow graphs to dynamic neural networks by using
+one simple insight: dynamic neural networks are not different then traditional
+programs. The challenge is how to build a representation that captures this generality
+in a principled way allowing us to recover the potential performance loss by generalizing
+the programming model.
 
-This thesis argues the solution for this is the introduction of a new separation of concerns, just as the schedule-compute split introduced by Halide.
+When I began working on deep learning compilers, input models were high-level
+declarative programs composed of linear algebra and statistics primitives.
+These straight forward representations often appeared in the form of
+a directed acyclic dataflow graph.
 
-Today machine learning models are composed of a high-level declarative program composed of linear algebra and statistics primitives. An effective compiler must be able to optimize both the high-level declarative program, as well as the low-level kernels which dominate program runtime.
+We realize a unified interface in the form of Relay a set of systems and APIs designed
+  to compose together techniques across the stack to achieve state of the art performance.
 
-Existing compilers are either tailored to high-level users, such as framework authors and model engineers, or low-level device and kernel engineers. The compilers produced by the large corporations sponsoring DL frameworks have been designed as “lego” blocks which can be composed together to form a full stack, the lack of an end-to-end view on programs limits the ability to fully optimize the program.
+Instead of building a single IR and compiler to rule them all we carefully split
+  the program optimization problem into a series of phases each focused on a specific
+  optimization task.
+By doing this we are able to balance the tension between expressivity, composition
+  and performance portability.
+Relay is a part of the TVM open source project, and catalystized a major redesign of
+  TVM, in order to embrace and extend the ideas of this thesis.
+Relay is deployed in production at multiple large companies including
+  OctoML, Amazon, Facebook, and Microsoft.
+One notable impact is its use in
+  optimizing Alexa’s wake word model, executed each time a user interacts with
+  Alexa.
 
-In academia there has been work such as Lift IR to build a “gestalt” solution, i.e a single programming language which can be used to generate full programs manipulating tensors.
-The input programs are in Lift’s functional IR, and optimizations are done in via rewriting.
-
-These semantics are overly restrictive in a domain as performance sensitive deep learning, the best individual kernel performance still comes from systems such as Halide and TVM.  In order to obtain the best possible performance we require a system which enables combining the best techniques at each level of optimization.
-
-We realize a unified interface in the form of Relay a set of systems and APIs designed to compose together techniques across the stack to achieve state of the art performance.
-Instead of building a single IR and compiler to rule them all we carefully split the program optimization problem into a series of phases each focused on a specific optimization task.
-By doing this we are able to balance the tension between expressivity, composition and performance portability.
-
-Relay is a part of the TVM open source project, and catalystized a major redesign of TVM, in order to embrace and extend the ideas of this thesis. Relay is deployed in production at multiple large companies including Amazon, Facebook, and Microsoft. One notable impact is its use in optimizing Alexa’s wake word model.
-
-1.1 State of the Art
+\section{State of the Art}
 
 Existing state of the art in deep learning compilers falls into one of two categories: a) layered “lego” blocks and “gestalt” solutions, with compilers such as NNVM/TVM, Glow/CuDNN, XLA/CuDNN being examples of the first, and tools such as Lift or Lantern being examples of the second.
 
@@ -72,6 +94,7 @@ To accomplish this task in today’s ML frameworks a user must first design and 
 
 Many engineers in this domain believe that human effort is required to obtain competitive performance that is demonstrated by today’s bleeding edge development, my thesis demonstrated this is not the case.
 
+\section{Dynamic Neural Networks}
 1.2 A two-sided interface: Relay
 
 Relay addresses the challenges laid out in the previous section by using the composition multiple distinct IR dialects, notably an ML-style high-level dialect, and the use of TVM’s compute language as a low-level dialect, in conjunction with carefully designed runtime and system APIs.
@@ -87,21 +110,17 @@ Although this work began in 2017, the introduction of MLIR project (2018), a fra
 If we attempt to use existing end-to-end tools such as Lift, they provide a single functional unified-semantics. By embracing a split semantics, with the ability to introduce new dialects we provide different views of the program at different points in order to solve each optimization task independently.
 
 
-1.3 Thesis Organization
+\section{Thesis Organization}
 
-My thesis is organized as follows, we first explore existing work and its limitations in addressing this problem, we then introduce the Relay IR, and IR designed to act as the interface between layers, we then explore the design of the Relay compiler and various optimizations, how to execute the programs …
-
-The remainder of my thesis is organized as follows
-Ch 0. Introduction
-Ch 1. Challenges of existing solutions
-Ch 3. Compiling Relay
-Ch 4. Extensions for dynamic neural networks
-Ch 5. A runtime system for deep learning
-Ch 6. Relay as a DL framework building block
-Ch 7. Automatic Differentiation
-Ch 8. Program optimization for non-experts: Dataflow Rewriting
-Ch 9. Bring Your Own Codegeneration
-Ch 9. Future Work
+My thesis is organized around four pillars, representation, differentiation, optimization, execution,
+We first explore related work and background material
+  in \ref{ch:related}, we then discuss the design of the Relay intermediate representation in \ref{ch:design}.
+We then discuss how to perform automatic differentiation and training support in \ref{ch:ad} and
+  \ref{ch:frameworks}.
+We then discuss how to optimize the compiler in \ref{ch:optimizations} and \ref{ch:opt_for_non_experts}.
+We then discuss how to lower, execute, and compile these programs in
+\ref{ch:compiler}, \ref{ch:dynamic}.
+Finally we look to \ref{ch:future} to discuss future work and extensions to this work.
 
 % Bibliography
 
