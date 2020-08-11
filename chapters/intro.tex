@@ -122,19 +122,6 @@ We then discuss how to lower, execute, and compile these programs in
 \ref{ch:compiler}, \ref{ch:dynamic}.
 Finally we look to \ref{ch:future} to discuss future work and extensions to this work.
 
-% Bibliography
-
-% [1] "We don’t have better algorithms. We just have more data.”
-
-% [2] data and model size the amount of compute is exponentially growing, roughly doubling every 3.4 months (see https://twitter.com/OpenAI/status/1192481690741903360).
-
-% [3] https://arxiv.org/pdf/1911.05289.pdf
-
-% THESES TO LOOK AT:
-% https://people.csail.mit.edu/jrk/jrkthesis.pdf
-% https://homes.cs.washington.edu/~djg/theses/sampson_thesis.pdf
-% https://llvm.org/pubs/2005-05-04-LattnerPHDThesis.pdf
-
 
 \section{Introduction}
 \label{sec:intro}
@@ -267,122 +254,15 @@ This proposal is organized as follows:
   Section \ref{sec:eval} how to evaluate,
   and then finally conclusions in Section \ref{sec:conclusion}.
 
-  \section{Introduction}
-\label{sec:intro}
+% Bibliography
 
-Deep learning (DL) has radically transformed domains like
-  computer vision and
-  natural language processing (NLP)~\citep{yolo, recent_trends_in_nlp}.
-Inspired by these successes,
-  researchers and companies are continually
-  experimenting with increasingly sophisticated DL models and
-  developing specialized hardware backends.
-DL frameworks for writing, optimizing, and compiling DL models
-  reduce the complexity of these tasks,
-  which in turn accelerates DL research and product development.
+% [1] "We don’t have better algorithms. We just have more data.”
 
-Popular DL compiler intermediate representations (IRs) offer different tradeoffs
-  between expressivity, composability, and portability~\citep{
-    tensorflow, pytorch_ad, chainer_learningsys2015, tangent, theano, glow}.
-Early frameworks adopted IRs
-  specialized for then-state-of-the-art models and/or
-  emerging hardware accelerators.
-As a result, non-trivial extensions require
-  patching or even forking frameworks~\citep{
-    tf_fold, tf_lite, tangent, tf_eager, xla, glow, torchscript}.
-Such \textit{ad hoc} extensions can improve expressivity
-  while maintaining backwards compatibility with existing execution mechanisms.
-However, they are difficult to design, reason about, and implement,
-  often resulting in modifications that are mutually incompatible.
+% [2] data and model size the amount of compute is exponentially growing, roughly doubling every 3.4 months (see https://twitter.com/OpenAI/status/1192481690741903360).
 
-Let us consider a hypothetical scenario that exemplifies
-  IR design tensions in DL compilers.
-Suppose a machine learning engineer wants to write
-  an Android app that uses sentiment analysis to
-  determine the moods of its users.
-To maintain privacy, the app must run completely on-device,
-  i.e., no work can be offloaded to the cloud.
-The engineer decides to use a variant of TreeLSTM,
-  a deep learning model that uses a tree structure~\citep{tree_lstm}.
-Unfortunately, current frameworks' IRs cannot directly encode trees,
-  so she must use a framework extension
-  like TensorFlow Fold~\citep{tensorflowfold}.
+% [3] https://arxiv.org/pdf/1911.05289.pdf
 
-Suppose that after adapting the model to run on her phone,
-  the out-of-the-box performance of her
-  model on her particular platform is not satisfactory, requiring her to optimize it.
-She chooses to employ \textit{quantization}, an optimization that
-  potentially trades accuracy for performance by replacing
-  floating-point datatypes with low-precision ones.
-Although researchers have developed a variety of quantization
-  strategies, each of which makes use of different bit-widths, rounding
-  modes, and datatypes, our engineer must use a strategy supported
-  by existing frameworks~\citep{gustafson2015end, tf_lite_ops_compat, glow_quant}.
-Unfortunately, frameworks only provide support for a small number
-  of strategies, and supporting new quantization strategies is non-trivial.
-Each combination of operator, datatype, bit-width, and
-  platform requires unique operator implementations.
-Optimizations like operator fusion exacerbate this combinatorial explosion,
-  further increasing
-  the number of unique implementations required.
-Furthermore, if a framework doesn't have specific support for
-  the target phone model she cannot take advantage of specialized deep learning
-  instructions or coprocessors~\citep{apple_neural_engine}.
-
-The scenario above highlights the three-pronged \textit{extensibility challenge}
-  for DL IRs:
-% \begin{enumerate}[label=\arabic*.]
-%   \item \textit{Expressivity}: It should be straightforward to write models involving
-%     control flow, first-class functions and data structures (e.g., trees, graphs, and lists).
-%   \item \textit{Composability}: It should be straightforward to add and compose new optimizations
-%     with existing ones (e.g., quantization, operator fusion, and partial evaluation).
-%   \item \textit{Portability}: It should be straightforward to add new hardware targets
-%     (e.g., TPU, Inferentia)~\citep{tpuv1, inferentia}.
-% \end{enumerate}
-
-Previous IRs have struggled to address these challenges, treating each
-  component of the framework as a disconnected set of programming tasks.
-Operators are defined in low-level languages like C++,
-  connected by a dataflow graph, and then scripted
-  in a host language like Python.
-Consequently,
-  program analyses cannot cross language boundaries between components,
-  inhibiting optimization and deployment.
-Learning from previous IRs, we have designed \relay,
-  which features a principled approach to addressing extensibility
-  and improves expressivity, composability, and portability
-  over previous frameworks.
-We make the following contributions:
-\begin{itemize}
-  \item The \relay IR, a tensor-oriented, statically typed
-    functional IR,
-    which we describe in Section \ref{sec:design}.
-  \relay's design is motivated by the insight that functional IRs, used by
-  languages from the ML family\footnote{``ML'' as in ``Meta Language,'' not
-  ``Machine Learning''} can be readily adapted to support DL.
-  With its \textit{expressive} semantics,
-    including control flow, data structures, and first-class functions,
-    \relay can represent entire state-of-the-art models.
-  \item The insight that common features in ML frameworks,
-    such as quantization and shape inference,
-    can be reframed as standard compiler passes.
-  By using this reframing we can tap into
-    decades of traditional compilers research to design
-    \textit{composable} optimization passes.
-  \item
-    A platform-agnostic representation of operators and domain specific
-      optimizations which work in concert to provide \textit{portability}
-      across hardware backends.
-\end{itemize}
-
-We evaluate \relay on several systems and over a diverse set of vision and NLP workloads to
-  demonstrate that (1) \relay enables \emph{expressive} programs via a large breadth
-  of models, (2) \relay supports \emph{composition} of program-level optimizations
-  such as quantization and fusion, and (3) \relay provides
-  \emph{portability} by targeting a number of hardware backends.
-Not only does \relay provide these three properties, we do so while also demonstrating
-  competitive performance.
-\relay is an open-source academic project.\footnote{\relay is publicly available at [redacted for review].}
-  It has been deployed at a popular web service provider,
-    a telecommunications and consumer electronics manufacturer,
-    and a social media company, among others.
+% THESES TO LOOK AT:
+% https://people.csail.mit.edu/jrk/jrkthesis.pdf
+% https://homes.cs.washington.edu/~djg/theses/sampson_thesis.pdf
+% https://llvm.org/pubs/2005-05-04-LattnerPHDThesis.pdf
