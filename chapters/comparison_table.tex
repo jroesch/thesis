@@ -1,4 +1,4 @@
-\newcommand{\relayKey}{\emph{\textbf{UG}}\xspace}
+\newcommand{RelayKey}{\emph{\textbf{UG}}\xspace}
 \newcommand{\lanternKey}{L\xspace}
 \newcommand{\pytorchKey}{PT\xspace}
 \newcommand{\tfKey}{TF\xspace}
@@ -15,27 +15,27 @@
               \\
 \hline
 GPU/CPU \emph{(Interp.)}
-  & \relayKey, \tfKey, \tvmKey, \pytorchKey
-  & \relayKey, \lanternKey, \pytorchKey
-  & \relayKey, \lanternKey, \pytorchKey
+  & RelayKey, \tfKey, \tvmKey, \pytorchKey
+  & RelayKey, \lanternKey, \pytorchKey
+  & RelayKey, \lanternKey, \pytorchKey
   \\
 CPU \emph{(AoT)}
-  & \relayKey, \tfKey, \tvmKey
-  & \relayKey, \lanternKey
+  & RelayKey, \tfKey, \tvmKey
+  & RelayKey, \lanternKey
   & \lanternKey
   \\
 GPU/CPU \emph{(AoT)}
-  & \relayKey, \tfKey, \tvmKey
-  & \relayKey
+  & RelayKey, \tfKey, \tvmKey
+  & RelayKey
   &
   \\
 GPU \emph{(AoT)}
-  & \relayKey, \tfKey, \tvmKey
+  & RelayKey, \tfKey, \tvmKey
   &
   &
   \\
 FPGA \emph{(AoT)}
-  & \relayKey, \tvmKey
+  & RelayKey, \tvmKey
   &
   &
   \\
@@ -45,7 +45,7 @@ FPGA \emph{(AoT)}
   \caption{Comparison of model features,
     hardware platform strategy (interpreted vs. ahead-of-time),
     and supporting frameworks, where abbreviations are
-    \relay (\relayKey),
+    Relay (RelayKey),
     Lantern (\lanternKey),
     TensorFlow (\tfKey),
     and PyTorch (\pytorchKey).}

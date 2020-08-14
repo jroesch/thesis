@@ -7,7 +7,7 @@ Using Relay as a building block for ML frameworks.
 \subsection{Beacon}
 
 A related challenge is increasing the ability for users to describe models which take
-  full advantage of \relay's more expressive semantics.
+  full advantage of Relay's more expressive semantics.
 As discussed in \ref{ch:related} existing frontends have been designed to capture the
   subset of programs which be optimized well, and designs have ignored aspects of the
   programs that are not well optimized.
@@ -15,7 +15,7 @@ In order to demonstrate what we can do with greater access to the program we con
   Beacon a PyTorch-like inspired framework which uses TVM for all execution.
 
 Beacon uses a novel design related to ideas from previous work detailed in \ref{ch:related}
-  in order to convert Python directly into IR which can be compiled by \relay.
+  in order to convert Python directly into IR which can be compiled by Relay.
 Beacon simply defines a tensor which stores either a value or a partial program
   which can be used to execute the program.
 Beacon's core abstraction can be summarized in a small fragment of code, seen below.

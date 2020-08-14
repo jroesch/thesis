@@ -19,7 +19,7 @@
   \includegraphics[scale=0.53]{fig/eval/graph/pass_comp/pass-comp-cpu.png}
   \includegraphics[scale=0.53]{fig/eval/graph/pass_comp/pass-comp-gpu.png}
   \caption{\textmd{
-    Speedup from successively layering compiler passes in \relay on CPU
+    Speedup from successively layering compiler passes in Relay on CPU
     (AMD Ryzen Threadripper 1950X) and GPU (Nvidia Titan-V),
       relative to no optimizations at all.
     The ``Op Fusion'' bars represent the application of operator fusion,
@@ -39,16 +39,16 @@
   \label{fig:composability-eval}
 \end{figure*}
 
-We evaluate \relay's ability to provide expressivity, composability, and portability,
+We evaluate Relay's ability to provide expressivity, composability, and portability,
   without compromising on performance.
 In particular, our evaluation is composed of three parts:
 \begin{enumerate}
-  \item \textbf{\relay expresses diverse workloads}: Despite increasing
-    expressiveness, \relay's performance is competitive with the
+  \item \textbf{Relay expresses diverse workloads}: Despite increasing
+    expressiveness, Relay's performance is competitive with the
     state of the art on popular models.
-  \item \textbf{\relay enables composable optimizations}: \relay
+  \item \textbf{Relay enables composable optimizations}: Relay
     supports composing program transformations to incrementally improve performance.
-  \item \textbf{\relay handles challenging backends}: \relay can compile
+  \item \textbf{Relay handles challenging backends}: Relay can compile
     models to execute efficiently on a variety of
     backends, such as FPGA accelerators, which require quantization, layout
     optimizations, and bit-packing transformations.
@@ -91,10 +91,10 @@ The vision and NLP experiments (from Section~\ref{sec:eval_opts} and Section~\re
 For the vision workloads,
   we used TVM's graph runtime as the executor,
   and for the NLP workloads,
-  we used \relay's AoT compiler.
+  we used Relay's AoT compiler.
 The low-power vision experiments from Section~\ref{sec:low-power} were run on multiple edge-class ARM development boards: a Raspberry Pi 3, a Firefly RK3399, and an Pynq-Z1 FPGA platform.
 We implement our DNN accelerators on a Zynq-7020 low-cost FPGA, and clock them at 100MHz.
-% We evaluated \relay's handling of accelerators on VTA~\citep{moreau2018vta}, the versatile
+% We evaluated Relay's handling of accelerators on VTA~\citep{moreau2018vta}, the versatile
 %   open-source deep learning accelerator.
 % We implemented a VTA design with a $16\times16$ matrix-vector 8-bit tensor core clocked
 %   at 333MHz on the Ultra-96 platform.
@@ -106,17 +106,17 @@ We used the following software versions:
   PyTorch version 1.2.0,
   and TensorFlow version 1.14.0.
 
-\subsection{\relay Expresses Diverse Workloads}
+\subsection{Relay Expresses Diverse Workloads}
 \label{sec:perf-gpu}
 
 An age-old story in compilers literature is that increasing expressivity
   impacts the global performance of the system.
-We set out to build zero-cost abstractions for \relay,
+We set out to build zero-cost abstractions for Relay,
   governed by Stroustrup's principle, ``What you don't use, you don't pay
   for'' \citep{bjarne}.
 We demonstrate that we achieve competitive performance on a wide set of CNNs that are well supported by existing frameworks.
 We evaluated inference time for two classes of workloads: computer vision and natural language processing.
-We compared \relay to \nnvm,
+We compared Relay to \nnvm,
   TensorFlow, TensorFlow-XLA (Accelerated Linear Algebra), PyTorch, and MxNet.
 Results are summarized in Figure~\ref{fig:expressivity-eval}.
 
@@ -128,12 +128,12 @@ Results are summarized in Figure~\ref{fig:expressivity-eval}.
   \includegraphics[scale=0.68]{fig/eval/graph/nlp_comp/nlp-comp-cpu.png}
   \includegraphics[scale=0.68]{fig/eval/graph/vision_comp/legend.png}
   \caption{\textmd{
-    Inference speedup of \relay relative to popular frameworks
+    Inference speedup of Relay relative to popular frameworks
       on vision and NLP benchmarks.
     The vision benchmarks used an NVIDIA Titan-V GPU, and the NLP benchmarks ran on CPU only.
     We ran 1000 trials for each model, except for CharRNN, on which we used 100 trials.
-    \relay matches the performance of NNVM on vision but additionally supports NLP,
-      where \relay provides performance competitive to the state of the art (up to
+    Relay matches the performance of NNVM on vision but additionally supports NLP,
+      where Relay provides performance competitive to the state of the art (up to
         2.3$\times$ speedup over MxNet on GRU).
   }}
   \label{fig:expressivity-eval}
@@ -141,10 +141,10 @@ Results are summarized in Figure~\ref{fig:expressivity-eval}.
 
 We ran each model with
   batch size 1, a common setting in inference tasks.
-\relay achieves performance on par with \nnvm
+Relay achieves performance on par with \nnvm
   and outperforms TensorFlow, TensorFlow-XLA, MxNet, and
   PyTorch on every benchmark.
-\relay's ability to apply aggressive inter-operator optimizations
+Relay's ability to apply aggressive inter-operator optimizations
   enables it to outperform existing frameworks.
 Operator fusion over long chains of operations is particularly effective,
   because it can generate \textit{new} hardware-specific fused implementations.
@@ -156,28 +156,28 @@ Implementations of the NLP models were not available in all frameworks;
   we used MxNet baselines for RNN, GRU, and LSTM and PyTorch for CharRNN and TreeLSTM.
 NLP workloads feature control flow,
   which makes them more challenging to optimize.
-\relay performs better than MxNet on GRU and LSTM
+Relay performs better than MxNet on GRU and LSTM
   because they are implemented in Python using
   MxNet's looping constructs.
 However,
-  MxNet outperforms \relay on the Gluon RNN,
+  MxNet outperforms Relay on the Gluon RNN,
   because it uses a hardcoded optimization to unroll the RNN,
-  whereas \relay expresses it as a loop without any unrolling.
+  whereas Relay expresses it as a loop without any unrolling.
 PyTorch instead uses handwritten and heavily optimized
   C implementations of the recursive network cells.
 Despite this,
-  our pure \relay implementation outperforms PyTorch by 1.4$\times$ on
+  our pure Relay implementation outperforms PyTorch by 1.4$\times$ on
   CharRNN and 2$\times$ on TreeLSTM.
-This speedup comes from \relay's ability to compile \textit{entire}
+This speedup comes from Relay's ability to compile \textit{entire}
   models with complex control flow (e.g., CharRNN) to a single lean binary.
 
-\subsection{\relay Enables Composable Optimizations}
+\subsection{Relay Enables Composable Optimizations}
 \label{sec:eval_opts}
 
-We demonstrate that \relay facilitates composable optimizations
+We demonstrate that Relay facilitates composable optimizations
   by evaluating vision workloads under both general-purpose and DL-specific compiler passes.
 Figure~\ref{fig:composability-eval} shows mean inference speedup relative to
-  no optimizations as \relay applies optimizations more aggressively.
+  no optimizations as Relay applies optimizations more aggressively.
 We find that performance gains vary significantly between each device-model pairing.
 Most networks benefit greatly from operator layout alteration on CPU and operator fusion on GPU.
 On both CPU and GPU,
@@ -192,10 +192,10 @@ Nature-DQN has simple operators,
   which don't benefit from layout alterations,
   whereas ResNet-18 and VGG-16 are dense convolutional neural networks,
   which \textit{do} benefit from layout transformations.
-Overall, these results show that \relay lets us compose optimizations
+Overall, these results show that Relay lets us compose optimizations
   in a way that is beneficial to diverse workloads.
 
-\subsection{\relay Handles Challenging Backends}
+\subsection{Relay Handles Challenging Backends}
 \label{sec:low-power}
 To demonstrate portability,
   we evaluate two sets of optimizations:
@@ -204,7 +204,7 @@ To demonstrate portability,
 
 \subsection*{Quantized Inference on ARM Platforms}
 To demonstrate the effectiveness of our generic quantization (see Section~\ref{sec:quant}),
-  we use \relay to evaluate both \textit{accuracy} and \textit{performance} of different
+  we use Relay to evaluate both \textit{accuracy} and \textit{performance} of different
   quantization schemes on vision workloads.
 To evaluate \textit{accuracy},
   we tested various quantization schemes
@@ -243,7 +243,7 @@ Interestingly,
 % In any popular framework,
 %   supporting even \textit{one} new accelerator is treading off the beaten path,
 %   let alone iterating on \textit{multiple} designs.
-We demonstrate that \relay can support specialized hardware by compiling vision and
+We demonstrate that Relay can support specialized hardware by compiling vision and
 NLP workloads onto two DNN accelerator designs (\texttt{single-batch}, \texttt{multi-batch}) we generate in-house.
 %
 % The first DNN accelerator implements \texttt{single-batch} inference by exposing a \emph{vector-matrix}
@@ -283,28 +283,28 @@ On the other hand, TreeLSTM presents a compelling target for batching due to the
   % : by applying batching, we increase the arithmetic intensity
   % of the workload which leads to pending less time waiting for data on the accelerator.
 %
-While these two accelerator variants have the same peak throughput on paper, we show that \relay let us
+While these two accelerator variants have the same peak throughput on paper, we show that Relay let us
   evaluate more nuanced end-to-end performance numbers across different workloads.
-% We demonstrate that \relay is a strict improvement over other frameworks in this scenario,
+% We demonstrate that Relay is a strict improvement over other frameworks in this scenario,
 %   because the data layout constraints imposed by accelerator hardware can be expressed in
-%   \relay to take full advantage of hardware specialization.
+%   Relay to take full advantage of hardware specialization.
 
 % TODO: Fill in analysis once we have results.
 % Our results in  latency and ??? to
 %   ???$\times$ reduction in multi-batch inference latency by offloading critical
 %   operators to the FPGA accelerator.
 
-These experiments demonstrate \relay's ability to target current and future deep learning architectures,
+These experiments demonstrate Relay's ability to target current and future deep learning architectures,
 and make informed decision on what hardware design to choose across different workloads.
 
 
 % \begin{enumerate}
-%   \item \textit{Heterogeneous FPGA/CPU offloading}: \relay lets us define the rules for offloading specific operators to the FPGA-based accelerator.
-%   \item \textit{Push-button quantization}: \relay can take a \texttt{fp32} model and convert its parameters to \texttt{int8} in order to enable inference on specialized accelerators.
-%   \item \textit{Accelerator-friendly data packing:} \relay reorganizes data so it can be effortlessly consumed by a specialized TPU-like accelerator~\citep{tpuv1}.
+%   \item \textit{Heterogeneous FPGA/CPU offloading}: Relay lets us define the rules for offloading specific operators to the FPGA-based accelerator.
+%   \item \textit{Push-button quantization}: Relay can take a \texttt{fp32} model and convert its parameters to \texttt{int8} in order to enable inference on specialized accelerators.
+%   \item \textit{Accelerator-friendly data packing:} Relay reorganizes data so it can be effortlessly consumed by a specialized TPU-like accelerator~\citep{tpuv1}.
 % \end{enumerate}
 
-% We compared \relay (using \tvm's graph runtime environment) to \nnvm and TensorFlow
+% We compared Relay (using \tvm's graph runtime environment) to \nnvm and TensorFlow
 % on a Raspberry Pi 3 ARM CPU and a Titan X GPU.
 % Additionally, we also compared against the TensorFlow (v1.7) XLA (Accelerated Linear Algebra) compiler \citep{xla}, backed by cuDNN v7
 % on the GPU and TensorFlow Lite (commit: 7558b085) \citep{tf_lite}, TensorFlow's mobile-optimized framework, backed by the ARM Compute Library (v18.03)
@@ -312,61 +312,61 @@ and make informed decision on what hardware design to choose across different wo
 % We ran each model 100 times on each target with batch size 1, a common
 % setting in inference tasks.
 % The results of the above comparison are given in Fig.~\ref{fig:cnn-eval}.
-% \relay achieves performance on par with \nnvm on DQN and MobileNet, though it is approximately
-% 1.7 times slower than \nnvm on ResNet-18. In spite of this \relay outperforms TensorFlow
+% Relay achieves performance on par with \nnvm on DQN and MobileNet, though it is approximately
+% 1.7 times slower than \nnvm on ResNet-18. In spite of this Relay outperforms TensorFlow
 % on every benchmark. We investigated this slowdown and were able to verify that this
 % difference is due to a single layout optimization \nnvm performs that is not yet implemented
-% in \relay.
-% \subsection{\relay Improves Performance for Dynamic Models}
-% We demonstrate how \relay can be used to compile the style of programs written by PyTorch
+% in Relay.
+% \subsection{Relay Improves Performance for Dynamic Models}
+% We demonstrate how Relay can be used to compile the style of programs written by PyTorch
 % programmers, and achieve strong performance results at the same time.
-% We compared \relay to PyTorch on a set of generative Char-RNNs \citep{char-rnn}, in order
+% We compared Relay to PyTorch on a set of generative Char-RNNs \citep{char-rnn}, in order
 % to use them as a generate model we required control flow, recursion, and ADTs.
 % We evaluate these results on a computer with 16-core AMD Ryzen Threadripper 1950X Processor.
 % When using a Char-RNN to perform text generation we use a recurrent cell executed in a loop.
 % We evaluated this model in four configurations:
 % \begin{enumerate}[label=(\arabic*)]
-%   \item \relay interprets the Char-RNN cell and the outer loop runs in Python (similar to default PyTorch);
-%   \item \relay AoT compiles the Char-RNN cell and the outer loop runs in Python (similar to PyTorch's JIT compiler, \citep{glow});
-%   \item \relay interprets the entire model; and
-%   \item \relay ahead-of-time compiles the entire model.
+%   \item Relay interprets the Char-RNN cell and the outer loop runs in Python (similar to default PyTorch);
+%   \item Relay AoT compiles the Char-RNN cell and the outer loop runs in Python (similar to PyTorch's JIT compiler, \citep{glow});
+%   \item Relay interprets the entire model; and
+%   \item Relay ahead-of-time compiles the entire model.
 % \end{enumerate}
 % Char-RNN additionally has a hidden layer whose size can be adjusted before the network is run.
 % We also evaluate performance on varying sizes of the hidden layer.
 % The results of the above-described experiment are given in Fig.~\ref{fig:rnn-eval}. Three of
-% the \relay configurations are 2-4 times slower then PyTorch, but with good reason: These three
-% configurations rely on the reference \relay interpreter, which can not compare with Python's
-% ByteCode VM. By applying \relay's ahead-of-time compiler to the program we are able to achieve
+% the Relay configurations are 2-4 times slower then PyTorch, but with good reason: These three
+% configurations rely on the reference Relay interpreter, which can not compare with Python's
+% ByteCode VM. By applying Relay's ahead-of-time compiler to the program we are able to achieve
 % nearly a factor of 3$\times$ improvement on PyTorch's results for all hidden layer sizes.
-% \subsection{\relay Enables Composable Passes}
+% \subsection{Relay Enables Composable Passes}
 % \todo{
 % copy from Steven's report, but the passes we want to compose are quantization
 % with other passes, to show we don't suffer from the same problems as TF Lite.
 % We want to compose AD, PE, an DCE to get performance.
 % }
-% \subsection{\relay Handles Customized Hardware}
-% Finally we evaluated \relay's ability to target custom accelerators.
+% \subsection{Relay Handles Customized Hardware}
+% Finally we evaluated Relay's ability to target custom accelerators.
 % Custom accelerators like Google's Cloud TPU~\citep{tpuv1} present a challenge to computational graph compilers for two reasons.
 % First, accelerators favor narrow integer types for inference tasks, requiring graph compiler support for quantization from \texttt{fp32} down to \texttt{int8} types or lower.
 % Second, data has to be \emph{packed} and \emph{tiled} in order to match the data layout requirements imposed by the computational core of the accelerator.
 % It is common to find tensor computation lanes in accelerators that can perform single-cycle matrix-matrix or matrix-vector multiplication.
 % To sustain this tremendously high rate of computation, the data has to be arranged correctly in memory to match the specifications of the accelerator's tensor core.
-% The data layout constraints imposed by accelerator hardware can be expressed in \relay to take full advantage of hardware specialization.
-% We evaluated \relay's handling of accelerators on VTA~\citep{moreau2018vta}, the versatile open-source deep learning accelerator.
+% The data layout constraints imposed by accelerator hardware can be expressed in Relay to take full advantage of hardware specialization.
+% We evaluated Relay's handling of accelerators on VTA~\citep{moreau2018vta}, the versatile open-source deep learning accelerator.
 % We implemented a VTA design with a $16\times16$ matrix-vector 8-bit tensor core clocked at 333MHz on the Ultra-96 development board.
 % The Ultra-96 is based on a Zynq Ultrascale+ MPSoC, which comprises an ARM Cortex A53 CPU and an 16nm FinFET+ Xilinx FPGA.
 % These MPSoCs offer tight integration between the CPU and FPGA via a shared, coherent memory interface.
-% This lets us perform fine-grained offloading of operators with \relay.
+% This lets us perform fine-grained offloading of operators with Relay.
 % Our ability to target FPGA-based accelerators demonstrates three points:
 % \begin{enumerate}
-%   \item \textit{Heterogeneous FPGA/CPU offloading}: \relay lets us define when it makes sense to offload certain operators to the FPGA. Not all operators can efficiently be mapped to the specialized accelerator, and their evaluation should be able to fall back onto the CPU.
-%   \item \textit{Push-button quantization}: \relay can take a \texttt{fp32} model and convert its parameters to \texttt{int8} in order to facilitate inference on specialized accelerators.
-%   \item \textit{Accelerator-friendly data packing:} \relay reorganizes data in memory so it can be effortlessly consumed by a specialized accelerator.
+%   \item \textit{Heterogeneous FPGA/CPU offloading}: Relay lets us define when it makes sense to offload certain operators to the FPGA. Not all operators can efficiently be mapped to the specialized accelerator, and their evaluation should be able to fall back onto the CPU.
+%   \item \textit{Push-button quantization}: Relay can take a \texttt{fp32} model and convert its parameters to \texttt{int8} in order to facilitate inference on specialized accelerators.
+%   \item \textit{Accelerator-friendly data packing:} Relay reorganizes data in memory so it can be effortlessly consumed by a specialized accelerator.
 % \end{enumerate}
 % We evaluated inference time on five models including MobileNet-G \citep{mobilenet}, a grouped variant of the MobileNet architecture, ResNet-18, ResNet-34 and ResNet-50\citep{resnet}, and Deep Convolutional Generative Adversarial Networks \citep{dcgan}, a generative DNN used in unsupervised learning.
-% Overall, \relay helps us efficiently offload deep learning operators onto specialized accelerators.
+% Overall, Relay helps us efficiently offload deep learning operators onto specialized accelerators.
 % Our results in Figure~\ref{fig:fpga-eval} show that we can achieve between 2.4 to 11.7$\times$ reduction in single-batch inference latency by offloading critical operators to the FPGA accelerator.
-% These experiments demonstrate \relay's ability to target future architectures.
+% These experiments demonstrate Relay's ability to target future architectures.
 % \begin{figure*}{h}
 % \begin{tabu} to \textwidth { | X[l] | X[c] | X[c] | X[c] | X[c] | X[c] | X[c] | X[c] | X[c] | }
 %     \hline
@@ -376,7 +376,7 @@ and make informed decision on what hardware design to choose across different wo
 %     PyTorch & \checkmark & \checkmark & \checkmark & \Cross & \Cross & \checkmark & \Cross & \Cross \\
 %     MxNet & \checkmark & \checkmark & \checkmark & \Cross & \Cross & \checkmark & \Cross & \Cross \\
 %     Flux.jl + Zygote.jl & \checkmark & \checkmark & \checkmark & \Cross & \Cross & \checkmark & \Cross & \Cross \\
-%     \relay{} & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
+%     Relay{} & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
 %    \hline
 % \end{tabu}
 % \caption{The above table compares the functionality and support of various deep learning compilers being built in industry,

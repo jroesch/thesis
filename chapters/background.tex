@@ -34,6 +34,68 @@ The values learned from training can then be deployed for inference on less powe
 This work is focused on helping a user wishing to utilize machine learning specify and optimize
   the neural networks they wish too with minimal fuss and maximal performance.
 
+%\subsection{Deep Learning}
+
+% Deep learning (DL) has been used to achieve state-of-the-art results in applications ranging from
+% computer vision to game playing to natural language processing. Deep learning provides a collection of
+% techniques for learning functions that are difficult to program directly.
+
+% For example, suppose one wants to construct a function $f(x)$ to extract building addresses from
+% images of a street. One approach to writing $f(x)$ explicitly might be to write programs to identify
+% regions of the image that contain information pertinent to addresses (like street names or house
+% numbers), partition those regions into individual characters, and identify each character.
+% One may then write a program that chains together many such modules into a working system.
+% It would require hundreds, if not thousands, of human-hours of work and dozens of heuristics to
+% write any of those programs by hand, and there is no guarantee it will perform well.
+% By contrast, deep learning has, with relatively little code, been
+% used to approximate this entire recognition task with a single model. The learned system
+% outperforms all hand-crafted solutions \citep{streetview}.
+
+% A programmer solving a problem with DL performs three steps. First, she specifies a parametric
+% function (often called a \textit{model}, \textit{neural network}, or simply \textit{network})
+% $F(\theta, x)$ of the function that computes the desired value. She then \textit{trains} the model
+% by applying an optimization algorithm to find a set of parameters $\theta$ that results in an
+% acceptable approximation of the function on a collection of input-output pairs. Finally, she uses
+% her learned function to produce outputs for new inputs in a process called \textit{inference}.
+
+% In practice, DL engineers write procedural programs that manipulate \textit{tensors},
+%   multi-dimensional arrays of numbers.
+% These restrictions allow DL practitioners to take advantage of
+%   statistics, linear algebra, and real analysis.
+% In order to search for an assignment of parameters that produces a good approximation, we must first
+%   define what a ``good'' approximation of $f$ is and then find an algorithm that optimizes this metric.
+% The quality of an approximation is typically defined in terms of some ground truth to
+%   compare against $F(\theta, x)$.
+% This ground truth is usually provided in the form of a
+% \textit{training set}, a set of input-output pairs that has either been manually collected or
+%   extracted from an existing data set.
+% The function that scores the output of a network with respect
+%   to a ground-truth label is called the \textit{loss function},
+% \[
+%   L \colon (\text{input}, \text{output}) \to \text{network} \to \mathbb{R}^{\ge 0},
+% \]
+% which typically takes in an input-output pair and network and produces a non-negative real
+% number.
+
+% One method to optimize the network is to take the gradient of the loss function composed with the
+% candidate network for some input-output pair. The gradient of a function points in the direction of
+% steepest change, so subtracting some proportion of the gradient from the current parameters reduces
+% the loss of the network. This process is known as \textit{stochastic gradient descent (SGD)}, and it
+% is the basis for many deep learning optimization algorithms used today.
+
+% More formally, training updates the model parameters using the following algorithm:
+% \[
+%   \theta_{i+1} := \theta_i - \varepsilon\nabla[L((\text{input}, \text{output})) \circ F]\Big|_{\theta_i}
+% \]
+% for some small, positive $\varepsilon$. This update cycle is repeated in training until
+% the error is acceptable. The final values of the parameters are then used for inference.
+
+% While training and inference were once performed on the same machine, it is more common today to
+% train models on high-powered devices such as a fleet of cloud machines or a custom GPU farm, since
+% training is very computationally intensive. The values learned from training can then be deployed
+% for inference on less powerful systems, such as a single GPU, a mobile phone, or an FPGA.
+
+
 \section{Deep Learning Frameworks}
 
 In the early days of deep learning, practitioners and researchers would program
@@ -101,7 +163,7 @@ By using the full host language,
 However, dynamic frameworks construct a graph \textit{per program trace} and must re-optimize when
     the graph topology changes, costing CPU cycles and incurring communication overhead between the host
     machine and accelerators.
-Instead of just representing traces, \relay combines the advantages of both worlds by
+Instead of just representing traces, Relay combines the advantages of both worlds by
     representing the whole program ahead of time,
     while supporting constructs like control flow, first-class functions, and data structures.
 
@@ -121,8 +183,207 @@ The most notable designs are either inspired by the
 Operator compilers perform code generation for sets of scalar loop nests,
     but only represent a restricted subset of a whole program, ignoring details such as
     memory allocation/management, data structures, closures, and arbitrary control flow.
-\relay focuses on composing generic operators, and the surrounding program
+Relay focuses on composing generic operators, and the surrounding program
     into an efficiently orchestrated DL program.
+
+
+% \subsection{Deep Learning Frameworks}
+
+% In the past few years deep learning has become an essential
+%   piece of technology to large companies which rely heavily
+%   on machine learning powered services.
+% Technology companies such as Facebook and Google have large development
+%   teams dedicated to developing tools to support deep learning research
+%   and development.
+% Google is developing an ML stack comprised of
+%   TensorFlow, XLA, TPU, and a host of satellite projects.
+% Facebook is developing an ML stack comprised of
+%   many projects including PyTorch,
+%   Glow~\citep{glow}, and Caffe2~\citep{pytorch_caffe2}.
+% Amazon Web Services has been developing a stack
+%   comprised of many projects including
+%   MxNet, TVM, and Inferentia.
+
+% In the early days of deep learning, users would program
+%   in general purpose languages like Python and utilize
+%   scientific computing libraries like NumPy,
+%   which provides low-level \textit{operators} such as matrix multiplication.
+% Operators, also called kernels,
+%   are dense linear algebra primitives like matrix multiplication,
+%   elementwise functions like \verb|tanh|, and complex,
+%   domain-specific operations like image convolution.
+% Operator execution dominates the execution time of a deep learning model: many
+%   operators are asymptotically slow and their input is large.
+% While a machine learning framework may be written as a library in a high-level language
+%   like Python or Swift, operators will typically be provided as opaque function calls to
+%   specialized implementations written in a lower-level language like C++.
+
+% To obtain better performance, researchers began utilizing specialized
+%   accelerators such as GPUs to accelerate the execution of models.
+% In order to accessibly provide acceleration to end-users
+%   researchers designed frameworks like Theano~\citep{theano}.
+% Frameworks such as Theano and Torch introduced a model of
+%   computation graphs, dataflow graphs composed of nodes of
+%     variables, and operations on data.
+% These computation graphs represent the AST of a small
+%   embedded DSL that could be easily compiled and deployed
+%   to accelerators like the GPU.
+% ``Computation graphs'' provide a limited programming model,
+%     enabling efficient deployment.
+% Computation graphs have since been adopted as the fundamental building block of modern
+%     machine learning libraries.
+
+% Unfortunately computation graphs are an ad-hoc language engineered to solve
+%   the problems faced at the time, and do not begin to capture the full breadth
+%   of models that users would one day want to run.
+% For example,
+%   convolutional neural networks (CNNs),
+%   which are widely used in image processing and computer vision,
+%   generally utilize a fixed topology of layers
+%   with tensors of fixed dimension.
+% In contrast,
+%   recurrent neural networks (RNNs),
+%   which are widely used in natural language processing (NLP),
+%   require recursion, control flow, and
+%   operations over variable-sized data structures (e.g., lists).
+% The regular structure of CNNs facilitates
+%   optimizing compilation to
+%   common hardware accelerators (e.g., GPUs), but
+%   RNN-like models are still challenging to optimize.
+
+% One area in which deep learning has made significant advances since
+%   the introduction of early frameworks is natural language processing (NLP).
+% Reasoning about text requires context-sensitive analysis and data of
+%     non-fixed dimensions, unlike in many vision tasks.
+%  To allow for context-sensitive analysis, DL researchers have developed networks with persistent
+%   state, known as \textit{recurrent neural networks}  (RNNs).
+% Recurrent neural networks have found use not only in NLP, but also in speech recognition, music
+%   transcription, eSports, and other areas \citep{lstm, speech_recognition, OpenAI_dota}.
+% Unfortunately, since most machine learning frameworks rely on computation graphs,
+%   which cannot directly represent recursion, RNNs are usually finitely unrolled to a fixed depth.
+% This is acceptable if the depth can be determined statically and the loop unrolled
+%   ahead of time; however, if the depth depends on runtime values or complex control flow,
+%   unrolling must be performed dynamically.
+
+% There are two dominant designs for computation graph-based frameworks.
+% The first is the declarative design employed by TensorFlow.
+% Such designs extend pure data-flow with \textit{ad hoc} control operations
+%   to emulate the functionality of \verb|if| and \verb|while|.
+% This approach is called \textit{define-then-run} and employs \textit{static
+% computation graphs}.
+% A framework using a define-then-run representation has access to the entire
+%   graph before execution, providing more opportunities to optimize the program
+%   as well as simplifying deployment since the program can be executed
+%   without the host language.
+% However, the control flow structures are less expressive than those supported
+%   by the host language, frustrating researchers who wish to experiment with complex models.
+% For example, TensorFlow supports loops,
+%   but the elaborated graph has little resemblance to the input program, requiring optimization
+%   authors to reason about the elaborated form instead of familiar loops.
+% The encoding also requires \textit{ad hoc}, special purpose operators such
+%   as \verb|NextIteration| and the addition of special control-edges to the graph.
+% There are no generic mechanisms for users to define new control flow
+%   combinators (e.g., \verb|fold|) or data types.
+% TensorFlow's representation is sufficient for many state-of-the-art models,
+%   is easily ported to heterogeneous hardware back-ends,
+%   and allows for reverse-mode automatic differentiation~{\citep{ad_survey, tensorflow}}.
+
+% The second approach is used by PyTorch, where the host language (e.g. Python) dynamically
+%   constructs a computation graph.
+% This approach is called \textit{define-by-run} and employs \textit{dynamic computation graphs}.
+% An arbitrary host program executes dynamically, generating a computation graph as a by-product,
+%   allowing for use of all host language features.
+% However, by not encoding control constructs in its IR, a framework
+%   using define-by-run cannot reason about or optimize control flow structures.
+% Not only does this leave performance on the table, but it prevents deployment to certain
+%   edge devices, since they may have control flow or memory requirements that cannot be
+%   guaranteed by a fully dynamic control plane.
+
+% Dynamic frameworks such as  PyTorch~\citep{pytorch_ad},
+%     Gluon~\citep{gluon},
+%     Chainer~\citep{chainer_learningsys2015},
+%     and TensorFlow eager-mode~\citep{tf_eager} are attempts to alleviate the
+%     challenges of static graph representations
+% These dynamic frameworks must re-optimize and rebuild as graph topology changes, costing
+%     CPU cycles and incurring communication overhead between the host machine and accelerators.
+% Relay is designed to solve many of the challenges with existing work, as
+%   discussed in Section \ref{sec:past}.
+
+% There is work from frameworks on trying to balance tradeoffs, most of which has
+%   been realized using advanced compilers.
+% There are a large number of deep learning compilers being
+%   developed today but have relatively similar designs.
+% The Glow compiler~\citep{glow} provides a graph-based IR designed for lowering
+%   to hardware accelerators.
+% XLA~\citep{xla}, within Google's TensorFlow, supports lowering statically sized
+%   loops nests down to existing vendor provided libraries or generating customized
+%   code platforms such as the Google TPU.
+% Intel's nGraph provides a similar graph-based IR, focused on representing DAGs
+%   of operations.
+% A serious challenge of these frameworks is the focus on a single layer of the
+%   stack, and restricted semantics, these challenges introduce the lack of
+%   flexibility discussed in Section \ref{sec:intro}.
+
+% \subsection{Deep Learning Framework Design and Limitations}
+
+% Popular deep learning frameworks began with designs
+%   optimized for different tradeoffs between
+%   expressivity, performance, and portability.
+% In the early days of deep learning, users would program
+%   in general purpose languages like Python and utilize
+%   scientific computing libraries like NumPy,
+%   which provides low-level \textit{operators} such as matrix multiplication.
+% Operators, also called kernels, are dense linear algebra primitives like matrix multiplication,
+%   elementwise functions like \verb|tanh|,
+%   and complex, domain-specific operations like image convolution.
+% Operator execution dominates the execution time of a deep learning model: many
+%   operators are asymptotically slow and their input is often large.
+% While a machine learning framework may be written as a library in a high-level language
+%   like Python or Swift, operators will typically be provided as opaque function calls to
+%   specialized implementations written in a lower-level language like C++.
+
+% In order to obtain better performance, researchers began utilizing specialized accelerators.
+% To expose accelerators to end-users without needing to write in low-level languages,
+% such as CUDA, researchers designed frameworks like Theano~\citep{theano}.
+% These frameworks represent computations using dataflow graphs
+%   (treating mathematical operations on data as nodes)
+%   and compile these graphs to deploy to
+%   accelerators like the GPU.
+% ``Computation graphs'' provide a limited programming model,
+%   enabling efficient deployment.
+% Computation graphs have since been adopted as the fundamental building block of modern
+%   machine learning libraries.
+
+% There are two dominant designs for computation graph-based frameworks.
+% The first is the declarative design employed by TensorFlow.
+% Such designs extend pure data-flow with \textit{ad hoc} control operations
+%   to emulate the functionality of \verb|if| and \verb|while|.
+% This approach is called \textit{define-then-run} and employs \textit{static
+% computation graphs}.
+% A framework using a define-then-run representation has access to the entire
+%   graph before execution, providing more opportunities to optimize the program
+%   as well as simplifying deployment since the program can be executed
+%   without the host language.
+% However, the control flow structures are less expressive than those supported
+%   by the host language, frustrating researchers who wish to experiment with complex models.
+% For example, TensorFlow supports loops,
+%   but the elaborated graph has little resemblance to the input program, requiring optimization
+%   authors to reason about the elaborated form instead of familiar loops.
+% The encoding also requires \textit{ad hoc}, special purpose operators such
+%   as \verb|NextIteration| and the addition of special control-edges to the graph.
+% There are no generic mechanisms for users to define new control flow
+%   combinators (e.g., \verb|fold|) or data types.
+
+% The second approach is used by PyTorch, where the host language (e.g. Python) dynamically
+%   constructs a computation graph.
+% This approach is called \textit{define-by-run} and employs \textit{dynamic computation graphs}.
+% An arbitrary host program executes dynamically, generating a computation graph as a by-product,
+%   allowing for use of all host language features.
+% However, by not encoding control constructs in its IR, a framework
+%   using define-by-run cannot reason about or optimize control flow structures.
+% Not only does this leave performance on the table, but it prevents deployment to certain
+%   edge devices, since they may have control flow or memory requirements that cannot be
+%   guaranteed by a fully dynamic control plane.
 
 \section{Deep Learning Compilers}
 
@@ -141,9 +402,9 @@ Often graph compilers only perform high-level optimizations
 %     and is focused on lowering static loop nests into efficient kernels.
 
 Due to their limited programming model, they
-    provide the same functionality as \relay with
+    provide the same functionality as Relay with
     a more limited language.
-The most comparable points to \relay are recent
+The most comparable points to Relay are recent
     developments in the TensorFlow and PyTorch
     ecosystems of MLIR and TorchScript, respectively.
 Google introduced MLIR as a path forward for
@@ -171,11 +432,11 @@ In order to optimize away this dynamic behavior, TorchScript has
     a profiling JIT mode which identifies stable program traces
     during execution.
 These stable static traces can then be optimized by lower-level
-    compilers such as Glow or \relay to perform the last level of code generation.
+    compilers such as Glow or Relay to perform the last level of code generation.
 Microsoft released ModelCompiler, a system for efficiently compiling RNNs defined
     in CNTK to CPU.
 ModelCompiler uses Halide to represent low-level operations, but lacks
-    the expressivity of the \relay IR and only demonstrates support for CPUs.
+    the expressivity of the Relay IR and only demonstrates support for CPUs.
 % \TQC{The discussion in this paragraph was a bit long given the less importance of this compiler,
 %   consider remove everything except for
 %   the paragraph about expressivitity.
@@ -207,7 +468,7 @@ New languages designed for machine learning and related
     tasks include Lantern~\citep{lantern}, Lift~\citep{lift_lang}, Flux.jl~\citep{fluxjl}
     AutoGraph~\citep{moldovan2018autograph}, Swift for TensorFlow~\citep{tf_swift},
     and JAX~\citep{jax}.
-Lantern \citep{lantern} is the most related work to \relay as it can
+Lantern \citep{lantern} is the most related work to Relay as it can
     be used as a code generator.
 Lantern is a deep learning DSL in Scala
     that uses lightweight modular staging (LMS) to lower code into C++ and CUDA.
@@ -227,160 +488,9 @@ The alternative approach is the augmentation of languages to support deep learni
 These systems are designed to be user-facing programming
     environments for deep learning and use a compiler IR
     to generate code.
-For all intents and purposes \relay could be the IR in
-    question, therefore  \relay complements these systems well by
+For all intents and purposes Relay could be the IR in
+    question, therefore  Relay complements these systems well by
     providing a more expressive IR to map computation onto.
-
-    \section{Related Work}
-\label{ch:related}
-
-% 2. Related work including a discussion of how your proposed work either
-% leverages that work (e.g., techniques you plan to adopt) or differs from it
-% (e.g., novel contributions).  For your generals report, we recommend you
-% focus primarily on your work on Beacon for high-level frontends, Relay for IR
-% design, and type-supported optimizations for diverse backend support.
-
-In this section we will focus on related work, specifically deep learning
-frameworks, IRs and compilers, low-level tensor code generation DSLs,
-prior work on deep learning and programming languages, dynamic neural
-networks, and hardware acceleration for deep learning.
-
-\subsection{Deep Learning Frameworks}
-
-In the past few years deep learning has become an essential
-  piece of technology to large companies which rely heavily
-  on machine learning powered services.
-Technology companies such as Facebook and Google have large development
-  teams dedicated to developing tools to support deep learning research
-  and development.
-Google is developing an ML stack comprised of
-  TensorFlow, XLA, TPU, and a host of satellite projects.
-Facebook is developing an ML stack comprised of
-  many projects including PyTorch,
-  Glow~\citep{glow}, and Caffe2~\citep{pytorch_caffe2}.
-Amazon Web Services has been developing a stack
-  comprised of many projects including
-  MxNet, TVM, and Inferentia.
-
-In the early days of deep learning, users would program
-  in general purpose languages like Python and utilize
-  scientific computing libraries like NumPy,
-  which provides low-level \textit{operators} such as matrix multiplication.
-Operators, also called kernels,
-  are dense linear algebra primitives like matrix multiplication,
-  elementwise functions like \verb|tanh|, and complex,
-  domain-specific operations like image convolution.
-Operator execution dominates the execution time of a deep learning model: many
-  operators are asymptotically slow and their input is large.
-While a machine learning framework may be written as a library in a high-level language
-  like Python or Swift, operators will typically be provided as opaque function calls to
-  specialized implementations written in a lower-level language like C++.
-
-To obtain better performance, researchers began utilizing specialized
-  accelerators such as GPUs to accelerate the execution of models.
-In order to accessibly provide acceleration to end-users
-  researchers designed frameworks like Theano~\citep{theano}.
-Frameworks such as Theano and Torch introduced a model of
-  computation graphs, dataflow graphs composed of nodes of
-    variables, and operations on data.
-These computation graphs represent the AST of a small
-  embedded DSL that could be easily compiled and deployed
-  to accelerators like the GPU.
-``Computation graphs'' provide a limited programming model,
-    enabling efficient deployment.
-Computation graphs have since been adopted as the fundamental building block of modern
-    machine learning libraries.
-
-Unfortunately computation graphs are an ad-hoc language engineered to solve
-  the problems faced at the time, and do not begin to capture the full breadth
-  of models that users would one day want to run.
-For example,
-  convolutional neural networks (CNNs),
-  which are widely used in image processing and computer vision,
-  generally utilize a fixed topology of layers
-  with tensors of fixed dimension.
-In contrast,
-  recurrent neural networks (RNNs),
-  which are widely used in natural language processing (NLP),
-  require recursion, control flow, and
-  operations over variable-sized data structures (e.g., lists).
-The regular structure of CNNs facilitates
-  optimizing compilation to
-  common hardware accelerators (e.g., GPUs), but
-  RNN-like models are still challenging to optimize.
-
-One area in which deep learning has made significant advances since
-  the introduction of early frameworks is natural language processing (NLP).
-Reasoning about text requires context-sensitive analysis and data of
-    non-fixed dimensions, unlike in many vision tasks.
- To allow for context-sensitive analysis, DL researchers have developed networks with persistent
-  state, known as \textit{recurrent neural networks}  (RNNs).
-Recurrent neural networks have found use not only in NLP, but also in speech recognition, music
-  transcription, eSports, and other areas \citep{lstm, speech_recognition, OpenAI_dota}.
-Unfortunately, since most machine learning frameworks rely on computation graphs,
-  which cannot directly represent recursion, RNNs are usually finitely unrolled to a fixed depth.
-This is acceptable if the depth can be determined statically and the loop unrolled
-  ahead of time; however, if the depth depends on runtime values or complex control flow,
-  unrolling must be performed dynamically.
-
-There are two dominant designs for computation graph-based frameworks.
-The first is the declarative design employed by TensorFlow.
-Such designs extend pure data-flow with \textit{ad hoc} control operations
-  to emulate the functionality of \verb|if| and \verb|while|.
-This approach is called \textit{define-then-run} and employs \textit{static
-computation graphs}.
-A framework using a define-then-run representation has access to the entire
-  graph before execution, providing more opportunities to optimize the program
-  as well as simplifying deployment since the program can be executed
-  without the host language.
-However, the control flow structures are less expressive than those supported
-  by the host language, frustrating researchers who wish to experiment with complex models.
-For example, TensorFlow supports loops,
-  but the elaborated graph has little resemblance to the input program, requiring optimization
-  authors to reason about the elaborated form instead of familiar loops.
-The encoding also requires \textit{ad hoc}, special purpose operators such
-  as \verb|NextIteration| and the addition of special control-edges to the graph.
-There are no generic mechanisms for users to define new control flow
-  combinators (e.g., \verb|fold|) or data types.
-TensorFlow's representation is sufficient for many state-of-the-art models,
-  is easily ported to heterogeneous hardware back-ends,
-  and allows for reverse-mode automatic differentiation~{\citep{ad_survey, tensorflow}}.
-
-The second approach is used by PyTorch, where the host language (e.g. Python) dynamically
-  constructs a computation graph.
-This approach is called \textit{define-by-run} and employs \textit{dynamic computation graphs}.
-An arbitrary host program executes dynamically, generating a computation graph as a by-product,
-  allowing for use of all host language features.
-However, by not encoding control constructs in its IR, a framework
-  using define-by-run cannot reason about or optimize control flow structures.
-Not only does this leave performance on the table, but it prevents deployment to certain
-  edge devices, since they may have control flow or memory requirements that cannot be
-  guaranteed by a fully dynamic control plane.
-
-Dynamic frameworks such as  PyTorch~\citep{pytorch_ad},
-    Gluon~\citep{gluon},
-    Chainer~\citep{chainer_learningsys2015},
-    and TensorFlow eager-mode~\citep{tf_eager} are attempts to alleviate the
-    challenges of static graph representations
-These dynamic frameworks must re-optimize and rebuild as graph topology changes, costing
-    CPU cycles and incurring communication overhead between the host machine and accelerators.
-Relay is designed to solve many of the challenges with existing work, as
-  discussed in Section \ref{sec:past}.
-
-There is work from frameworks on trying to balance tradeoffs, most of which has
-  been realized using advanced compilers.
-There are a large number of deep learning compilers being
-  developed today but have relatively similar designs.
-The Glow compiler~\citep{glow} provides a graph-based IR designed for lowering
-  to hardware accelerators.
-XLA~\citep{xla}, within Google's TensorFlow, supports lowering statically sized
-  loops nests down to existing vendor provided libraries or generating customized
-  code platforms such as the Google TPU.
-Intel's nGraph provides a similar graph-based IR, focused on representing DAGs
-  of operations.
-A serious challenge of these frameworks is the focus on a single layer of the
-  stack, and restricted semantics, these challenges introduce the lack of
-  flexibility discussed in Section \ref{sec:intro}.
 
 \section{Hardware Backends}
 
@@ -440,17 +550,17 @@ My work is focused on the end-to-end compilation of deep learning, and for
 Instead my work is focused on optimizing programs which make use of low-level operations
   and optimizations around programs which combine them with higher-level abstractions,
   like closures and datatypes.
-In particular \relay is designed as an extension to \tvm~\citep{tvm_osdi18},
+In particular Relay is designed as an extension to \tvm~\citep{tvm_osdi18},
   a tensor expression language used for specifying dense array
   operations, to support full models.
 Previous work on the \tvm focused on producing efficient operators
   (dense linear algebra kernels), such as generalized matrix multiplication (GEMM) and convolutions.
-In theory \relay could use other high performance DSLs such as Halide~\citep{halide},
+In theory Relay could use other high performance DSLs such as Halide~\citep{halide},
     which \tvm derived its IR, and its split computation and schedule model.
 \todo{HALIDE EXPAND HERE}
 Tensor Comprehensions (TC) shares common goals with the \tvm framework, but achieves its goal
 through different techniques, such as polyhedral compilation rather than algorithmic
-schedules. TC could replace \tvm in \relay{}'s compilation.
+schedules. TC could replace \tvm in Relay{}'s compilation.
 \todo{TC EXPAND HERE}
 
 \subsection{Programming Language based Deep Learning}
@@ -461,32 +571,28 @@ My work is not the first attempt to apply programming language
 Lantern \citep{lantern} is a deep learning DSL in Scala
     that uses lightweight modular staging (LMS) to lower code into C++.
 LMS takes a graph as input from the user and converts it to an AST
-    representation, similar to \relay's graph mode.
+    representation, similar to Relay's graph mode.
 LMS removes unnecessary abstractions.
 Going one step further than Lantern,
-    \relay supports accelerators.
+    Relay supports accelerators.
 
 \verb|Flux.jl| \citep{fluxjl} is a DL library written in Julia \citep{julia}, a numerical
-computing language. Like \relay, \verb|Flux.jl| adds shapes to the type system; however, unlike \relay, it
+computing language. Like Relay, \verb|Flux.jl| adds shapes to the type system; however, unlike Relay, it
 uses a mixture of compile-time inference and runtime checks to enforce shape constraints
 \citep{jlmlpl} and cannot perform platform-specific optimizations. Unlike \verb|Flux.jl|, which
-tightly coupled with Julia, \relay is language agnostic and decouples frontend and IR
+tightly coupled with Julia, Relay is language agnostic and decouples frontend and IR
 considerations.
-\relay's features, such as type inference and deployment to multiple back-ends, can
+Relay's features, such as type inference and deployment to multiple back-ends, can
     be easily reused by frameworks in arbitrary languages.
 
 Additionally, previous work in higher-order differentiation from the PL community
-has informed \relay's design.
+has informed Relay's design.
 In particular, we draw inspiration from various implementations of
 automatic differentiation \citep{beautiful_diff, ad_survey, haskell_ad, toplas_reverse, wang_reverse, DLS, DDF},
 with particular attention to techniques that can compute higher-order gradients of higher-order programs.
-\verb|Zygote.jl| \citep{zygotejl}, like \relay, uses source code transformations to
+\verb|Zygote.jl| \citep{zygotejl}, like Relay, uses source code transformations to
     implement automatic differentiation.
 
-% end related
-
-\section{Related Work}
-\label{sec:relwk}
 
 Systems for machine learning is an active research area with a variety of techniques for ML inference engines which support dynamic features, cross-platform execution, and per-platform code generation. We discuss related work below.
 
@@ -534,143 +640,6 @@ Nimble enables a deep learning compiler to support dynamism in an efficient and 
 
 Nimble's compilation and VM design is largely inspired by production compilers and VMs, such as LLVM~\citep{llvm}, GCC~\citep{gcc}, and JVM~\citep{jvm}. These generic solutions are able to easily handle dynamic behaviors, such as control flow and variable-length input arrays. However, the design of these compilers are heavily tailored to the optimization and execution profile of traditional programs. These programs manipulate small scalar values and consist of a large number of low level instructions. These VMs have a large number of instructions, which requires instruction execution and dispatch to be extremely efficient. Instead, deep learning compilers like Nimble manipulate primarily tensor values using a relatively small number of coarse-grained instructions, i.e. 16 instructions are sufficient for the Nimble VM. The execution hotspots of DL workloads are the compute-intensive operators (i.e. convolution) over large tensors. Thus, the micro-optimization of VM instruction dispatch is not essential to overall performance.
 
-\vspace{-1.5em}
-
-\section{Background}
-\label{sec:background}
-
-% TODO: Jared broadly suggested cutting this section. We do need to remove a lot of content just to be
-% under the page limit, so we should determine what, if anything, here needs to be kept. For example,
-% is a broad introduction to deep learning really something a reader would expect? We could set up
-% the problem of expressiveness and deployment in the intro and focus on what other frameworks fall
-% short on and what we do differently.
-
-In this section, we provide a brief background on contemporary deep learning,
-  popular deep learning frameworks, and state-of-the-art
-  models being developed.
-
-\subsection{Deep Learning}
-
-Deep learning (DL) has been used to achieve state-of-the-art results in applications ranging from
-computer vision to game playing to natural language processing. Deep learning provides a collection of
-techniques for learning functions that are difficult to program directly.
-
-For example, suppose one wants to construct a function $f(x)$ to extract building addresses from
-images of a street. One approach to writing $f(x)$ explicitly might be to write programs to identify
-regions of the image that contain information pertinent to addresses (like street names or house
-numbers), partition those regions into individual characters, and identify each character.
-One may then write a program that chains together many such modules into a working system.
-It would require hundreds, if not thousands, of human-hours of work and dozens of heuristics to
-write any of those programs by hand, and there is no guarantee it will perform well.
-By contrast, deep learning has, with relatively little code, been
-used to approximate this entire recognition task with a single model. The learned system
-outperforms all hand-crafted solutions \citep{streetview}.
-
-A programmer solving a problem with DL performs three steps. First, she specifies a parametric
-function (often called a \textit{model}, \textit{neural network}, or simply \textit{network})
-$F(\theta, x)$ of the function that computes the desired value. She then \textit{trains} the model
-by applying an optimization algorithm to find a set of parameters $\theta$ that results in an
-acceptable approximation of the function on a collection of input-output pairs. Finally, she uses
-her learned function to produce outputs for new inputs in a process called \textit{inference}.
-
-In practice, DL engineers write procedural programs that manipulate \textit{tensors},
-  multi-dimensional arrays of numbers.
-These restrictions allow DL practitioners to take advantage of
-  statistics, linear algebra, and real analysis.
-In order to search for an assignment of parameters that produces a good approximation, we must first
-  define what a ``good'' approximation of $f$ is and then find an algorithm that optimizes this metric.
-The quality of an approximation is typically defined in terms of some ground truth to
-  compare against $F(\theta, x)$.
-This ground truth is usually provided in the form of a
-\textit{training set}, a set of input-output pairs that has either been manually collected or
-  extracted from an existing data set.
-The function that scores the output of a network with respect
-  to a ground-truth label is called the \textit{loss function},
-\[
-  L \colon (\text{input}, \text{output}) \to \text{network} \to \mathbb{R}^{\ge 0},
-\]
-which typically takes in an input-output pair and network and produces a non-negative real
-number.
-
-One method to optimize the network is to take the gradient of the loss function composed with the
-candidate network for some input-output pair. The gradient of a function points in the direction of
-steepest change, so subtracting some proportion of the gradient from the current parameters reduces
-the loss of the network. This process is known as \textit{stochastic gradient descent (SGD)}, and it
-is the basis for many deep learning optimization algorithms used today.
-
-More formally, training updates the model parameters using the following algorithm:
-\[
-  \theta_{i+1} := \theta_i - \varepsilon\nabla[L((\text{input}, \text{output})) \circ F]\Big|_{\theta_i}
-\]
-for some small, positive $\varepsilon$. This update cycle is repeated in training until
-the error is acceptable. The final values of the parameters are then used for inference.
-
-While training and inference were once performed on the same machine, it is more common today to
-train models on high-powered devices such as a fleet of cloud machines or a custom GPU farm, since
-training is very computationally intensive. The values learned from training can then be deployed
-for inference on less powerful systems, such as a single GPU, a mobile phone, or an FPGA.
-
-\subsection{Deep Learning Framework Design and Limitations}
-
-Popular deep learning frameworks began with designs
-  optimized for different tradeoffs between
-  expressivity, performance, and portability.
-In the early days of deep learning, users would program
-  in general purpose languages like Python and utilize
-  scientific computing libraries like NumPy,
-  which provides low-level \textit{operators} such as matrix multiplication.
-Operators, also called kernels, are dense linear algebra primitives like matrix multiplication,
-  elementwise functions like \verb|tanh|,
-  and complex, domain-specific operations like image convolution.
-Operator execution dominates the execution time of a deep learning model: many
-  operators are asymptotically slow and their input is often large.
-While a machine learning framework may be written as a library in a high-level language
-  like Python or Swift, operators will typically be provided as opaque function calls to
-  specialized implementations written in a lower-level language like C++.
-
-In order to obtain better performance, researchers began utilizing specialized accelerators.
-To expose accelerators to end-users without needing to write in low-level languages,
-such as CUDA, researchers designed frameworks like Theano~\citep{theano}.
-These frameworks represent computations using dataflow graphs
-  (treating mathematical operations on data as nodes)
-  and compile these graphs to deploy to
-  accelerators like the GPU.
-``Computation graphs'' provide a limited programming model,
-  enabling efficient deployment.
-Computation graphs have since been adopted as the fundamental building block of modern
-  machine learning libraries.
-
-There are two dominant designs for computation graph-based frameworks.
-The first is the declarative design employed by TensorFlow.
-Such designs extend pure data-flow with \textit{ad hoc} control operations
-  to emulate the functionality of \verb|if| and \verb|while|.
-This approach is called \textit{define-then-run} and employs \textit{static
-computation graphs}.
-A framework using a define-then-run representation has access to the entire
-  graph before execution, providing more opportunities to optimize the program
-  as well as simplifying deployment since the program can be executed
-  without the host language.
-However, the control flow structures are less expressive than those supported
-  by the host language, frustrating researchers who wish to experiment with complex models.
-For example, TensorFlow supports loops,
-  but the elaborated graph has little resemblance to the input program, requiring optimization
-  authors to reason about the elaborated form instead of familiar loops.
-The encoding also requires \textit{ad hoc}, special purpose operators such
-  as \verb|NextIteration| and the addition of special control-edges to the graph.
-There are no generic mechanisms for users to define new control flow
-  combinators (e.g., \verb|fold|) or data types.
-
-The second approach is used by PyTorch, where the host language (e.g. Python) dynamically
-  constructs a computation graph.
-This approach is called \textit{define-by-run} and employs \textit{dynamic computation graphs}.
-An arbitrary host program executes dynamically, generating a computation graph as a by-product,
-  allowing for use of all host language features.
-However, by not encoding control constructs in its IR, a framework
-  using define-by-run cannot reason about or optimize control flow structures.
-Not only does this leave performance on the table, but it prevents deployment to certain
-  edge devices, since they may have control flow or memory requirements that cannot be
-  guaranteed by a fully dynamic control plane.
-
 \subsection{Dynamic Neural Networks}
 
 One area in which deep learning has made significant advances is
@@ -714,18 +683,6 @@ In order to effectively use these devices,
   engineers often redesign the model from scratch to better match the target
   platform's intrinsics and design.
 
-% \begin{figure}[!h]
-%   \includegraphics[width=0.9\columnwidth, height=5cm]{fig/rnn_graph}
-%   \caption{
-%     An RNN unrolled to time step $N$. The input arrows prefixed with $x$ are inputs,
-%     the horizontal arrows prefixed $s$ are the hidden states, and the output arrows
-%     are positional outputs of the model. For example each output would be a single
-%     character of the names we generate in Section \ref{sec:overview}.}
-%   \label{fig:rnn_graph}
-% \end{figure}
-
-
-% % For example,
 % %   convolutional neural networks (CNNs),
 % %   which are widely used in image processing and computer vision,
 % %   generally utilize a fixed topology of layers
@@ -862,5 +819,3 @@ In order to effectively use these devices,
 % %   \todo{cite here, ask luis}
 % % It is essential that frameworks can adapt to new hardware devices
 % %   with minimal changes to applications.
-
-Transforming Relay into code that executes efficiently on a variety of networks requires a series of transformations, and must interact with TVM and other layers below it.

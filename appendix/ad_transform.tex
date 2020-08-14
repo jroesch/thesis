@@ -61,7 +61,7 @@ def @op_grad<>(a_1 : type_transform(T1), ...,
     All other AST constructs are unchanged by the macro.
     For simplicity, type arguments and relations
       are omitted in this figure;
-      at present, \relay does not
+      at present, Relay does not
       support type arguments in gradients.
     Note that the macro \texttt{type\_transform}$(T)$
       similarly recurses down the AST of the type $T$
@@ -94,7 +94,7 @@ def @grad_f<>(a_1 : T1, ..., a_n : Tn)
   (c.0, (!(p_1.1), ..., !(p_n.1)))
 }
   \end{minted}
-  \caption{The gradient \relay{}'s AD produces
+  \caption{The gradient Relay{}'s AD produces
     for a function \texttt{f} of type
     \texttt{fn}$\langle\rangle(T_1, \ldots T_n) \rightarrow O$.
   The gradient function returns a tuple of
@@ -106,7 +106,7 @@ def @grad_f<>(a_1 : T1, ..., a_n : Tn)
     Fig. \ref{fig:ad-expr-transform}.
   As with Fig. \ref{fig:ad-expr-transform},
     the present implementation of
-    \relay{}'s AD does not handle type relations or type arguments,
+    Relay{}'s AD does not handle type relations or type arguments,
     so they are omitted in this figure.
   Also as in Fig. \ref{fig:ad-expr-transform},
     semicolons wihout \texttt{let} bindings

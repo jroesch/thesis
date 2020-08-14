@@ -79,14 +79,14 @@
       \end{array}}
       \Rightarrow \Gamma; \Delta^{\prime\prime} \colon V^\prime}
    \end{inference}
-  \caption{A simplified operational semantics of \relay{}. All tensors are values, so boolean,
-    integer, and floating point literals are irreducible per the above rules, as are tensors of other shapes. Thus, the values in \relay{} are tensors,
-    closures, operators (functions whose bodies are opaque to \relay{}), products of values, references of values,
+  \caption{A simplified operational semantics of Relay{}. All tensors are values, so boolean,
+    integer, and floating point literals are irreducible per the above rules, as are tensors of other shapes. Thus, the values in Relay{} are tensors,
+    closures, operators (functions whose bodies are opaque to Relay{}), products of values, references of values,
     and algebraic data types (ADTs of different names and ADT constructors of different names are distinct from each other, thus two ADT values are
     equal only if they are of the same ADT, the same constructor, and the same argument values).
     Also omitted, for simplicity, are the effects of the type arguments in a function call; any such effects would be implemented by relations on
-    operators and thus would be opaque to all other constructs in \relay{} other than resulting in a different value returned by an operator
-    call. Note that since automatic differentiation is implemented as a macro over a \relay{} AST, the gradient expression has no semantics
+    operators and thus would be opaque to all other constructs in Relay{} other than resulting in a different value returned by an operator
+    call. Note that since automatic differentiation is implemented as a macro over a Relay{} AST, the gradient expression has no semantics
     of its own beyond expanding the macro.}
   \label{fig:op_semantics}
 \end{figure}

@@ -35,21 +35,21 @@ playing a similar role to what an ahead of time compiler does in traditional JIT
 
 \subsection{Tensor Virtual Machine}
 
-Although \relay defines an IR and formal semantics
+Although Relay defines an IR and formal semantics
   it does not provide an efficient execution mechanism for the full language.
 In the tradition of definitional interpreters we introduced
-  a simple interpreter for \relay which implements its formal semantics, which
+  a simple interpreter for Relay which implements its formal semantics, which
   we have separately formalized.
 Relay’s interpreter can execute the full language but has notable limitations
   that make it unsuited for production deployments.
 It is structured as an inefficient interpreter that performs AST traversal to execute the program.
 This approach is conceptually simple but inefficient, as the AST traversal heavily relies on indirection.
-For example the initial \relay prototype reused the existing ``graph runtime'', to obtain
+For example the initial Relay prototype reused the existing ``graph runtime'', to obtain
   acceptable performance for vision tasks.
 The graph runtime can only execute simple control-free,
   DAGs of operations.
-We can optimize \relay programs and map a subset of them
-  to the graph runtime, but any use of new \relay features
+We can optimize Relay programs and map a subset of them
+  to the graph runtime, but any use of new Relay features
   are unsupported.
 By introducing models which make use of new features such
   as control flow, recursion, dynamic shapes, and dynamic allocation,
@@ -61,9 +61,9 @@ The simplicity of the graph runtime provides attractive
   properties such as simple serialization, straightforward
   optimal memory layout, and ease of deployment.
 
-To address these challenges we designed a new \relay
+To address these challenges we designed a new Relay
   virtual machine.
-The \relay virtual machine balances framework the competing approaches to execution,
+The Relay virtual machine balances framework the competing approaches to execution,
   providing a dynamic execution environment which can be extended, instrumented, and integrated with other approaches
   like ahead-of-time compilation via a flexible extension mechanism.
 The virtual machine is designed to strike a balance between performance and flexibility
@@ -82,12 +82,12 @@ ML programs’ cost centers are expensive operator invocations,
 Due to the execution profile exhibited by ML programs,
   micro-optimizations present in scalar VMs are dramatically less important.
 
-The \relay virtual machine implement a simple register based VM.
+The Relay virtual machine implement a simple register based VM.
 
 The VM consists of three pieces:
 \begin{enumerate}
   \item A tensor instruction set for a tensor virtual machine.
-  \item A compiler from \relay to the tensor VM.
+  \item A compiler from Relay to the tensor VM.
   \item An implementation of the virtual machine.
 \end{enumerate}
 
@@ -111,10 +111,10 @@ The VM consists of three pieces:
 \subsection{VM Compiler}
 
 In order to execute on the VM we wrote a new compiler which
-  can lower \relay directly on to the VM bytecode, and then
+  can lower Relay directly on to the VM bytecode, and then
   executed.
 The compiler performs a set of transformations on the high-level
-  \relay program before generating code:
+  Relay program before generating code:
 \begin{itemize}
   \item A-Normal Form, converts program in to a limited single-assignment form.
   \item Lambda Lift, converts inline functions into top-level definitions,

@@ -120,6 +120,87 @@ or LLVM backend and finally modify the runtime to execute on the device, if even
 Many engineers in this domain believe that human effort is required to obtain competitive performance that is demonstrated by today’s bleeding edge development,
 my thesis demonstrated this is not the case.
 
+Deep learning (DL) has radically transformed domains like
+  computer vision and
+  natural language processing (NLP)~\citep{yolo, recent_trends_in_nlp}.
+Inspired by these successes,
+  researchers and companies are continually
+  experimenting with increasingly sophisticated DL models and
+  developing specialized hardware backends.
+DL frameworks for writing, optimizing, and compiling DL models
+  reduce the complexity of these tasks,
+  which in turn accelerates DL research and product development.
+
+Popular DL compiler intermediate representations (IRs) offer different tradeoffs
+  between expressivity, composability, and portability~\citep{
+    tensorflow, pytorch_ad, chainer_learningsys2015, tangent, theano, glow}.
+Early frameworks adopted IRs
+  specialized for then-state-of-the-art models and/or
+  emerging hardware accelerators.
+As a result, non-trivial extensions require
+  patching or even forking frameworks~\citep{
+    tf_fold, tf_lite, tangent, tf_eager, xla, glow, torchscript}.
+Such \textit{ad hoc} extensions can improve expressivity
+  while maintaining backwards compatibility with existing execution mechanisms.
+However, they are difficult to design, reason about, and implement,
+  often resulting in modifications that are mutually incompatible.
+
+Let us consider a hypothetical scenario that exemplifies
+  IR design tensions in DL compilers.
+Suppose a machine learning engineer wants to write
+  an Android app that uses sentiment analysis to
+  determine the moods of its users.
+To maintain privacy, the app must run completely on-device,
+  i.e., no work can be offloaded to the cloud.
+The engineer decides to use a variant of TreeLSTM,
+  a deep learning model that uses a tree structure~\citep{tree_lstm}.
+Unfortunately, current frameworks' IRs cannot directly encode trees,
+  so she must use a framework extension
+  like TensorFlow Fold~\citep{tensorflowfold}.
+
+Suppose that after adapting the model to run on her phone,
+  the out-of-the-box performance of her
+  model on her particular platform is not satisfactory, requiring her to optimize it.
+She chooses to employ \textit{quantization}, an optimization that
+  potentially trades accuracy for performance by replacing
+  floating-point datatypes with low-precision ones.
+Although researchers have developed a variety of quantization
+  strategies, each of which makes use of different bit-widths, rounding
+  modes, and datatypes, our engineer must use a strategy supported
+  by existing frameworks~\citep{gustafson2015end, tf_lite_ops_compat, glow_quant}.
+Unfortunately, frameworks only provide support for a small number
+  of strategies, and supporting new quantization strategies is non-trivial.
+Each combination of operator, datatype, bit-width, and
+  platform requires unique operator implementations.
+Optimizations like operator fusion exacerbate this combinatorial explosion,
+  further increasing
+  the number of unique implementations required.
+Furthermore, if a framework doesn't have specific support for
+  the target phone model she cannot take advantage of specialized deep learning
+  instructions or coprocessors~\citep{apple_neural_engine}.
+
+  Deep learning (DL) has radically transformed domains like
+  computer vision and
+  natural language processing (NLP)~\citep{yolo, recent_trends_in_nlp}.
+Inspired by these successes,
+  researchers and companies are continually
+  experimenting with increasingly sophisticated DL models and
+  developing specialized hardware backends.
+DL frameworks for writing, optimizing, and compiling DL models
+  reduce the complexity of these tasks,
+  which in turn accelerates DL research and product development.
+
+  The scenario above highlights the three-pronged \textit{extensibility challenge}
+  for DL IRs:
+% \begin{enumerate}[label=\arabic*.]
+%   \item \textit{Expressivity}: It should be straightforward to write models involving
+%     control flow, first-class functions and data structures (e.g., trees, graphs, and lists).
+%   \item \textit{Composability}: It should be straightforward to add and compose new optimizations
+%     with existing ones (e.g., quantization, operator fusion, and partial evaluation).
+%   \item \textit{Portability}: It should be straightforward to add new hardware targets
+%     (e.g., TPU, Inferentia)~\citep{tpuv1, inferentia}.
+% \end{enumerate}
+
 \section{Dynamic Neural Networks}
 
 In this thesis we explore new designs for representing, optimizing, differentiating, and executing dynamic neural networks.
@@ -133,7 +214,7 @@ Relay addresses the challenges laid out in the previous section by using a whole
   and the use of TVM’s compute language as a low-level dialect,
   in conjunction with carefully designed runtime and system APIs.
 
-The hypothetical story of the user needing to extend the entire stack is derived from a true sequence of events that occured in the development of Relay.
+The hypothetical story of the user needing to extend the entire stack is derived from a true sequence of events that occurred in the development of Relay.
 A process like this requires diverse expertise that is often non-compositional. It is nearly impossible to find a single individual who has the ability
   to do all these tasks at a state-of-the-art level.
 One user introduced framework support, another added a kernel, another optimized it, and another added compiler and runtime support for a new target.

@@ -59,7 +59,7 @@ Beacon's design enables whole program optimizations.
 We will continue to develop Beacon as a platform for training
     research specifically training optimizations.
 Beacon provides complete control over the model definition, and the generated IR.
-\relay's current frontends do make use of novel \relay
+Relay's current frontends do make use of novel Relay
     features including data structures, control-flow, and
     closures.
 Beacon is a way forward to explore these features and their optimization
@@ -74,7 +74,7 @@ There are two active efforts towards this goal, one is being lead at Amazon
     to build a new version of MxNet which utilizes Relay as its execution
     mechanism.
 The second effort is a collaboration I recently started with
-    the PyTorch team to use \relay to accelerate PyTorch.
+    the PyTorch team to use Relay to accelerate PyTorch.
 We plan to submit a paper on this work at the end of the year.
 The goal of the PyTorch effort is to demonstrate three important
     ideas.
@@ -83,7 +83,7 @@ First demonstrate the model dynamism occurs in practice, and is
 Second show that by using techniques from JIT compilation we
     can find stable traces of execution that can be effectively
     statically optimized.
-Finally that we can use \relay to optimize static traces effectively
+Finally that we can use Relay to optimize static traces effectively
     resulting in state of the art performance.
 
 \subsection{Automatic Tensorization}
@@ -133,7 +133,7 @@ automatically adapt high-level programs to run on new hardware devices automatic
 with human level performance. We have already constructed a state of the art compiler
 which outperforms all popular deep learning frameworks and can reliably support most
 existing frameworks. We have continued to work on tighter integration with frameworks,
-and better support for \relay's dynamic features. Automatic tensorizaton remains an unsolved
+and better support for Relay's dynamic features. Automatic tensorizaton remains an unsolved
 problem, that I plan on tackling in my final year. Although these pieces constitute a
 complete solution there remains exciting work outside the scope of my thesis on
 supporting new datatypes such as posits, new platforms with uTVM, a highly

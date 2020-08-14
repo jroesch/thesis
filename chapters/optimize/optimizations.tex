@@ -10,7 +10,7 @@
 A high-level IR by itself does not provide a path to high-performance code.
 Obtaining high-performance models requires domain-specific
   optimizations tailored to deep learning.
-In this section, we showcase the use of the \relay compiler framework
+In this section, we showcase the use of the Relay compiler framework
   to write general, domain-specific, and target-specific optimizations,
   enabling generation of high-performance code.
 
@@ -36,22 +36,22 @@ More advanced strategies, implemented in XLA, detect a
   closed set of statically shaped operators for fusion and
   generate code for CPU/GPU.
 
-\relay's fusion algorithm addresses weaknesses of previous approaches by representing
+Relay's fusion algorithm addresses weaknesses of previous approaches by representing
   \textit{all} operators in a secondary IR.
-\relay operators are backed by a TVM compute expression that
+Relay operators are backed by a TVM compute expression that
   describes operations in a high-level DSL that resembles Einstein notation
   but omits low-level scheduling details.
 TVM's separation of compute and scheduling provides many favorable qualities
-  for \relay's fusion algorithm.
+  for Relay's fusion algorithm.
 It enables producing shape-specialized fused operators for an open set of operators,
   fusing arbitrary-length chains of operators (not just pairwise combinations),
   and handling operators with multiple outputs and nonlinear consumer-producer patterns.
 TVM is also able to reschedule after fusion and perform further optimization via auto-tuning.
-\relay performs fusion in two steps, detailed below.
+Relay performs fusion in two steps, detailed below.
 
 \subsection*{Extraction}
 
-First, \relay identifies subexpressions containing
+First, Relay identifies subexpressions containing
   fusion-eligible and factors them into local functions that
   are marked as primitive.
 Primitive functions can later be lowered to platform-specific
@@ -64,10 +64,10 @@ Subexpressions are grouped into equivalence classes
   determined by their immediate post-dominator.
 The use of the post-dominator tree enables fusion
   between non-linear producer-consumer relationships;
-  for example, \relay can fuse diamond-shaped data-flow relations,
+  for example, Relay can fuse diamond-shaped data-flow relations,
   where an input is used by multiple parallel operator chains
   that are combined again by a later operator.
-Finally, \relay constructs an expression from each equivalence class,
+Finally, Relay constructs an expression from each equivalence class,
   collects the expressions' free variables,
   constructs a function with the expression as the body and the free variables
   as parameters,
@@ -75,9 +75,9 @@ Finally, \relay constructs an expression from each equivalence class,
 
 \subsection*{Lowering}
 
-In a second step, the \relay compiler converts the generated primitive
+In a second step, the Relay compiler converts the generated primitive
   function into platform and shape specific code.
-For each operator, \relay collects the high-level \tvm expression that represents it,
+For each operator, Relay collects the high-level \tvm expression that represents it,
   then combines them into an aggregate expression that represents the fused operation.
 Generating code using \tvm also requires producing a schedule.
 It is possible to use \tvm's default schedule to generate code for a single operation,
@@ -89,12 +89,12 @@ The fusion algorithm analyzes the expressions to select a master
   actions to generate fused code, such as inlining loops, or reorganizing
   computation.
 By combining the master schedule with the fused computation,
-  \relay is able to produce an optimized version of the operator
+  Relay is able to produce an optimized version of the operator
   for any platform supported by TVM.
 For example, a related project by one of the co-authors implemented
   a RISC-V backend which immediately obtained full operator fusion
   with no new code.
-Due to the \relay compiler's integration with AutoTVM, we can further
+Due to the Relay compiler's integration with AutoTVM, we can further
   optimize fused operations by performing auto-tuning on the master
   schedule template to obtain the best performance.
 
@@ -112,7 +112,7 @@ Due to the \relay compiler's integration with AutoTVM, we can further
   \caption{\textmd{
     \textit{(left)} Inference time of vision DNNs on low-power platforms using
       different data types.
-    \relay allows us to reduce inference time on power-constrained devices by
+    Relay allows us to reduce inference time on power-constrained devices by
       easily substituting \texttt{float32} multiplications with \texttt{int8}
       multiplications and \texttt{int16} or \texttt{int32} accumulations (denoted
       as \texttt{int8}/\texttt{int16} and \texttt{int8}/\texttt{int32}, respectively).
@@ -122,7 +122,7 @@ Due to the \relay compiler's integration with AutoTVM, we can further
     One accelerator performs single-batch inference, while the other implements multi-batch inference.
     % Multi-batch inference provides tangible throughput improvements on TreeLSTM due to the memory bandwidth constrained nature of the workload.
     The two hardware designs have the same number of compute units that are arranged differently to take advantage of different types of tensor computation.
-    \relay applies a multitude of graph-level transformations required to run different workloads onto these DNN hardware designs.
+    Relay applies a multitude of graph-level transformations required to run different workloads onto these DNN hardware designs.
     We used 12 trials for each model.
   }}
   \label{fig:portability-eval}
@@ -152,22 +152,22 @@ Most DL frameworks have chosen a specific set of fixed quantization
   schemes and datatypes due to the effort required to manually implement operators for
   each pairing.
 
-Instead, \relay includes a generic, compiler-based quantization flow that supports a diverse set
+Instead, Relay includes a generic, compiler-based quantization flow that supports a diverse set
   of quantization schemes and can automatically generate code for each one.
-\relay provides a general-purpose program-rewriting framework that can be extended
+Relay provides a general-purpose program-rewriting framework that can be extended
   with per-operator rules, which can annotate inputs and outputs with a datatype
   and precision to quantize to.
-Users can overload \relay's existing quantization rewriting rules or add new ones
+Users can overload Relay's existing quantization rewriting rules or add new ones
   to implement different quantization strategies, enabling users to choose between
   signed or unsigned integers or different rounding strategies, such as
   floor, ceiling, or stochastic rounding.
 
 Figure \ref{fig:quant_flow} illustrates the rewriting process.
 Furthermore quantization is expanded to standard
-  \relay operators, which perform the scaling.
-Due to this choice, \relay can then fuse these elementwise operations
+  Relay operators, which perform the scaling.
+Due to this choice, Relay can then fuse these elementwise operations
   into the original operator, resulting in a brand-new quantized operation.
-Finally, \relay can subsequently apply further optimizations like
+Finally, Relay can subsequently apply further optimizations like
   layout transformation, accelerator-specific packing, or
   auto-tuning to further improve performance or portability.
 This enables the generation of customized quantized operators
@@ -196,7 +196,7 @@ Each input or output to be quantized is passed to \texttt{sim$Q$},
 \texttt{sim$Q$} simulates quantization on
   the unquantized type; that is, it performs computation on the unquantized type
   and then scales it to the target type.
-By computing on the unquantized type, \relay can later calibrate the parameters to
+By computing on the unquantized type, Relay can later calibrate the parameters to
   \texttt{sim$Q$} a necessary step to preserve accuracy of the model.
 \[
   \texttt{sim$Q$}\left(x, \beta, \sigma, \rho\right) = \dfrac{\texttt{clip}\left(\texttt{round}\left(x / \rho \cdot 2^{\beta - \sigma}\right)\right) \cdot \rho}{2^{\beta - \sigma}}
@@ -208,7 +208,7 @@ As seen above \texttt{sim$Q$} has an input $x$, as well as a number of parameter
   and must be calibrated, without calibration the model can be wildly inaccurate.
 We must perform an auxiliary optimization task to find the appropriate
   setting for these parameters.
-The \relay compiler supports a variety of strategies for setting these
+The Relay compiler supports a variety of strategies for setting these
   parameters.
 The first strategy implemented is a hyper parameter sweep of a
   single global scale until such a scale is found that does not result
@@ -234,7 +234,7 @@ The produced operator performs the necessary scaling
   operators such as multiplication and rounding.
 The output of original operator is now immediately scaled
   by this new operation.
-Due to \relay's handling of fusion
+Due to Relay's handling of fusion
   we are able fuse these scaling operations directly into
   to the original operator, transforming a convolution
   from \verb|fp32| to a type such as \verb|int4|.
@@ -250,7 +250,7 @@ Partial evaluation is a generalized form of constant
 A partial evaluator (PE) allows the use of high-level abstractions
   without limiting code that \textit{could} in practice be
   compiled to a particular target.
-\relay is the first compiler to apply partial evaluation
+Relay is the first compiler to apply partial evaluation
   techniques to deep learning, the
   core approach of which is based on \citep{pe_ref}.
 Partial evaluation, when composed with other
@@ -261,7 +261,7 @@ For example, the partial evaluator can be used to perform
   loop unrolling, which then enables further fusion,
   without any additional compiler passes.
 
-\relay's partial evaluator works by defining a interpreter
+Relay's partial evaluator works by defining a interpreter
   where the value domain is partially static values.
 The partially static domain represents simple values,
   such as constant tensors, as themselves.
@@ -304,11 +304,11 @@ Finally, the evaluator constructs a new program with
 %   good performance.}
 
 This subsection focuses on a subset of optimizations necessary to
-  compile \relay to deep learning hardware accelerators.
+  compile Relay to deep learning hardware accelerators.
 Although DL accelerators form a diverse family of designs,
   one property they have in common is a restricted computing model.
 This means that some individual accelerators
-  may not be able to solely execute many \relay programs.
+  may not be able to solely execute many Relay programs.
 For example, many accelerators cannot execute unbounded loops,
   requiring some computation to be scheduled on a host device
   like the CPU.
@@ -332,5 +332,5 @@ It was designed with the Inception network \citep{inception} in mind, as it
 The entire parallel convolution combination pass,
   including documentation and tests,
   required fewer than 350 lines of code and was contributed
-  by a non-\relay affiliated undergraduate student
+  by a non-Relay affiliated undergraduate student
   in their first contribution to our codebase.
