@@ -1,0 +1,418 @@
+\subsection{Type System}
+  \label{subsec:type_system}
+
+  Relay's type system is essential
+    to optimizations.
+  Typing guarantees both well-formedness of the program
+    and provides crucial tensor shape information to perform allocation,
+    check correctness, and facilitate loop optimizations.
+  Shape information is also valuable for data layout transformations and tensorization,
+    two transformations often demanded by hardware accelerators.
+  In computation graph IRs, only numeric data types
+    and shapes are tracked for each operator.
+  Symbolic shapes (i.e., shape polymorphism) are only handled
+    dynamically, inhibiting certain types of optimizations.
+
+  It is possible to model arbitrarily complex static properties, such
+    as shape information, with a dependent type theory~\citep{selsam_certigrad}, but such
+    a design incurs significant user complexity.
+  By incorporating shape analysis into a broader type system,
+    Relay's type system balances the desire for static tensor shapes
+    with usability.
+  In this subsection, we describe how to extend a polymorphic type system with shape
+    information and type inference with shape inference.
+
+  \subsection*{Tensor Types}
+
+  The primitive value in Relay is a tensor, which has
+    a shape and a base type (\verb|tensor type| in Figure \ref{fig:short_bnf}).
+  Base types describe the elements of tensors by tracking
+    the bit width,
+    the number of lanes (for utilizing vectorized intrinsics),
+    and whether the type is floating point or integral.
+  To ensure Relay can offload tensor computation to devices
+    with greatly varying architectures,
+    Relay tensors may only contain base types,
+    preventing, for example, tensors of closures.
+  The shape of a tensor is a tuple of integers describing the tensor's dimensions.
+  A dimension may be a variable or arithmetic expression that indicates how the
+    output shape of an operator depends on those of its inputs.
+  Functions may be polymorphic over shapes, which results
+    in shape constraints that must be solved during type inference.
+  Sec.~\ref{sec:inference} describes the process.
+  Relay also supports a special shape called \verb|Any|, which is used
+    to mark a dynamic shape when static relationships are not profitable
+    to model.
+
+  \subsection*{Operators and Type Relations}
+  Operators are one of the key primitives that differs from those of
+    general-purpose programming languages.
+  Relay's use of opaque operators enables backends to choose different
+    lowering strategies based on the hardware target.
+  Relay's operator set is extensible, meaning that users may add new operations.
+  Supporting common or user-defined tensor operators requires a type system that can
+    adapt to complex shape relationships between input and output types
+    (e.g., elementwise operators with broadcasting semantics).
+
+  To handle the constraints between operators' argument shapes, Relay's type system
+    introduces type relations.
+  A type relation is implemented as a function in the
+    meta-language and represents a symbolic relationship between
+    the input and output types.
+  When developers add a new operator to Relay, they may constrain its
+    type with an existing relation or add their own.
+  Function types may include
+    one or more type relations over a subset of the argument types and the return type.
+  The type checker enforces that these relationships hold at each call site.
+
+  \section{Type Inference}
+  \label{sec:inference}
+
+  The most interesting parts of the type system
+    are where shape computation occurs.
+  We highlight a few examples of Relay's inference
+    rules in Fig.~\ref{fig:partial-inference-rules};
+    the full typing rules can be found in the appendix.
+  In this subsection we focus on design decisions behind Relay's type system
+    and the implementation of type inference.
+  To incorporate type relations into Relay's type system, we enrich
+    a Hindley-Milner type inference algorithm with
+    a constraint solver for type relations.
+  Relay's inference algorithm has three steps: first it
+    performs a pass over the AST generating types (potentially involving type variables)
+    as well as populating the set of relations,
+    then it solves the incurred constraints,
+    and finally it assigns types to each expression in the AST.
+  A type relation is implemented as a function in the
+    meta-language and represents the symbolic relations between
+    the input and output types of an object-language function.
+  When the type inference algorithm visits a function call site, the function's type relations are
+    instantiated to the types at the call site and added to a queue of relations waiting to be
+    solved.
+  The relationships between the call's type variables and its relations are are added to a
+    bipartite undirected dependency graph where the two disjoint sets are type variables and type relations.
+  Traditional unification constraints are represented using a modified union-find structure that
+    integrates with the dependency graph.
+
+  Once the queue is populated, the algorithm will dequeue a relation and attempt to solve it.
+  There are two cases when solving a type relation:
+  \begin{enumerate}
+    \item If all the relation's type variables
+    are concrete, we call the type relation function. If that function returns true, the
+    constraint is discharged. Otherwise, type checking fails.
+    \item If any type is fully or partially symbolic, the
+      algorithm will propagate
+      existing concrete type information via unification.
+    All relations affected by new assignments to type
+      variables (as determined by the dependency graph)
+      are moved to the beginning of the queue.
+    If the current type relation is now completely solved, we
+    discard it to avoid unnecessarily visiting it again.
+  \end{enumerate}
+
+  Our fine-grained dependence graph provides the transitive dependencies
+    between relations and unification variables.
+  The use of fine-grained dependencies enables our algorithm to
+    only retry a minimal number of relations when we
+    learn a new variable assignment.
+  We run this to fixpoint or until the queue is empty.
+  If the queue is not empty and no progress is made between iterations,
+    then at least one variable is under constrained and inference fails.
+  Note that a type relation's implementation can
+    compromise type soundness, as they are axiomatic descriptions
+    of operations implemented outside of Relay.
+  Luckily, in practice, the number of type relations needed to express most of Relay's
+    operators is relatively small, and their implementations are generally straightforward
+    and amenable to exhaustive testing.
+The above sections discuss the core of Relay, a full-length paper under submission\citep{roesch2019relay}
+  details its design and implementation.
+
+  To incorporate type relations into Relay's type system, we enrich
+    a Hindley-Milner-style type inference algorithm with
+    a constraint solver.
+  Relay's inference algorithm has three steps: first, it
+    performs a pass over the AST, generating types and a set of relations,
+    then it solves the incurred constraints,
+    and finally annotates each sub-expression with its inferred type.
+
+  % a queue of relations. dequeue a relation and attempt to solve it by invoking it's opaque
+  % type-relation function.
+  % 1. all type variables concrete & relationship holds => solved. discard relation
+  % 2. all type variables concrete & relationship doesn't hold => type error
+  % 3. types are partially symbolic => propagate unif. constraints to its inputs and output. if
+  % all type variables are solved/assigned/concrete, discard relation. otherwise add it and the
+  % relations that depend on the solved variables to queue. those that are already on the queue should
+  % be reprioritized
+
+  When the type inference algorithm visits a function call site, the function's type relations are
+    instantiated with the concrete argument types at the call site.
+  Each instantiated relation is added to the queue of relations to solve.
+  The relationship between a call's type variables and relations is added as an edge to
+    a bipartite dependency graph where the two disjoint sets are type variables and type relations.
+  Traditional unification constraints are represented using a modified union-find structure that
+    integrates with this dependency graph.
+
+  Once the queue is populated, the algorithm will dequeue a relation and attempt to solve it.
+  There are two cases when solving a type relation:
+  \begin{enumerate}
+    \item If all the relation's type variables
+    are concrete, we the relation function. If that function returns true, the
+    constraint is discharged. Otherwise, type checking fails.
+    \item If any type is fully or partially symbolic, the
+      algorithm will propagate
+      existing concrete type information via unification.
+    All relations affected by new assignments to type
+      variables (as determined by the dependency graph)
+      are moved to the beginning of the queue.
+    If the current type relation is now completely solved, we
+    discard it to avoid unnecessarily visiting it again.
+  \end{enumerate}
+
+  We run this to fixpoint or until the queue is empty.
+  If the queue is non-empty and no progress is made between iterations,
+    then at least one variable is underconstrained and inference fails.
+  Note that a type relation's implementation can
+    compromise type soundness, as they are axiomatic descriptions
+    of operations implemented outside of Relay.
+  In practice, the number of type relations needed to express Relay's
+    operators is small, and their implementations are straightforward
+    and amenable to exhaustive testing.
+
+    To incorporate type relations into Relay's type system, we enrich
+      a Hindley-Milner-style type inference algorithm with
+      a constraint solver.
+    Relay's inference algorithm has three steps: first, it
+      performs a pass over the AST, generating types and a set of relations,
+      then it solves the incurred constraints,
+      and finally annotates each sub-expression with its inferred type.
+
+    % a queue of relations. dequeue a relation and attempt to solve it by invoking it's opaque
+    % type-relation function.
+    % 1. all type variables concrete & relationship holds => solved. discard relation
+    % 2. all type variables concrete & relationship doesn't hold => type error
+    % 3. types are partially symbolic => propagate unif. constraints to its inputs and output. if
+    % all type variables are solved/assigned/concrete, discard relation. otherwise add it and the
+    % relations that depend on the solved variables to queue. those that are already on the queue should
+    % be reprioritized
+
+    When the type inference algorithm visits a function call site, the function's type relations are
+      instantiated with the concrete argument types at the call site.
+    Each instantiated relation is added to the queue of relations to solve.
+    The relationship between a call's type variables and relations is added as an edge to
+      a bipartite dependency graph where the two disjoint sets are type variables and type relations.
+    Traditional unification constraints are represented using a modified union-find structure that
+      integrates with this dependency graph.
+
+    Once the queue is populated, the algorithm will dequeue a relation and attempt to solve it.
+    There are two cases when solving a type relation:
+    \begin{enumerate}
+      \item If all the relation's type variables
+      are concrete, we the relation function. If that function returns true, the
+      constraint is discharged. Otherwise, type checking fails.
+      \item If any type is fully or partially symbolic, the
+        algorithm will propagate
+        existing concrete type information via unification.
+      All relations affected by new assignments to type
+        variables (as determined by the dependency graph)
+        are moved to the beginning of the queue.
+      If the current type relation is now completely solved, we
+      discard it to avoid unnecessarily visiting it again.
+    \end{enumerate}
+
+    We run this to fixpoint or until the queue is empty.
+    If the queue is non-empty and no progress is made between iterations,
+      then at least one variable is underconstrained and inference fails.
+    Note that a type relation's implementation can
+      compromise type soundness, as they are axiomatic descriptions
+      of operations implemented outside of Relay.
+    In practice, the number of type relations needed to express Relay's
+      operators is small, and their implementations are straightforward
+      and amenable to exhaustive testing.
+
+      \subsection{Type System}
+      \label{subsec:type_system}
+
+      Computation graph IRs rely on typing in the form of
+        datatype and shape inference.
+      Datatype and shape inference is the process of computing the
+        concrete datatypes (e.g., \verb|float32|, \verb|int32|) and shapes (e.g., $(10, 5)$, $(100, 1, 32)$) of all
+        tensors in a computation graph.
+      Deep learning frameworks and compilers use static shape information
+        to perform allocation, check correctness, and facilitate optimization.
+      Precise static shape information is also valuable for traditional loop
+        optimizations, data layout transformations, tensorization, and
+        optimizations that are necessary to map to hardware accelerators' unique ISAs.
+
+      Shape inference is usually formulated as a simple analysis over the dataflow graph that
+        propagates shape information.
+      Shape inference looks remarkably similar to type inference.
+      Unlike type inference, though, shape inference is separate from the type system and
+        does not provide types for functions or data structures.
+      Handling shape inference at compile time is desirable, because it allows optimizations to take
+        advantage of this information even though certain shapes may be symbolic. Can shape information be encoded in static types?
+      % If we type Relay as simply typed lambda calculus,
+      %   we gain a simple system, but one that can not represent polymorphism,
+      %   and lacks shape information.
+      % Even with the addition of polymorphism, there is no representation of static
+      %   shape information.
+      It is possible to model arbitrarily complex static properties, such
+        as shape information, with dependent type theory, but such
+        a design incurs significant user complexity.
+      % Adopting a well known type system allows the application of
+      %   classic techniques, but standard type systems do not
+      %   provide a solution for tracking static shape information.
+      Relay's type system is designed to balance the desire for static tensor shapes
+        without limiting the language's expressiveness.
+      In this subsection we describe how to extend a polymorphic type system with shape
+        information and type inference with shape inference.
+
+      \begin{figure}
+        \begin{footnotesize}
+          \judgbox{\typecheck{\typeCtx}{\varCtx}{\expr}{\type}}{Expression $\expr$ has type $\type$ in type context $\typeCtx$ and variable context $\varCtx$.}
+          \begin{inference}
+          \jmpInfer{Relation-T}
+             {\Delta, T_1 : \texttt{Type}, \ldots, T_n : \texttt{Type} \vdash (Rel(T_1, T_2, \ldots, T_n) \in \{ \top, \bot \}) }
+             {\typecheck{\typeCtx}{\varCtx}{Rel}{\texttt{Relation}}}
+
+          \jmpInfer{Type-Func-Def}
+            {\forall{i \in [1, r]} \, \Delta; \Gamma \vdash R_i(T_1, \ldots, T_n, O) \\
+             \Delta; \Gamma, a_1 : T_1, \ldots, a_n : T_n, \\
+             f : \kwd{fn}( T_1, \ldots, T_n) \rightarrow O \kwd{ where } R_1, \ldots, R_r \vdash body : O}
+              {\Delta; \Gamma \vdash \kwd{def @} f\kwd{(}a_1\kwd{:} T_1\kwd{,} \ldots
+              a_n\kwd{:} T_n\kwd{)} \rightarrow O \kwd{ where } R_1, \ldots, R_r \kwd{ \{ } body \kwd{ \}} : \\
+              \kwd{fn}(T_1, \ldots, T_n) \rightarrow O \kwd{ where } R_1, \ldots, R_r }
+
+          \jmpInfer{Type-Call}
+             {\Delta; \Gamma \vdash f : \kwd{fn} (T_1 \kwd{,} \ldots \kwd{,} T_n) \rightarrow O
+               \kwd{ where } R_1, \ldots, R_r
+               \\ \Delta; \Gamma \vdash a_1 : T_1, \ldots, a_n : T_n
+               \\ \forall{i \in [1, r]} \, \Delta; \Gamma \vdash R_i(T_1, \ldots, T_n, O)}
+             {\typecheck{\typeCtx}{\varCtx}{f(a_1, \ldots, a_n)}{O}}
+          \end{inference}
+        \end{footnotesize}
+        \caption{Examples of Relay's typing inference rules, namely the rules for function definitions and function calls,
+          where $\Delta$ is the environment for types and $\Gamma$ is the environment for variables. These demonstrate
+          that type relations must hold at each call site.}
+        \label{fig:partial-inference-rules}
+      \end{figure}
+
+      \subsection{Tensor Types}
+
+      The primitive value in Relay is a tensor, which has
+        type $Tensor[s, bt]$ where $s$ is a shape and $bt$ is a base type.
+      Elements of base type are floating point numbers and
+        integers of specific bit widths and number of lanes.
+      This design decision is inspired by LLVM,
+        which supports arbitrary-width integer types.
+      The parameterization by lanes helps represent vectorized data types, which are supported
+        by many CPUs and hardware accelerators.
+      To ensure Relay can offload tensor computation to devices
+        with greatly varying architectures,
+        Relay's kinding rules only permit tensors to contain
+        base types, preventing, for example, tensors of closures.
+
+      The shape of a tensor is a tuple of integers describing the tensor's dimensions.
+      In general, these dimensions may depend on arguments to an operator.
+      A dimension may be a variable or arithmetic expression that indicates how the
+        output shape of an operator depends on those of its inputs.
+      Functions may be polymorphic over shapes, which results
+        in shape constraints that must be solved during type inference.
+      Sec.~\ref{sec:inference} describes the process.
+      Relay also supports a special shape called \verb|Any|, which is used
+        to indicate that we do not have static shape information about a particular dimension.
+
+      \subsection{Operators and Type Relations}
+
+      A difference between general purpose programming models and those tailored to deep learning
+        is the use of operators as the primitive unit of computation.
+      The ability to add new operations to Relay requires a type system that can adapt to
+        complex shape relationships between input and output types.
+      Many operators have types that can be defined
+        as functions of the input types.
+      Unfortunately some are not only functions,
+        but also relations that specify constraints between input and output shapes.
+      A key extension of Relay over traditional type systems is the addition of type relations
+        to express these constraints.
+      When developers add a new operator to Relay, they may constrain its
+        type with existing relations or add their own.
+      Function types (including those of operators) may include
+        one or more type relations over an arbitrary subset of the argument types and the return type.
+      The type checker enforces that these relationships hold at the call site.
+      These relations may be viewed as a verification condition induced at a
+        function call site, where the formula is a conjunction of the relations.
+      For example, primitive operators are assigned types that are universally quantified over
+        both the input and output types.
+      We can then use a type relation to encode a constraint that must hold later
+        when type checking observes specific input and output types.
+      Type relations are opaque in the Relay IR: they are implemented in the
+        meta-language and registered when defining an operator.
+      However, they may be reused across different implementations.
+      For example, we use a relation that describes the
+        broadcasting rule for all elementwise operations.
+
+        \subsection{Type System}
+        \label{subsec:type_system}
+
+        Relay's type system is essential
+          to optimizations.
+        Typing guarantees both well-formedness of the program
+          and provides crucial tensor shape information to perform allocation,
+          check correctness, and facilitate loop optimizations.
+        Shape information is also valuable for data layout transformations and tensorization,
+          two transformations often demanded by hardware accelerators.
+        In computation graph IRs, only numeric data types
+          and shapes are tracked for each operator.
+        Symbolic shapes (i.e., shape polymorphism) are only handled
+          dynamically, inhibiting certain types of optimizations.
+
+        It is possible to model arbitrarily complex static properties, such
+          as shape information, with a dependent type theory~\citep{selsam_certigrad}, but such
+          a design incurs significant user complexity.
+        By incorporating shape analysis into a broader type system,
+          Relay's type system balances the desire for static tensor shapes
+          with usability.
+        In this subsection, we describe how to extend a polymorphic type system with shape
+          information and type inference with shape inference.
+
+        \subsection*{Tensor Types}
+
+        The primitive value in Relay is a tensor, which has
+          a shape and a base type (\verb|tensor type| in Figure \ref{fig:short_bnf}).
+        Base types describe the elements of tensors by tracking
+          the bit width,
+          the number of lanes (for utilizing vectorized intrinsics),
+          and whether the type is floating point or integral.
+        To ensure Relay can offload tensor computation to devices
+          with greatly varying architectures,
+          Relay tensors may only contain base types,
+          preventing, for example, tensors of closures.
+        The shape of a tensor is a tuple of integers describing the tensor's dimensions.
+        A dimension may be a variable or arithmetic expression that indicates how the
+          output shape of an operator depends on those of its inputs.
+        Functions may be polymorphic over shapes, which results
+          in shape constraints that must be solved during type inference.
+        Sec.~\ref{sec:inference} describes the process.
+        Relay also supports a special shape called \verb|Any|, which is used
+          to mark a dynamic shape when static relationships are not profitable
+          to model.
+
+        \subsection*{Operators and Type Relations}
+        Operators are one of the key primitives that differs from those of
+          general-purpose programming languages.
+        Relay's use of opaque operators enables backends to choose different
+          lowering strategies based on the hardware target.
+        Relay's operator set is extensible, meaning that users may add new operations.
+        Supporting common or user-defined tensor operators requires a type system that can
+          adapt to complex shape relationships between input and output types
+          (e.g., elementwise operators with broadcasting semantics).
+
+        To handle the constraints between operators' argument shapes, Relay's type system
+          introduces type relations.
+        A type relation is implemented as a function in the
+          meta-language and represents a symbolic relationship between
+          the input and output types.
+        When developers add a new operator to Relay, they may constrain its
+          type with an existing relation or add their own.
+        Function types may include
+          one or more type relations over a subset of the argument types and the return type.
+        The type checker enforces that these relationships hold at each call site.

@@ -1,2 +1,198 @@
 \chapter{Compiling Relay}
 \label{ch:compiler}
+
+
+\subsection{Compiler Framework}
+
+The process for compiling Relay proceeds in three stages.
+First, the frontend converts input formats into the Relay IR.
+Next, the Relay compiler typechecks and optimizes the program
+  to produce the final program.
+After performing optimizations,
+  the Relay backend transforms
+  the Relay program into a form that can be executed on
+  the intended hardware, based on the specified execution mechanism.
+The backend additionally lowers Relay operators into a TVM expression,
+  computes a schedule for the final TVM expression, and lowers it into
+  native code.
+
+\subsection*{Frontend}
+
+There are several ways to write an Relay program.
+A user can build an in-memory representation of
+  a program in C++ or Python,
+  parse one written in the Relay text format,
+  load one from the on-disk serialization format,
+  or import one from popular frameworks and interchange formats
+    (e.g., TensorFlow, MxNet, Keras, DarkNet, and ONNX).
+Many frameworks and interchange formats use static computation graph-based representations,
+  which can easily be translated into Relay.
+A greater challenge is translating frameworks
+  with a richer computation model such as TensorFlow (TF).
+TF supports control flow and includes \verb|TensorArray|, a write-once
+  tensor container.
+We can extract the loop structure out of the TF graph, converting
+  it to an Relay loop, and transform the \verb|TensorArray| into an Relay list.
+Once new deep learning languages and IRs under development
+  are stable it is likely they can be translated into Relay (see
+  Section~\ref{sec:pl_techniques_in_dl}).
+PyTorch provides an expressive programming model, and is a good fit
+  for Relay, which has integration into PyTorch's JIT infrastructure,
+  enabling users to transparently use Relay for improved performance.
+
+\subsection*{Compiler}
+Once an Relay abstract syntax tree (AST) is produced,
+  the program is optimized by applying a series of Relay-to-Relay
+  passes.
+Between each pass, Relay performs type inference and checking,
+  rejecting malformed programs as well as populating shape and type
+  information that passes can utilize.
+The Relay compiler supports traditional optimizations
+  (e.g., constant folding, common subexpression elimination, and dead code elimination)
+  and domain-specific optimizations
+  (see Sec.~\ref{sec:optimizations}).
+
+\subsection*{Backends}
+
+Relay produces machine-specific code
+  by decomposing the problem of code generation into multiple distinct phases.
+Relay translates all operators into \tvm expressions
+  to produce dense linear algebra kernels~\citep{tvm_osdi18, tensor_comprehensions, halide}.
+\tvm produces low-level operators that expect a fixed calling convention,
+  as well as preallocated inputs and outputs.
+The result is an object file containing hardware-specific implementations of all
+  operations.
+The remaining Relay program then is executed or compiled,
+  with operator invocations replaced by calls to the optimized operators.
+By representing operators as \tvm expressions, we can programmatically
+  transform them and automatically generate new implementations for the transformed operators.
+Optimizations like fusion and quantization
+  rely on this novel behavior.
+After primitive operators are lowered,
+  the remaining Relay program ties
+  together operator invocations, allocation, control-flow,
+  recursion, and high-level data structures.
+There are multiple options for executing the combined full program:
+  the Relay interpreter (with JIT compilation),
+  an Relay virtual machine,
+  the \tvm graph runtime,
+  and an experimental Relay ahead-of-time compiler
+  that converts programs to C++ to produce a target-specific binary.
+% We are able to target CPU, GPU,
+%   iOS and Android mobile devices,
+%   custom accelerators, and FPGAs.
+
+% % EVAL
+
+% We evaluate Relay on several systems and over a diverse set of vision and NLP workloads to
+%   demonstrate that (1) Relay enables \emph{expressive} programs via a large breadth
+%   of models, (2) Relay supports \emph{composition} of program-level optimizations
+%   such as quantization and fusion, and (3) Relay provides
+%   \emph{portability} by targeting a number of hardware backends.
+% Not only does Relay provide these three properties, we do so while also demonstrating
+%   competitive performance.
+% Relay is an open-source academic project.\footnote{Relay is publicly available at [redacted for review].}
+%   It has been deployed at a popular web service provider,
+%     a telecommunications and consumer electronics manufacturer,
+%     and a social media company, among others.
+%     Our evaluation demonstrates Relay's competitive performance for a
+%     broad class of models and devices
+%     (CPUs, GPUs, and emerging accelerators).
+%   Relay's design demonstrates how a unified IR can provide
+%     expressivity, composability, and portability
+%     without compromising performance.
+
+
+%   We evaluate Relay on several systems and over a diverse set of vision and NLP workloads to
+%   demonstrate that (1) Relay enables \emph{expressive} programs via a large breadth
+%   of models, (2) Relay supports \emph{composition} of program-level optimizations
+%   such as quantization and fusion, and (3) Relay provides
+%   \emph{portability} by targeting a number of hardware backends.
+% Not only does Relay provide these three properties, we do so while also demonstrating
+%   competitive performance.
+% Relay is an open-source academic project.\footnote{Relay is publicly available at [redacted for review].}
+%   It has been deployed at a popular web service provider,
+%     a telecommunications and consumer electronics manufacturer,
+%     and a social media company, among others.
+
+\subsection{Compiler Framework}
+
+The process for compiling Relay proceeds in three stages.
+First, the frontend converts input formats into the Relay IR.
+Next, the Relay compiler typechecks and optimizes the program
+  to produce the final program.
+After performing optimizations,
+  the Relay backend transforms
+  the Relay program into a form that can be executed on
+  the intended hardware, based on the specified execution mechanism.
+The backend additionally lowers Relay operators into a TVM expression,
+  computes a schedule for the final TVM expression, and lowers it into
+  native code.
+
+
+
+  \subsection*{Frontend}
+
+  There are several ways to write an Relay program.
+  A user can build an in-memory representation of
+    a program in C++ or Python,
+    parse one written in the Relay text format,
+    load one from the on-disk serialization format,
+    or import one from popular frameworks and interchange formats
+      (e.g., TensorFlow, MxNet, Keras, DarkNet, and ONNX).
+  Many frameworks and interchange formats use static computation graph-based representations,
+    which can easily be translated into Relay.
+  A greater challenge is translating frameworks
+    with a richer computation model such as TensorFlow (TF).
+  TF supports control flow and includes \verb|TensorArray|, a write-once
+    tensor container.
+  We can extract the loop structure out of the TF graph, converting
+    it to an Relay loop, and transform the \verb|TensorArray| into an Relay list.
+  Once new deep learning languages and IRs under development
+    are stable it is likely they can be translated into Relay (see
+    Section~\ref{sec:pl_techniques_in_dl}).
+  PyTorch provides an expressive programming model, and is a good fit
+    for Relay, which has integration into PyTorch's JIT infrastructure,
+    enabling users to transparently use Relay for improved performance.
+
+  \subsection*{Compiler}
+  Once an Relay abstract syntax tree (AST) is produced,
+    the program is optimized by applying a series of Relay-to-Relay
+    passes.
+  Between each pass, Relay performs type inference and checking,
+    rejecting malformed programs as well as populating shape and type
+    information that passes can utilize.
+  The Relay compiler supports traditional optimizations
+    (e.g., constant folding, common subexpression elimination, and dead code elimination)
+    and domain-specific optimizations
+    (see Sec.~\ref{sec:optimizations}).
+
+  \subsection*{Backends}
+
+  Relay produces machine-specific code
+    by decomposing the problem of code generation into multiple distinct phases.
+  Relay translates all operators into \tvm expressions
+    to produce dense linear algebra kernels~\citep{tvm_osdi18, tensor_comprehensions, halide}.
+  \tvm produces low-level operators that expect a fixed calling convention,
+    as well as preallocated inputs and outputs.
+  The result is an object file containing hardware-specific implementations of all
+    operations.
+  The remaining Relay program then is executed or compiled,
+    with operator invocations replaced by calls to the optimized operators.
+  By representing operators as \tvm expressions, we can programmatically
+    transform them and automatically generate new implementations for the transformed operators.
+  Optimizations like fusion and quantization
+    rely on this novel behavior.
+  After primitive operators are lowered,
+    the remaining Relay program ties
+    together operator invocations, allocation, control-flow,
+    recursion, and high-level data structures.
+  There are multiple options for executing the combined full program:
+    the Relay interpreter (with JIT compilation),
+    an Relay virtual machine,
+    the \tvm graph runtime,
+    and an experimental Relay ahead-of-time compiler
+    that converts programs to C++ to produce a target-specific binary.
+  % We are able to target CPU, GPU,
+  %   iOS and Android mobile devices,
+  %   custom accelerators, and FPGAs.

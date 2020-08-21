@@ -4,7 +4,9 @@
 Traditionally machine learning algorithms were carefully engineered by humans
   in order to leverage limited data to obtain sufficient task performance.
 During the Big Data era, these hand engineered algorithms were displaced by
-  simpler algorithms applied to the abundantly available data [1].
+  simpler algorithms applied to the abundantly available data
+  \footnote{"We don’t have better algorithms. We just have more data.” From "The Unreasonable Effectiveness of Data"}.
+  % https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/35179.pdf
 In order to scale these algorithms a number of systems were
   designed most notably streaming and graph processing systems such as MapReduce, and Spark.
 In the early 2010s the emergence of deep learning changed the paradigm again
@@ -30,18 +32,16 @@ A single machine learning engineer cannot write code that scales across the grow
   sea of models, operators, optimizations, and devices while maintaining state-of-the-art
   performance.
 From the early days of deep learning framework development researchers realized the
-  potential for apply compilation to this problem, systems such as Theano were applying
-  this as earlier as 2007.
+  potential for apply compilation to accelerate neural networks.~\footnote{Theano was applying
+  compilation to deep learning as early as 2007.}
 
-Deep learning compilers, systems for performing compilation to accelerate the execution
-  of deep learning models, have made similar tradeoffs as frameworks accelerating
-  a subset of models on a subset of devices.
+Deep learning compilers, systems for accelerating the execution deep learning via compilation,
+ have made similar tradeoffs as frameworks focusing on executing a subset of models on a subset of devices.
 Designing a deep learning compiler even for this constrained subset is challenging.
 For example,
   a popular state-of-the-art DL compiler,
   Google's XLA, can famously slow down a programs on
   CPU instead of speeding them up (cite needed).
-
 Compilers for deep learning are a rapidly evolving area explored by a
   variety of solutions both industrial and academic.
 Part of my thesis work in graduate school
@@ -58,11 +58,9 @@ In this thesis I propose that we can generalize overspecialized optimizations
   of deep learning to fully dynamic neural networks.
 These generalizations are powered by a simple insight:
   dynamic neural networks are just programs which manipulate tensors.
-
 The challenge is how to build a representation that captures this generality
   in a principled way allowing us to recover the potential performance loss by generalizing
   the programming model.
-
 When I began working on deep learning compilers, input models were high-level
   declarative programs composed of linear algebra and statistics primitives.
 These straight forward representations often appeared in the form of
@@ -137,13 +135,13 @@ Furthermore, if a framework doesn't have specific support for
 The state of the art when I began my thesis work were
   deep learning frameworks mostly had a single "lego" style design.
 Each technology stack had deep learning frameworks at the top,
-  layered from the bottom from high-performance,
+  layered all the way down to the high-performance,
   device specific kernel libraries provided by hardware manufacturers.
 
-As deep learning frameworks began to evolve deep learning compilers
-  the compiler design was constrained the heavily layered abstractions
-  and the programming model.
-An example of a constraining abstraction is the reliance on individual
+As deep learning frameworks began to adopt compilers
+  the resulting designs were heavily constraint by the layered abstractions
+  and existing programming model.
+An example constraining abstraction is the reliance on individual
   kernels which can be invoked at the bottom most layer.
 By allowing the lowest level of abstraction to only receive a single
   kernel invocation you limit the ability to optimize as the final
@@ -153,39 +151,56 @@ Practically this has introduced a strict separation between so-called
   ‘graph-compilers’ and so called ‘kernel libraries’.
 These graph compilers implement a simple DAG of operations
   which they then map down to kernels.
-The graph compilers are a passable solution, assuming the user can describe their program in a restrictive and awkward language,
-  and only makes use of existing kernels.
-If the user model makes use of the well-optimized subset of kernels and well-optimized devices it can assume passable performance,
-  but with many models this is not that case, with very little recourse for program authors.
+The graph compilers are a passable solution, assuming the user can describe their program
+  in a restrictive and awkward language, and only makes use of existing kernels.
+If the user model makes use of the well-optimized subset of kernels and well-optimized devices
+  it can assume passable performance, but with many models this is not that case, with very little recourse for program authors.
 
 In the kernel domain there has been a large amount of existing work on
   ensuring individual kernels, or pipelines of them are efficient,
   but these DLSs are not integrated into a larger programming abstraction.
 There existing systems like TensorRT which solve this problem for a specific device,
-with a series of caveats.
+  with a series of caveats.
 
-Compiler design using the first strategy are limited by each layer only having an opaque view of the layers above and below,
-each layer uses a single semantics with well-defined mappings between layers but limited communication between,
- or in the case of a single monolithic IR, which chooses a functional semantics the inability to use semantics which provide
- hardware specificity or hardware aware semantics.
+This state of affairs works OK as long as we remain within the footprint of static
+  models which map well to this restricted programming model.
+Even in the case of TensorFlow which has richer support for control-flow and
+  looping there are challenges optimizing for a single device scenario due
+  to the representation of these constructs.
 
-Imagine a not-so-hypothetical end-user’s desire to support a new Transformer based model on a previously unsupported device such as a microcontroller.
-In order to obtain best in class performance this task will be split across an engineering team.
-For example one user with the correct expertise may contribute code for importing this model into, another with kernel expertise separately implements
-a kernel such as batched matrix multiplication and then optimizes it, and another user contributes the code generation, and another the runtime support.
+When I began this work if a user wanted to write a complex program involving dynamic shapes,
+  dynamic control, and complex data structures which is jointly optimized there are few
+  solutions which solve the above use case.
 
-To accomplish this task in today’s ML frameworks a user must first design and train a model which accomplishes the task, k
-now how to use framework tools such as XLA, or TorchScript, be able to modify their complex source bases, and write a complex code generator
-or LLVM backend and finally modify the runtime to execute on the device, if even possible.
+For example users would often write a brand new kernel to back operations such
+  as an LSTM.
+As we will see in ~\ref{ch:nimble} it is possible to write an LSTM in pure Relay
+  and obtain state-of-the-art performance.
+Many engineers in this domain believe that building state-of-the-art kernels requires
+  human effort to obtain bleeding-edge performance, the rest of this thesis demonstrates
+  this is not the case.
+% Compiler design using the first strategy are limited by each layer only having an opaque
+%   view of the layers above and below, each layer uses a single semantics with well-defined
+%    mappings between layers but limited communication between,
+%  or in the case of a single monolithic IR, which chooses a functional semantics the inability to use semantics which provide
+%  hardware specificity or hardware aware semantics.
 
-Many engineers in this domain believe that human effort is required to obtain competitive performance that is demonstrated by today’s bleeding edge development,
-my thesis demonstrated this is not the case.
+% Imagine a not-so-hypothetical end-user’s desire to support a new Transformer
+%   based model on a previously unsupported device such as a microcontroller.
+% In order to obtain best in class performance this task will be split across an engineering team.
+% For example one user with the correct expertise may contribute code for importing this model into,
+%   another with kernel expertise separately implements a kernel such as batched matrix multiplication
+%   and then optimizes it, and another user contributes the code generation, and another the runtime support.
+
+% To accomplish this task in today’s ML frameworks a user must first design and train a model
+%   which accomplishes the task, k
+% now how to use framework tools such as XLA, or TorchScript, be able to modify their complex source bases, and write a complex code generator
+% or LLVM backend and finally modify the runtime to execute on the device, if even possible.
 
 \section{Dynamic Neural Networks}
 
 In particular all previous solutions failed to provide the same optimizations
   level of performance in the presence of dynamic features.
-
 In this thesis we explore new designs for representing,
   optimizing, differentiating, and executing dynamic neural networks.
 Existing systems for compiling neural networks do not provide robust
@@ -235,8 +250,6 @@ Finally we look to \ref{ch:future} to discuss future work and extensions to this
 
 
 % Bibliography
-
-% [1] "We don’t have better algorithms. We just have more data.”
 
 % [2] data and model size the amount of compute is exponentially growing, roughly doubling every 3.4 months (see https://twitter.com/OpenAI/status/1192481690741903360).
 

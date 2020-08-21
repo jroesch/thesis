@@ -1,4 +1,4 @@
-\chapter{Relay: A compiler framework for deep learning}
+\chapter{Relay: An IR for deep learning}
 \label{ch:relay}
 
 Popular DL compiler intermediate representations (IRs) offer different tradeoffs
@@ -48,22 +48,14 @@ Consequently,
 Learning from previous IRs, we have designed Relay,
   which features a principled approach to addressing extensibility
   and improves expressivity, composability, and portability
-  over previous frameworks
+  over previous frameworks.
 
-Relay is a collection of components for building a deep learning compiler,
-  including optimizations, IR dialects, and system components.
-
-Relay is designed in a middle-out style,
-  by building in both a top-down,
-  and bottom-up fashion we are able to design an IR which captures multiple frontends and backends,
-  and provides clear semantics for program optimization.
-
-The principle of least semantic dictates we should make design choices which give further optimization stages
-  the ability to perform optimizations without unnecessary detail.
-For example enabling implicit effects and non-explicit control complicates computational graph semantics,
-  and limits optimization.
-TF’s DAG attempts to separate pure semantics in order to handle out of order execution, and parallel and distributed scheduling,
-  but does so by compromising on the programming model.
+% The principle of least semantic dictates we should make design choices which give further optimization stages
+%   the ability to perform optimizations without unnecessary detail.
+% For example enabling implicit effects and non-explicit control complicates computational graph semantics,
+%   and limits optimization.
+% TF’s DAG attempts to separate pure semantics in order to handle out of order execution, and parallel and distributed scheduling,
+%   but does so by compromising on the programming model.
 
 Instead we were able to build an IR inspired by the ML family of languages which provides pure-sub fragments which can be scheduled
   the same way without compromising on the programming model.
@@ -118,41 +110,6 @@ We make the following contributions:
       across hardware backends.
 \end{itemize}
 
-
-  Let us consider a hypothetical scenario that exemplifies
-    IR design tensions in DL compilers.
-  Suppose a machine learning engineer wants to write
-    an Android app that uses sentiment analysis to
-    determine the moods of its users.
-  To maintain privacy, the app must run completely on-device,
-    i.e., no work can be offloaded to the cloud.
-  The engineer decides to use a variant of TreeLSTM,
-    a deep learning model that uses a tree structure~\citep{tree_lstm}.
-  Unfortunately, current frameworks' IRs cannot directly encode trees,
-    so she must use a framework extension
-    like TensorFlow Fold~\citep{tensorflowfold}.
-
-%   Suppose that after adapting the model to run on her phone,
-%     the out-of-the-box performance of her
-%     model on her particular platform is not satisfactory, requiring her to optimize it.
-%   She chooses to employ \textit{quantization}, an optimization that
-%     potentially trades accuracy for performance by replacing
-%     floating-point datatypes with low-precision ones.
-%   Although researchers have developed a variety of quantization
-%     strategies, each of which makes use of different bit-widths, rounding
-%     modes, and datatypes, our engineer must use a strategy supported
-%     by existing frameworks~\citep{gustafson2015end, tf_lite_ops_compat, glow_quant}.
-  Unfortunately, frameworks only provide support for a small number
-    of strategies, and supporting new quantization strategies is non-trivial.
-  Each combination of operator, datatype, bit-width, and
-    platform requires unique operator implementations.
-  Optimizations like operator fusion exacerbate this combinatorial explosion,
-    further increasing
-    the number of unique implementations required.
-  Furthermore, if a framework doesn't have specific support for
-    the target phone model she cannot take advantage of specialized deep learning
-    instructions or coprocessors~\citep{apple_neural_engine}.
-
   The scenario above highlights the three-pronged \textit{extensibility challenge}
     for DL IRs:
 %   \begin{enumerate}[label=\arabic*.]
@@ -200,7 +157,7 @@ We make the following contributions:
   \end{itemize}
 
 
-\section{Design}
+\section{IR}
 
 Relay's expressive high-level IR is designed to support
   complex models while abstracting over hardware-specific
@@ -226,7 +183,6 @@ In the remainder of this section,
   we describe the IR design in further detail
   and explore the ramifications of this design on the compilation stack.
 
-\subsection{IR}
 \input{chapters/short_grammar.tex}
 
 The Relay IR is designed
@@ -385,509 +341,6 @@ This final addition results in a strict functional language,
 The increase in expressivity introduced by the Relay IR introduces
   new optimizations challenges, which we
   discuss in Sec.~\ref{sec:optimizations}.
-
-\subsection{Type System}
-\label{subsec:type_system}
-
-Relay's type system is essential
-  to optimizations.
-Typing guarantees both well-formedness of the program
-  and provides crucial tensor shape information to perform allocation,
-  check correctness, and facilitate loop optimizations.
-Shape information is also valuable for data layout transformations and tensorization,
-  two transformations often demanded by hardware accelerators.
-In computation graph IRs, only numeric data types
-  and shapes are tracked for each operator.
-Symbolic shapes (i.e., shape polymorphism) are only handled
-  dynamically, inhibiting certain types of optimizations.
-
-It is possible to model arbitrarily complex static properties, such
-  as shape information, with a dependent type theory~\citep{selsam_certigrad}, but such
-  a design incurs significant user complexity.
-By incorporating shape analysis into a broader type system,
-  Relay's type system balances the desire for static tensor shapes
-  with usability.
-In this subsection, we describe how to extend a polymorphic type system with shape
-  information and type inference with shape inference.
-
-\subsection*{Tensor Types}
-
-The primitive value in Relay is a tensor, which has
-  a shape and a base type (\verb|tensor type| in Figure \ref{fig:short_bnf}).
-Base types describe the elements of tensors by tracking
-  the bit width,
-  the number of lanes (for utilizing vectorized intrinsics),
-  and whether the type is floating point or integral.
-To ensure Relay can offload tensor computation to devices
-  with greatly varying architectures,
-  Relay tensors may only contain base types,
-  preventing, for example, tensors of closures.
-The shape of a tensor is a tuple of integers describing the tensor's dimensions.
-A dimension may be a variable or arithmetic expression that indicates how the
-  output shape of an operator depends on those of its inputs.
-Functions may be polymorphic over shapes, which results
-  in shape constraints that must be solved during type inference.
-Sec.~\ref{sec:inference} describes the process.
-Relay also supports a special shape called \verb|Any|, which is used
-  to mark a dynamic shape when static relationships are not profitable
-  to model.
-
-\subsection*{Operators and Type Relations}
-Operators are one of the key primitives that differs from those of
-  general-purpose programming languages.
-Relay's use of opaque operators enables backends to choose different
-  lowering strategies based on the hardware target.
-Relay's operator set is extensible, meaning that users may add new operations.
-Supporting common or user-defined tensor operators requires a type system that can
-  adapt to complex shape relationships between input and output types
-  (e.g., elementwise operators with broadcasting semantics).
-
-To handle the constraints between operators' argument shapes, Relay's type system
-  introduces type relations.
-A type relation is implemented as a function in the
-  meta-language and represents a symbolic relationship between
-  the input and output types.
-When developers add a new operator to Relay, they may constrain its
-  type with an existing relation or add their own.
-Function types may include
-  one or more type relations over a subset of the argument types and the return type.
-The type checker enforces that these relationships hold at each call site.
-
-\subsection*{Type Inference}
-\label{sec:inference}
-
-To incorporate type relations into Relay's type system, we enrich
-  a Hindley-Milner-style type inference algorithm with
-  a constraint solver.
-Relay's inference algorithm has three steps: first, it
-  performs a pass over the AST, generating types and a set of relations,
-  then it solves the incurred constraints,
-  and finally annotates each sub-expression with its inferred type.
-
-% a queue of relations. dequeue a relation and attempt to solve it by invoking it's opaque
-% type-relation function.
-% 1. all type variables concrete & relationship holds => solved. discard relation
-% 2. all type variables concrete & relationship doesn't hold => type error
-% 3. types are partially symbolic => propagate unif. constraints to its inputs and output. if
-% all type variables are solved/assigned/concrete, discard relation. otherwise add it and the
-% relations that depend on the solved variables to queue. those that are already on the queue should
-% be reprioritized
-
-When the type inference algorithm visits a function call site, the function's type relations are
-  instantiated with the concrete argument types at the call site.
-Each instantiated relation is added to the queue of relations to solve.
-The relationship between a call's type variables and relations is added as an edge to
-  a bipartite dependency graph where the two disjoint sets are type variables and type relations.
-Traditional unification constraints are represented using a modified union-find structure that
-  integrates with this dependency graph.
-
-Once the queue is populated, the algorithm will dequeue a relation and attempt to solve it.
-There are two cases when solving a type relation:
-\begin{enumerate}
-  \item If all the relation's type variables
-  are concrete, we the relation function. If that function returns true, the
-  constraint is discharged. Otherwise, type checking fails.
-  \item If any type is fully or partially symbolic, the
-    algorithm will propagate
-    existing concrete type information via unification.
-  All relations affected by new assignments to type
-    variables (as determined by the dependency graph)
-    are moved to the beginning of the queue.
-  If the current type relation is now completely solved, we
-  discard it to avoid unnecessarily visiting it again.
-\end{enumerate}
-
-We run this to fixpoint or until the queue is empty.
-If the queue is non-empty and no progress is made between iterations,
-  then at least one variable is underconstrained and inference fails.
-Note that a type relation's implementation can
-  compromise type soundness, as they are axiomatic descriptions
-  of operations implemented outside of Relay.
-In practice, the number of type relations needed to express Relay's
-  operators is small, and their implementations are straightforward
-  and amenable to exhaustive testing.
-
-\subsection{Compiler Framework}
-
-The process for compiling Relay proceeds in three stages.
-First, the frontend converts input formats into the Relay IR.
-Next, the Relay compiler typechecks and optimizes the program
-  to produce the final program.
-After performing optimizations,
-  the Relay backend transforms
-  the Relay program into a form that can be executed on
-  the intended hardware, based on the specified execution mechanism.
-The backend additionally lowers Relay operators into a TVM expression,
-  computes a schedule for the final TVM expression, and lowers it into
-  native code.
-
-\subsection*{Frontend}
-
-There are several ways to write an Relay program.
-A user can build an in-memory representation of
-  a program in C++ or Python,
-  parse one written in the Relay text format,
-  load one from the on-disk serialization format,
-  or import one from popular frameworks and interchange formats
-    (e.g., TensorFlow, MxNet, Keras, DarkNet, and ONNX).
-Many frameworks and interchange formats use static computation graph-based representations,
-  which can easily be translated into Relay.
-A greater challenge is translating frameworks
-  with a richer computation model such as TensorFlow (TF).
-TF supports control flow and includes \verb|TensorArray|, a write-once
-  tensor container.
-We can extract the loop structure out of the TF graph, converting
-  it to an Relay loop, and transform the \verb|TensorArray| into an Relay list.
-Once new deep learning languages and IRs under development
-  are stable it is likely they can be translated into Relay (see
-  Section~\ref{sec:pl_techniques_in_dl}).
-PyTorch provides an expressive programming model, and is a good fit
-  for Relay, which has integration into PyTorch's JIT infrastructure,
-  enabling users to transparently use Relay for improved performance.
-
-\subsection*{Compiler}
-Once an Relay abstract syntax tree (AST) is produced,
-  the program is optimized by applying a series of Relay-to-Relay
-  passes.
-Between each pass, Relay performs type inference and checking,
-  rejecting malformed programs as well as populating shape and type
-  information that passes can utilize.
-The Relay compiler supports traditional optimizations
-  (e.g., constant folding, common subexpression elimination, and dead code elimination)
-  and domain-specific optimizations
-  (see Sec.~\ref{sec:optimizations}).
-
-\subsection*{Backends}
-
-Relay produces machine-specific code
-  by decomposing the problem of code generation into multiple distinct phases.
-Relay translates all operators into \tvm expressions
-  to produce dense linear algebra kernels~\citep{tvm_osdi18, tensor_comprehensions, halide}.
-\tvm produces low-level operators that expect a fixed calling convention,
-  as well as preallocated inputs and outputs.
-The result is an object file containing hardware-specific implementations of all
-  operations.
-The remaining Relay program then is executed or compiled,
-  with operator invocations replaced by calls to the optimized operators.
-By representing operators as \tvm expressions, we can programmatically
-  transform them and automatically generate new implementations for the transformed operators.
-Optimizations like fusion and quantization
-  rely on this novel behavior.
-After primitive operators are lowered,
-  the remaining Relay program ties
-  together operator invocations, allocation, control-flow,
-  recursion, and high-level data structures.
-There are multiple options for executing the combined full program:
-  the Relay interpreter (with JIT compilation),
-  an Relay virtual machine,
-  the \tvm graph runtime,
-  and an experimental Relay ahead-of-time compiler
-  that converts programs to C++ to produce a target-specific binary.
-% We are able to target CPU, GPU,
-%   iOS and Android mobile devices,
-%   custom accelerators, and FPGAs.
-
-\section{Evaluation}
-\label{sec:eval}
-
-% 5. Methodology and evaluation: how do you plan to evaluate whether your ideas
-% work or your hypotheses are correct?
-
-In my proposal I make three specific claims we must evaluate,
-\textbf{To develop an intelligent (1) end-to-end deep learning compiler that can
-automatically adapt (2) high-level programs to run on new hardware devices automatically
-with (3) human level performance.}
-
-We evaluated Relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx FPGAs) and over
-  diverse vision and NLP workloads to demonstrate that (1) Relay enables \emph{composability} of
-  graph-level optimizations, (2) Relay delivers \emph{performance} on inference tasks competitive
-  with state-of-the-art frameworks (TensorFlow, PyTorch, MxNet), and (3) Relay provides
-  \emph{portability} over difficult-to-compile-to hardware backends such as FPGAs
-
-\subsection{Relay: A high-level IR for Deep Learning}
-  In particular, our evaluation is composed of three parts:
-  \begin{enumerate}
-    \item \textbf{Relay enables composable optimizations}: Relay
-      supports composing program transformations into multiple optimization tiers.
-    \item \textbf{Relay provides competitive performance}: Despite increasing
-      expressiveness, Relay's performance is competitive with the
-      state of the art on popular models.
-    \item \textbf{Relay handles challenging backends}: Relay can compile
-      models to execute efficiently on a variety of
-      backends, such as FPGA accelerators, which require quantization, layout
-      optimizations, and bit-packing transformations.
-    % \item \textbf{Relay supports expressive models}: It can compile models with complex control flow
-    % like Char-RNN to a single lean binary, beating PyTorch inference performance by up to 3x.
-  \end{enumerate}
-
-  We evaluated the following vision models:
-    \textit{Deep Q-Network (DQN)}, a DNN that achieved state-of-the-art performance
-    on 49 Atari games in 2015;
-    \textit{MobileNet}, a DNN designed for image recognition on mobile and
-    embedded devices;
-    \textit{ResNet-18}, a DNN for image recognition that achieved state-of-the-art
-    performance on ImageNet detection tasks in 2015;
-    \textit{VGG-16} (named for the Visual Geometry Group
-    at Oxford), a CNN used for image recognition tasks
-    \citep{dqn, mobilenet, resnet, vgg}.
-
-  We evaluated the following NLP models:
-    \textit{CharRNN}, a generator character-level
-    RNN from a PyTorch tutorial;
-    \textit{TreeLSTM}, a generalization of LSTMs to
-    tree-structured network topologies;
-    \textit{RNN, GRU, and LSTM}, a selection of models from the Gluon
-    model zoo
-    \citep{pytorch_rnn_tut, tree_lstm, gluon_model_zoo}.
-
-  \subsection{Experimental Methodology}
-  % Because we only evaluate inference in this paper,
-  %   we frequently make use of random inputs to models when measuring
-  %   performance.
-  % There were two exceptions where we evaluated on real data because
-  %   it was readily available: CharRNN and TreeLSTM.
-
-  % % For models where the input is random,
-  % %   we run 1000 timed iterations.
-  % % Before the timed runs,
-  % %   we run 8 untimed ``warm-up'' iterations to ensure any caching and JIT compilation
-  % %   employed in lower levels of the stack are included in the 1000 timed runs.
-  % % This way,st
-  % %   the timed runs reflect the \textit{stable} performance of the system.
-  % % For our purposes, ``performance'' refers to end-to-end framework time on
-  % %   inference tasks (i.e., the time it takes to run a trained model) in a
-  % %   single-machine setting.
-
-  Our vision experiments from Section~\ref{sec:optimizations} and Section~\ref{sec:perf-gpu} were run on a machine with an AMD Ryzen
-    Threadripper 1950X 16-Core CPU,
-    an NVidia 1080 Ti GPU,
-    and 64 GB of RAM.
-  Our NLP experiments from Section~\ref{sec:perf-gpu} were run on a machine with an AMD Ryzen
-    Threadripper 1950X 16-Core CPU,
-    an NVidia Titan-V GPU,
-    and 64 GB of RAM.
-  Our low-power vision experiments from Section~\ref{sec:low-power} were run on multiple edge-class ARM development boards: a RaspberryPi 3, a Firefly RK3399, and an Ultra-96 FPGA platform.
-  We evaluated Relay's handling of accelerators on a VTA design with a
-    $16\times16$ matrix-vector 8-bit tensor core clocked at 333MHz on the Ultra-96 platform.
-
-  % In terms of software, we used
-  %   Cuda version 10.0,
-  %   CuDNN version 7.5.0,
-  %   TVM commit \texttt{cefe07e2a}\footnote{NLP experiments required custom modifications that may be made public later},
-  %   MxNet version 1.4.0,
-  %   Pytorch version 1.0.1post2,
-  %   and TensorFlow version 1.13.1.
-
-  The Relay vision experiments utilized aggressively tuned TVM schedules on the GTX 1080 Ti GPU,
-    improving performance significantly.
-  % \subsection{Relay Enables Composable Optimizations}
-  % \label{sec:optimizations}
-
-  % \begin{figure}[h]
-  %   \includegraphics[width=0.5
-  %   \textwidth]{fig/eval/optimization_levels.pdf}
-  %   \caption{Speedup from increasing the number of graph transformations in Relay (\texttt{-O1}, \texttt{2}, \texttt{3}), relative to no optimizations at all (\texttt{-O0}). We show that, by composing passes, we can monotonically improve performance on vision benchmarks running on the NVIDIA GTX 1080 Ti.}
-  %   \label{fig:opt-eval}
-  % \end{figure}
-
-  % We demonstrate that Relay can facilitate composable optimizations,
-  % by evaluating vision workloads under incremental optimization levels, denoted \texttt{-On}:
-  % \begin{itemize}
-  %   \item \texttt{-O0} does not apply any program transformation passes.
-  % % (it applies a single pass to translate the ``batch norm'' operator into simpler arithmetic
-  % % operators but Relay{} has no other implementation of ``batch norm'').
-  %   \item \texttt{-O1} applies an operator fusion pass.
-  %   \item \texttt{-O2} additionally applies constant folding, using Relay{}'s interpreter to evaluate away operations on constants.
-  %   \item \texttt{-O3} additionally applies four more passes:
-  %       (1) \texttt{FoldScaleAxis}, which folds scaling operations into the axis options of other operators,
-  %       (2) \texttt{AlterOpLayout}, which alternates operator layouts for better cache performance,
-  %       (3) \texttt{CanonicalizeOps}, which canonicalizes the ``bias add'' operator in terms of expanding dimensions and broadcasting for further analysis,
-  %       (4) \texttt{CommonSubexpElim}, which lifts common subexpressions.
-  % \end{itemize}
-
-  % Figure~\ref{fig:opt-eval} shows mean inference speedup relative to
-  %   \texttt{-O0} as Relay applies optimizations more aggressively.
-  % Average performance improves by up to 2$\times$ when all optimizations are applied.
-  % Most networks benefit greatly from operator fusion.
-  % Nature-DQN~\citep{dqn} has simple operators, which don't benefit from optimizations
-  %   such as layout transform, explaining why its performance doesn't improve beyond \texttt{-O1}.
-  % ResNet-18~\citep{resnet} and VGG-16~\citep{vgg} are two dense convolutional neural
-  %   networks which benefit from \texttt{-03} optimizations.
-  % These networks contain dense \texttt{conv2d} operators that benefit
-  %   from the \texttt{AlterOpLayout} pass.
-  % Overall, these results show that Relay lets us compose optimizations
-  %   in a way that is beneficial to diverse workloads.
-
-  \subsection{Relay Provides Competitive Performance}
-  \label{sec:perf-gpu}
-
-  \begin{figure}[h]
-    % \includegraphics[width=0.6
-    % \textwidth]{fig/eval/vision_1080Ti_relay.pdf}
-    % \captionof{figure}{
-    %   Inference slowdown of popular frameworks relative to Relay on vision
-    %     benchmarks running on NVIDIA GTX 1080 Ti GPUs.
-    %   Relay provides performance competitive to the state of the art.
-    %   We ran 1000 trials for each model and used the AoT compiler.
-    % }
-    % \label{fig:vision-eval}
-  \end{figure}
-
-  \begin{figure}[h]
-    % \includegraphics[width=0.6
-    % \textwidth]{fig/eval/nlp_TitanV_relay.pdf}
-    % \captionof{figure}{
-    %   Inference slowdown relative to Relay on NLP benchmarks running on NVIDIA
-    %     Titan-V GPUs.
-    %   NLP workloads feature control flow,
-    %     which makes them more challenging to optimize.
-    %   Relay provides performance competitive to state of the art (up to
-    %     2.4$\times$ speedup over MxNet on GRU).
-    %   We ran 1000 trials for each model, except for CharRNN, on which we used 100 trials.
-    % }
-    % \label{fig:nlp-eval}
-  \end{figure}
-
-  An age-old story in compilers literature is that increasing expressivity
-    impacts the global performance of the system.
-  We set out to build zero-cost abstractions for Relay,
-    governed by Stroustrup's principle, ``What you don't use, you don't pay
-    for'' \citep{bjarne}.
-  We demonstrate that we can achieve competitive performance on both CPUs and
-    GPUs on a wide set of CNNs that are well supported by existing frameworks.
-  We evaluated inference time for two classes of workloads: computer vision and natural language processing.
-  We compared Relay (using our AoT compiler) to \nnvm,
-    TensorFlow, TensorFlow-XLA (Accelerated Linear Algebra), PyTorch, and MxNet.
-  We ran the vision and NLP workloads on GTX 1080 Ti and Titan-V GPUs, respectively.
-
-  \paragraph{Vision Evaluation}
-  Figure~\ref{fig:vision-eval} compares Relay against state of the art frameworks
-    running vision workloads on a GTX 1080 Ti GPU.
-  We ran each model with
-    batch size 1, a common setting in inference tasks.
-  Relay achieves performance on par with \nnvm,
-    an existing deep learning graph compiler in use at Amazon.
-  Relay outperforms TensorFlow, TensorFlow-XLA, MxNet and
-    PyTorch on every benchmark.
-  Relay's ability to do aggressive optimizations like operator
-    fusion on long chains of operations, generating hardware
-    specific implementations, enables it to outperform
-    existing frameworks that don't perform inter-operator optimizations.
-
-  \paragraph{NLP Evaluation}
-  Figure~\ref{fig:vision-eval} compares Relay against state-of-the-art NLP models on a Titan-V GPU.
-  Implementations of the NLP models were not available in all frameworks;
-    we used MxNet baselines for RNN, GRU, and LSTM and PyTorch for Char-RNN and TreeLSTM.
-  % We ran the models for 1000 iterations per input, except char-RNN, which we ran for 100 ???.
-  % To run the RNN, GRU, and LSTM benchmarks in MxNet, and Char-RNN, and TreeLSTM
-  %   in PyTorch.
-  Relay performs better than MxNet on recursive models
-    due to the fact they are implemented in Python using
-    MxNet's looping constructs.
-  PyTorch instead uses handwritten and heavily optimized
-    C implementations of the recursive network cells.
-  Due to this we perform slightly \emph{worse} than PyTorch.
-  It is interesting to note that our pure Relay
-    implementation performs competitively against
-    the hand-optimized version.
-
-  \subsection{Relay Handles Challenging Backends}
-  \label{sec:low-power}
-
-  \begin{figure}[h]
-    % \includegraphics[width=\textwidth]{fig/eval/vision_arm.pdf}
-    \caption{
-      Inference time (ms) of vision DNNs on low-power platforms using
-        different data types.
-      Relay allows us to reduce inference time on power-constrained devices by
-        easily substituting \texttt{float32} multiplications with \texttt{int8}
-        multiplications and \texttt{int16} or \texttt{int32} accumulations (denoted
-        at \texttt{int8}/\texttt{int16} and \texttt{int8}/\texttt{int32} respectively).
-      We used 1000 trials for each model.
-    }
-    % \label{fig:arm-eval}
-  \end{figure}
-
-  \begin{figure}[h]
-    % \includegraphics[width=0.6\textwidth]{fig/eval/vision_fpga.pdf}
-    \caption{
-      Inference time (ms) of vision DNNs on Ultra-96 FPGA-enabled SoC.
-      We compare vision workloads that Relay compiles onto the embedded Cortex
-        A53 CPU vs. a DNN accelerator implemented on the integrated FPGA fabric.
-      Targeting DNN accelerators can unlock up to 11x speedups, but requires a
-        multitude of graph-level transformations.
-      We used 10 trials for each model.
-    }
-    % \label{fig:fpga-eval}
-  \end{figure}
-
-  Relay can handle challenging scenarios: consider edge inference where energy is a first order
-    constraint due to thermal limitations or limited battery life.
-  One option is to apply more aggressive quantization: instead of performing expensive
-    arithmetic in the floating point domain, simpler and narrower fixed point data is used.
-  Another option is hardware acceleration: instead of evaluating
-    compute-intensive operations on the CPU, we can offload to a specialized accelerator.
-
-  \paragraph{Quantized Inference on ARM CPUs and GPUs}
-  We evaluate the effects of quantized inference applied by Relay on vision workloads running
-  on the Raspberry-Pi3 and Firefly RK3399 ARM-based platforms.
-  Figure~\ref{fig:arm-eval} shows the effects of different levels
-    of quantization applied to low-power devices~\citep{roesch2019relay}.
-  The numbers show that as we opt for a more aggressive quantization scheme such as \texttt{int8/16} (i.e. 8-bit multiplication and 16-bit accumulation), we achieve much improved performance.
-
-  \paragraph{Targeting Deep Learning Accelerators on FPGAs}
-  We evaluated inference time on five models including MobileNet-G \citep{mobilenet}, a grouped variant of the MobileNet architecture; ResNet-18, ResNet-34, and ResNet-50\citep{resnet}; and Deep Convolutional Generative Adversarial Networks \citep{dcgan}, a generative DNN used in unsupervised learning.
-  Overall, Relay helps us efficiently offload deep learning operators onto specialized accelerators like VTA.
-  Our results in Figure~\ref{fig:fpga-eval} show that we can achieve between 2.5 to 11.7$\times$ reduction in single-batch inference latency by offloading critical operators to the FPGA accelerator.
-  These experiments demonstrate Relay's ability to target current and future deep learning architectures:
-  \begin{enumerate}
-    \item \textit{Heterogeneous FPGA/CPU offloading}: Relay lets us define the rules for offloading specific operators to the FPGA-based accelerator.
-    \item \textit{Push-button quantization}: Relay can take a \texttt{fp32} model and convert its parameters to \texttt{int8} in order to enable inference on specialized accelerators.
-    \item \textit{Accelerator-friendly data packing:} Relay reorganizes data so it can be effortlessly consumed by a specialized TPU-like accelerator~\citep{tpuv1}.
-  \end{enumerate}
-
-\subsection{Tensor VM: Putting the VM in TVM}
-
-We plan to evaluate the VM, by demonstrating in
-  static situations that it matches existing
-  systems performance, can provide superior performance
-  for dynamic networks, and be easily customized
-  and extended with new code generation strategies.
-My collaborators at Facebook and I will construct
-  a new benchmark suite containing dynamic models
-  which demonstrate the need for features provided by frameworks
-  like PyTorch.
-We will extend the PyTorch profiling JIT to better support
-  the class of programs Relay can optimize, and make it
-  possible for it to use Relay.
-Finally we will deeply integrate Relay and PyTorch
-   in order to show the combination of dynamic and
-   static techniques required.
-
-\subsection{Automatic Tensorization}
-
-We plan to evaluate automatic tensorization by collecting
-  a set of ISAs with varying instrinics, semantics,
-  datatypes, and bitwidths.
-We can use our parametric design \vta to generate a large
-  number of designs with varying operations, and semantics.
-We have already begun to further parametrize VTA to better
-  perform this evaluation.
-We then write a description of the primitive operation
-  semantics and produce human comparable code
-  automatically.
-If are able successfully map programs eligible instrinics.
-
-
-The scenario presented in the introduction demonstrates the three-pronged \textbf{extensibility challenge}
-  for DL IRs:
-% \begin{enumerate} % [label=\arabic*.]
-%   \item \textit{Expressivity}: It should be straightforward to write models involving complex data structures (e.g., trees, graphs, and lists) and control flow.
-%   \item \textit{Composability}: It should be straightforward to add and compose new optimizations
-%     with existing ones (e.g., quantization, operator fusion, and automatic differentiation).
-%   \item \textit{Portability}: It should be straightforward to add new hardware backends
-%     (e.g., TPU, Inferentia, and FPGAs)~\citep{tpuv1, inferentia}.
-% \end{enumerate}
 
 Previous IRs have struggled to address these challenges because they treat
   each part of the framework as a disconnected set of libraries.
@@ -1208,605 +661,133 @@ It is used to deploy efficient machine learning to
   In the following subsection we demonstrate how one can adapt techniques
     from type inference and checking to Relay.
 
-  \subsection{Type System}
-  \label{subsec:type_system}
+  % \subsection{IR}
+  % \input{chapters/short_grammar.tex}
 
-  Computation graph IRs rely on typing in the form of
-    datatype and shape inference.
-  Datatype and shape inference is the process of computing the
-    concrete datatypes (e.g., \verb|float32|, \verb|int32|) and shapes (e.g., $(10, 5)$, $(100, 1, 32)$) of all
-    tensors in a computation graph.
-  Deep learning frameworks and compilers use static shape information
-    to perform allocation, check correctness, and facilitate optimization.
-  Precise static shape information is also valuable for traditional loop
-    optimizations, data layout transformations, tensorization, and
-    optimizations that are necessary to map to hardware accelerators' unique ISAs.
+  % The Relay IR is designed
+  %   to subsume the functionality of computation graph-based IRs
+  %   while providing greater faculties for abstraction and control flow.
+  % We present Relay's design by incrementally building up to the full IR
+  %   starting from a subset that corresponds to a simple computation graph.
+  % Deep learning models fundamentally operate on tensors.
+  % Hence, Relay's primary value type is a tensor and operators are included as language primitives
+  %   (see the \verb|tensor constant| and \verb|operator| rules in Figure \ref{fig:short_bnf}).
+  % Relay leaves the implementation of each operator opaque; the operators
+  %   are represented by a lower-level IR, which is optimized independently.
+  % A computation graph, in its simplest form, is a directed acyclic
+  %   graph with multiple inputs and a single output.
+  % Relay uses three constructs to support these simple graphs:
+  %   (1) \verb|variable|, (2) function \verb|call|,
+  %   and (3) \verb|operator|; see Figure~\ref{fig:short_bnf} for the corresponding rules.
 
-  Shape inference is usually formulated as a simple analysis over the dataflow graph that
-    propagates shape information.
-  Shape inference looks remarkably similar to type inference.
-  Unlike type inference, though, shape inference is separate from the type system and
-    does not provide types for functions or data structures.
-  Handling shape inference at compile time is desirable, because it allows optimizations to take
-    advantage of this information even though certain shapes may be symbolic. Can shape information be encoded in static types?
-  % If we type Relay as simply typed lambda calculus,
-  %   we gain a simple system, but one that can not represent polymorphism,
-  %   and lacks shape information.
-  % Even with the addition of polymorphism, there is no representation of static
-  %   shape information.
-  It is possible to model arbitrarily complex static properties, such
-    as shape information, with dependent type theory, but such
-    a design incurs significant user complexity.
-  % Adopting a well known type system allows the application of
-  %   classic techniques, but standard type systems do not
-  %   provide a solution for tracking static shape information.
-  Relay's type system is designed to balance the desire for static tensor shapes
-    without limiting the language's expressiveness.
-  In this subsection we describe how to extend a polymorphic type system with shape
-    information and type inference with shape inference.
+  % \subsection*{Multiple Outputs}
 
-  \begin{figure}
-    \begin{footnotesize}
-      \judgbox{\typecheck{\typeCtx}{\varCtx}{\expr}{\type}}{Expression $\expr$ has type $\type$ in type context $\typeCtx$ and variable context $\varCtx$.}
-      \begin{inference}
-      \jmpInfer{Relation-T}
-         {\Delta, T_1 : \texttt{Type}, \ldots, T_n : \texttt{Type} \vdash (Rel(T_1, T_2, \ldots, T_n) \in \{ \top, \bot \}) }
-         {\typecheck{\typeCtx}{\varCtx}{Rel}{\texttt{Relation}}}
+  % Computation graph IRs have primitive support for multiple outputs
+  %   because many tensor operators require it.
+  % For example, the \verb|split| operator separates a tensor along a given axis
+  %   and returns each component.
+  % In Relay, multiple outputs can be modeled as tuples,
+  %   requiring only two rules: \verb|tuple formation| and \verb|tuple projection|.
 
-      \jmpInfer{Type-Func-Def}
-        {\forall{i \in [1, r]} \, \Delta; \Gamma \vdash R_i(T_1, \ldots, T_n, O) \\
-         \Delta; \Gamma, a_1 : T_1, \ldots, a_n : T_n, \\
-         f : \kwd{fn}( T_1, \ldots, T_n) \rightarrow O \kwd{ where } R_1, \ldots, R_r \vdash body : O}
-          {\Delta; \Gamma \vdash \kwd{def @} f\kwd{(}a_1\kwd{:} T_1\kwd{,} \ldots
-          a_n\kwd{:} T_n\kwd{)} \rightarrow O \kwd{ where } R_1, \ldots, R_r \kwd{ \{ } body \kwd{ \}} : \\
-          \kwd{fn}(T_1, \ldots, T_n) \rightarrow O \kwd{ where } R_1, \ldots, R_r }
+  % \subsection*{Let}
 
-      \jmpInfer{Type-Call}
-         {\Delta; \Gamma \vdash f : \kwd{fn} (T_1 \kwd{,} \ldots \kwd{,} T_n) \rightarrow O
-           \kwd{ where } R_1, \ldots, R_r
-           \\ \Delta; \Gamma \vdash a_1 : T_1, \ldots, a_n : T_n
-           \\ \forall{i \in [1, r]} \, \Delta; \Gamma \vdash R_i(T_1, \ldots, T_n, O)}
-         {\typecheck{\typeCtx}{\varCtx}{f(a_1, \ldots, a_n)}{O}}
-      \end{inference}
-    \end{footnotesize}
-    \caption{Examples of Relay's typing inference rules, namely the rules for function definitions and function calls,
-      where $\Delta$ is the environment for types and $\Gamma$ is the environment for variables. These demonstrate
-      that type relations must hold at each call site.}
-    \label{fig:partial-inference-rules}
-  \end{figure}
+  % By construction, computation graphs enjoy implicit sharing of subcomputations
+  %   via multiple outgoing dependency edges.
+  % Implicit sharing is often implemented via pointers that uniquely identify subgraphs,
+  %   a property useful for both execution and analysis.
+  % Previous frameworks often obtain this sharing by using a host
+  %   language's name binding to construct a graph (e.g., by binding a Python variable
+  %   to a subgraph and using that variable to construct other subgraphs).
+  % General-purpose programming languages, on the other hand, provide \textit{explicit}
+  %   sharing via binding constructs, such as \verb|let|.
+  % In programs free of scope, ordering, and effects, implicit sharing
+  %   and explicit sharing are semantically equivalent.
+  % However, in practice, user programs rely on effects and ordering,
+  %   requiring previous approaches to provide workarounds.
+  % For example, TensorFlow's Eager Mode inserts dummy control edges
+  %   in its generated graphs to impose effect ordering.
+  % The lack of lexical scope in computation graphs complicates language features,
+  %   like first-class functions and control flow,
+  %   and reduces the precision of traditional analyses,
+  %   such as liveness,
+  %   because the high-level program structure is absent~\citep{funarg, funarg_sol}.
+  % The addition of a humble \verb|let| binding, a central concept in functional languages,
+  %   provides explicit sharing and a solution to the problems outlined above.
 
-  \subsection{Tensor Types}
+  % \subsection*{Control Flow}
 
-  The primitive value in Relay is a tensor, which has
-    type $Tensor[s, bt]$ where $s$ is a shape and $bt$ is a base type.
-  Elements of base type are floating point numbers and
-    integers of specific bit widths and number of lanes.
-  This design decision is inspired by LLVM,
-    which supports arbitrary-width integer types.
-  The parameterization by lanes helps represent vectorized data types, which are supported
-    by many CPUs and hardware accelerators.
-  To ensure Relay can offload tensor computation to devices
-    with greatly varying architectures,
-    Relay's kinding rules only permit tensors to contain
-    base types, preventing, for example, tensors of closures.
+  % \begin{figure*}[htb!]
+  %   \begin{tabular}{ccc}
+  %   \begin{minipage}{0.4\textwidth}
+  %   \begin{minted}[fontsize=\small]{python}
+  % i = tf.constant(1)
+  % j = tf.constant(1)
+  % k = tf.constant(5)
 
-  The shape of a tensor is a tuple of integers describing the tensor's dimensions.
-  In general, these dimensions may depend on arguments to an operator.
-  A dimension may be a variable or arithmetic expression that indicates how the
-    output shape of an operator depends on those of its inputs.
-  Functions may be polymorphic over shapes, which results
-    in shape constraints that must be solved during type inference.
-  Sec.~\ref{sec:inference} describes the process.
-  Relay also supports a special shape called \verb|Any|, which is used
-    to indicate that we do not have static shape information about a particular dimension.
+  % def c(i, j, k):
+  %   return
+  %     tf.equal(
+  %       tf.not_equal(
+  %         tf.less(i + j, 10),
+  %         tf.less(j * k, 100)),
+  %        tf.greater_equal(k, i + j))
+  % def b(i, j, k): return [i+j, j+k, k+1]
+  % tf.while_loop(c, b, loop_vars=[i, j, k])
+  %   \end{minted}
+  %   \end{minipage}
+  % & \hspace{-2.0em}
+  % \begin{Huge}
+  %   $\Rightarrow$
+  % \end{Huge}
+  % &
+  %   \begin{minipage}{0.5\textwidth}
+  %   \begin{minted}[fontsize=\footnotesize]{python}
+  %   fn %while_loop(
+  %     %lvar0: Tensor[(1,), int32], %lvar1: Tensor[(1,), int32],
+  %     %lvar2: Tensor[(1,), int32]) {
+  %     %0 = add(%lvar0, %lvar1)
+  %     %1 = less(%0, meta[Constant][0])
+  %     %2 = multiply(%lvar1, %lvar2)
+  %     %3 = less(%2, meta[Constant][1])
+  %     %4 = not_equal(%1, %3)
+  %     %5 = add(%lvar0, %lvar1)
+  %     %6 = greater_equal(%lvar2, %5)
+  %     if (min(equal(%4, %6))) {
+  %       %9 = add(%lvar0, %lvar1)
+  %       %10 = add(%lvar1, %lvar2)
+  %       %11 = add(%lvar2, meta[Constant][2])
+  %       %while_loop(%9, %10, %11)
+  %     } else { (%lvar0, %lvar1, %lvar2)
+  %     }
+  %   }
+  %   %while_loop(meta[Constant][3], meta[Constant][4], meta[Constant][5])
+  %   \end{minted}
+  %   \end{minipage}
+  %   \end{tabular}
+  %   \caption{\textmd{
+  %     A simple TensorFlow loop in the user-facing DSL and the Relay
+  %       loop produced by automatically converting it.
+  %     Note the TensorFlow while loop corresponds neatly to a tail recursive
+  %       function.
+  %     The Relay text format supports a ``metadata'' section which functions
+  %       as a constant pool among other things.
+  %     \texttt{meta[Constant][n]} represents the \texttt{n}-th constant in the
+  %       pool.
+  %   }}
+  %   \label{fig:tf_to_relay_loop}
+  %   \end{figure*}
 
-  \subsection{Operators and Type Relations}
+  % Emerging models, particularly in the domain of natural language processing, increasingly
+  %   rely on data-dependent control flow, forcing frameworks based on computation graph IRs
+  %   to incorporate control flow, often through \textit{ad hoc} and difficult-to-extend constructs.
+  % For example, TensorFlow Fold~\citep{tf_fold} extends TF with special combinators that
+  %   dynamically compute a graph for each shape permutation;
+  %   these high-level constructs are opaque to further optimizations.
+  % The functional programming community has demonstrated that recursion and pattern matching are sufficient
+  %   to implement arbitrary combinators for control flow and iteration (e.g., maps, folds, and scans).
+  % To support the definition of functional combinators
+  %   we enrich Relay with two more language
+  %   features to implement arbitrary combinators: \verb|if| and first-class recursive functions.
 
-  A difference between general purpose programming models and those tailored to deep learning
-    is the use of operators as the primitive unit of computation.
-  The ability to add new operations to Relay requires a type system that can adapt to
-    complex shape relationships between input and output types.
-  Many operators have types that can be defined
-    as functions of the input types.
-  Unfortunately some are not only functions,
-    but also relations that specify constraints between input and output shapes.
-  A key extension of Relay over traditional type systems is the addition of type relations
-    to express these constraints.
-  When developers add a new operator to Relay, they may constrain its
-    type with existing relations or add their own.
-  Function types (including those of operators) may include
-    one or more type relations over an arbitrary subset of the argument types and the return type.
-  The type checker enforces that these relationships hold at the call site.
-  These relations may be viewed as a verification condition induced at a
-    function call site, where the formula is a conjunction of the relations.
-  For example, primitive operators are assigned types that are universally quantified over
-    both the input and output types.
-  We can then use a type relation to encode a constraint that must hold later
-    when type checking observes specific input and output types.
-  Type relations are opaque in the Relay IR: they are implemented in the
-    meta-language and registered when defining an operator.
-  However, they may be reused across different implementations.
-  For example, we use a relation that describes the
-    broadcasting rule for all elementwise operations.
-
-  \subsection{Type Inference}
-  \label{sec:inference}
-
-  The most interesting parts of the type system
-    are where shape computation occurs.
-  We highlight a few examples of Relay's inference
-    rules in Fig.~\ref{fig:partial-inference-rules};
-    the full typing rules can be found in the appendix.
-  In this subsection we focus on design decisions behind Relay's type system
-    and the implementation of type inference.
-  To incorporate type relations into Relay's type system, we enrich
-    a Hindley-Milner type inference algorithm with
-    a constraint solver for type relations.
-  Relay's inference algorithm has three steps: first it
-    performs a pass over the AST generating types (potentially involving type variables)
-    as well as populating the set of relations,
-    then it solves the incurred constraints,
-    and finally it assigns types to each expression in the AST.
-  A type relation is implemented as a function in the
-    meta-language and represents the symbolic relations between
-    the input and output types of an object-language function.
-  When the type inference algorithm visits a function call site, the function's type relations are
-    instantiated to the types at the call site and added to a queue of relations waiting to be
-    solved.
-  The relationships between the call's type variables and its relations are are added to a
-    bipartite undirected dependency graph where the two disjoint sets are type variables and type relations.
-  Traditional unification constraints are represented using a modified union-find structure that
-    integrates with the dependency graph.
-
-  Once the queue is populated, the algorithm will dequeue a relation and attempt to solve it.
-  There are two cases when solving a type relation:
-  \begin{enumerate}
-    \item If all the relation's type variables
-    are concrete, we call the type relation function. If that function returns true, the
-    constraint is discharged. Otherwise, type checking fails.
-    \item If any type is fully or partially symbolic, the
-      algorithm will propagate
-      existing concrete type information via unification.
-    All relations affected by new assignments to type
-      variables (as determined by the dependency graph)
-      are moved to the beginning of the queue.
-    If the current type relation is now completely solved, we
-    discard it to avoid unnecessarily visiting it again.
-  \end{enumerate}
-
-  Our fine-grained dependence graph provides the transitive dependencies
-    between relations and unification variables.
-  The use of fine-grained dependencies enables our algorithm to
-    only retry a minimal number of relations when we
-    learn a new variable assignment.
-  We run this to fixpoint or until the queue is empty.
-  If the queue is not empty and no progress is made between iterations,
-    then at least one variable is under constrained and inference fails.
-  Note that a type relation's implementation can
-    compromise type soundness, as they are axiomatic descriptions
-    of operations implemented outside of Relay.
-  Luckily, in practice, the number of type relations needed to express most of Relay's
-    operators is relatively small, and their implementations are generally straightforward
-    and amenable to exhaustive testing.
-The above sections discuss the core of Relay, a full-length paper under submission\citep{roesch2019relay}
-  details its design and implementation.
-
-  \section{Design}
-
-  Relay's expressive high-level IR is designed to support
-    complex models while abstracting over hardware-specific
-    implementation details to enable hardware agnostic program
-    analysis and optimization.
-  Rather than invent an entirely new language,
-    Relay's IR design is based on IRs used by the well-studied ML family of
-    functional programming languages (e.g., SML and OCaml).
-  These IRs are expressive enough to capture general-purpose programs
-    (including control flow, first-class functions, and data types)
-    and have clearly specified semantics (e.g., lexical scope and controlled effects).
-  By borrowing from PL literature,
-    we can apply program analysis and optimization techniques from decades of research~\citep{haskell_vector}.
-
-  Relay's IR takes a small functional core and enriches it with domain-specific additions---namely,
-    the inclusion of tensors and operators as expressions
-    and a novel tensor type system design to support tensor shapes.
-  Our principled design
-    enables the import of existing models from deep learning frameworks and exchange formats,
-    the implementation of a number of domain-specific optimizations,
-    and efficient deployment across a variety of targets.
-  In the remainder of this section,
-    we describe the IR design in further detail
-    and explore the ramifications of this design on the compilation stack.
-
-  \subsection{IR}
-  \input{chapters/short_grammar.tex}
-
-  The Relay IR is designed
-    to subsume the functionality of computation graph-based IRs
-    while providing greater faculties for abstraction and control flow.
-  We present Relay's design by incrementally building up to the full IR
-    starting from a subset that corresponds to a simple computation graph.
-  Deep learning models fundamentally operate on tensors.
-  Hence, Relay's primary value type is a tensor and operators are included as language primitives
-    (see the \verb|tensor constant| and \verb|operator| rules in Figure \ref{fig:short_bnf}).
-  Relay leaves the implementation of each operator opaque; the operators
-    are represented by a lower-level IR, which is optimized independently.
-  A computation graph, in its simplest form, is a directed acyclic
-    graph with multiple inputs and a single output.
-  Relay uses three constructs to support these simple graphs:
-    (1) \verb|variable|, (2) function \verb|call|,
-    and (3) \verb|operator|; see Figure~\ref{fig:short_bnf} for the corresponding rules.
-
-  \subsection*{Multiple Outputs}
-
-  Computation graph IRs have primitive support for multiple outputs
-    because many tensor operators require it.
-  For example, the \verb|split| operator separates a tensor along a given axis
-    and returns each component.
-  In Relay, multiple outputs can be modeled as tuples,
-    requiring only two rules: \verb|tuple formation| and \verb|tuple projection|.
-
-  \subsection*{Let}
-
-  By construction, computation graphs enjoy implicit sharing of subcomputations
-    via multiple outgoing dependency edges.
-  Implicit sharing is often implemented via pointers that uniquely identify subgraphs,
-    a property useful for both execution and analysis.
-  Previous frameworks often obtain this sharing by using a host
-    language's name binding to construct a graph (e.g., by binding a Python variable
-    to a subgraph and using that variable to construct other subgraphs).
-  General-purpose programming languages, on the other hand, provide \textit{explicit}
-    sharing via binding constructs, such as \verb|let|.
-  In programs free of scope, ordering, and effects, implicit sharing
-    and explicit sharing are semantically equivalent.
-  However, in practice, user programs rely on effects and ordering,
-    requiring previous approaches to provide workarounds.
-  For example, TensorFlow's Eager Mode inserts dummy control edges
-    in its generated graphs to impose effect ordering.
-  The lack of lexical scope in computation graphs complicates language features,
-    like first-class functions and control flow,
-    and reduces the precision of traditional analyses,
-    such as liveness,
-    because the high-level program structure is absent~\citep{funarg, funarg_sol}.
-  The addition of a humble \verb|let| binding, a central concept in functional languages,
-    provides explicit sharing and a solution to the problems outlined above.
-
-  \subsection*{Control Flow}
-
-  \begin{figure*}[htb!]
-    \begin{tabular}{ccc}
-    \begin{minipage}{0.4\textwidth}
-    \begin{minted}[fontsize=\small]{python}
-  i = tf.constant(1)
-  j = tf.constant(1)
-  k = tf.constant(5)
-
-  def c(i, j, k):
-    return
-      tf.equal(
-        tf.not_equal(
-          tf.less(i + j, 10),
-          tf.less(j * k, 100)),
-         tf.greater_equal(k, i + j))
-  def b(i, j, k): return [i+j, j+k, k+1]
-  tf.while_loop(c, b, loop_vars=[i, j, k])
-    \end{minted}
-    \end{minipage}
-  & \hspace{-2.0em}
-  \begin{Huge}
-    $\Rightarrow$
-  \end{Huge}
-  &
-    \begin{minipage}{0.5\textwidth}
-    \begin{minted}[fontsize=\footnotesize]{python}
-    fn %while_loop(
-      %lvar0: Tensor[(1,), int32], %lvar1: Tensor[(1,), int32],
-      %lvar2: Tensor[(1,), int32]) {
-      %0 = add(%lvar0, %lvar1)
-      %1 = less(%0, meta[Constant][0])
-      %2 = multiply(%lvar1, %lvar2)
-      %3 = less(%2, meta[Constant][1])
-      %4 = not_equal(%1, %3)
-      %5 = add(%lvar0, %lvar1)
-      %6 = greater_equal(%lvar2, %5)
-      if (min(equal(%4, %6))) {
-        %9 = add(%lvar0, %lvar1)
-        %10 = add(%lvar1, %lvar2)
-        %11 = add(%lvar2, meta[Constant][2])
-        %while_loop(%9, %10, %11)
-      } else { (%lvar0, %lvar1, %lvar2)
-      }
-    }
-    %while_loop(meta[Constant][3], meta[Constant][4], meta[Constant][5])
-    \end{minted}
-    \end{minipage}
-    \end{tabular}
-    \caption{\textmd{
-      A simple TensorFlow loop in the user-facing DSL and the Relay
-        loop produced by automatically converting it.
-      Note the TensorFlow while loop corresponds neatly to a tail recursive
-        function.
-      The Relay text format supports a ``metadata'' section which functions
-        as a constant pool among other things.
-      \texttt{meta[Constant][n]} represents the \texttt{n}-th constant in the
-        pool.
-    }}
-    \label{fig:tf_to_relay_loop}
-    \end{figure*}
-
-  Emerging models, particularly in the domain of natural language processing, increasingly
-    rely on data-dependent control flow, forcing frameworks based on computation graph IRs
-    to incorporate control flow, often through \textit{ad hoc} and difficult-to-extend constructs.
-  For example, TensorFlow Fold~\citep{tf_fold} extends TF with special combinators that
-    dynamically compute a graph for each shape permutation;
-    these high-level constructs are opaque to further optimizations.
-  The functional programming community has demonstrated that recursion and pattern matching are sufficient
-    to implement arbitrary combinators for control flow and iteration (e.g., maps, folds, and scans).
-  To support the definition of functional combinators
-    we enrich Relay with two more language
-    features to implement arbitrary combinators: \verb|if| and first-class recursive functions.
-
-  \subsection*{First-Class Functions}
-
-  A computation graph is a single computation
-    from multiple inputs to multiple outputs.
-  While it is tempting to reinterpret a graph as a function,
-    graphs lack functional abstraction and named recursion.
-  The addition of first-class named functions dramatically increases
-    Relay's expressivity, allowing it to encode generic
-    higher-order functions and thus capture higher-level program structure.
-  First-class functions also enable simpler implementations
-    of importers that map higher-level programs to our IR.
-  For example, an instance of TensorFlow's looping construct \verb|tf.while_loop|
-    can be represented as a single specialized loop function
-    or a generic fold over the loop state.
-  See Figure~\ref{fig:tf_to_relay_loop} for an example of this conversion (via
-    the Relay TensorFlow frontend).
-
-  \subsection*{Data Abstraction}
-  Many models make use of additional data types beyond
-    tuples, such as lists, trees, and graphs~\citep{char-rnn, tree_lstm, graph_lstm}.
-  Relay borrows from functional languages
-    a generic and principled method of extension:
-    algebraic data types (ADTs).
-  To support them, we add mechanisms for
-    (1) type declaration and
-    (2) pattern matching.
-  This final addition results in a strict functional language,
-    closely resembling the core of languages like OCaml and SML.
-  The increase in expressivity introduced by the Relay IR introduces
-    new optimizations challenges, which we
-    discuss in Sec.~\ref{sec:optimizations}.
-
-  \subsection{Type System}
-  \label{subsec:type_system}
-
-  Relay's type system is essential
-    to optimizations.
-  Typing guarantees both well-formedness of the program
-    and provides crucial tensor shape information to perform allocation,
-    check correctness, and facilitate loop optimizations.
-  Shape information is also valuable for data layout transformations and tensorization,
-    two transformations often demanded by hardware accelerators.
-  In computation graph IRs, only numeric data types
-    and shapes are tracked for each operator.
-  Symbolic shapes (i.e., shape polymorphism) are only handled
-    dynamically, inhibiting certain types of optimizations.
-
-  It is possible to model arbitrarily complex static properties, such
-    as shape information, with a dependent type theory~\citep{selsam_certigrad}, but such
-    a design incurs significant user complexity.
-  By incorporating shape analysis into a broader type system,
-    Relay's type system balances the desire for static tensor shapes
-    with usability.
-  In this subsection, we describe how to extend a polymorphic type system with shape
-    information and type inference with shape inference.
-
-  \subsection*{Tensor Types}
-
-  The primitive value in Relay is a tensor, which has
-    a shape and a base type (\verb|tensor type| in Figure \ref{fig:short_bnf}).
-  Base types describe the elements of tensors by tracking
-    the bit width,
-    the number of lanes (for utilizing vectorized intrinsics),
-    and whether the type is floating point or integral.
-  To ensure Relay can offload tensor computation to devices
-    with greatly varying architectures,
-    Relay tensors may only contain base types,
-    preventing, for example, tensors of closures.
-  The shape of a tensor is a tuple of integers describing the tensor's dimensions.
-  A dimension may be a variable or arithmetic expression that indicates how the
-    output shape of an operator depends on those of its inputs.
-  Functions may be polymorphic over shapes, which results
-    in shape constraints that must be solved during type inference.
-  Sec.~\ref{sec:inference} describes the process.
-  Relay also supports a special shape called \verb|Any|, which is used
-    to mark a dynamic shape when static relationships are not profitable
-    to model.
-
-  \subsection*{Operators and Type Relations}
-  Operators are one of the key primitives that differs from those of
-    general-purpose programming languages.
-  Relay's use of opaque operators enables backends to choose different
-    lowering strategies based on the hardware target.
-  Relay's operator set is extensible, meaning that users may add new operations.
-  Supporting common or user-defined tensor operators requires a type system that can
-    adapt to complex shape relationships between input and output types
-    (e.g., elementwise operators with broadcasting semantics).
-
-  To handle the constraints between operators' argument shapes, Relay's type system
-    introduces type relations.
-  A type relation is implemented as a function in the
-    meta-language and represents a symbolic relationship between
-    the input and output types.
-  When developers add a new operator to Relay, they may constrain its
-    type with an existing relation or add their own.
-  Function types may include
-    one or more type relations over a subset of the argument types and the return type.
-  The type checker enforces that these relationships hold at each call site.
-
-  \subsection*{Type Inference}
-  \label{sec:inference}
-
-  To incorporate type relations into Relay's type system, we enrich
-    a Hindley-Milner-style type inference algorithm with
-    a constraint solver.
-  Relay's inference algorithm has three steps: first, it
-    performs a pass over the AST, generating types and a set of relations,
-    then it solves the incurred constraints,
-    and finally annotates each sub-expression with its inferred type.
-
-  % a queue of relations. dequeue a relation and attempt to solve it by invoking it's opaque
-  % type-relation function.
-  % 1. all type variables concrete & relationship holds => solved. discard relation
-  % 2. all type variables concrete & relationship doesn't hold => type error
-  % 3. types are partially symbolic => propagate unif. constraints to its inputs and output. if
-  % all type variables are solved/assigned/concrete, discard relation. otherwise add it and the
-  % relations that depend on the solved variables to queue. those that are already on the queue should
-  % be reprioritized
-
-  When the type inference algorithm visits a function call site, the function's type relations are
-    instantiated with the concrete argument types at the call site.
-  Each instantiated relation is added to the queue of relations to solve.
-  The relationship between a call's type variables and relations is added as an edge to
-    a bipartite dependency graph where the two disjoint sets are type variables and type relations.
-  Traditional unification constraints are represented using a modified union-find structure that
-    integrates with this dependency graph.
-
-  Once the queue is populated, the algorithm will dequeue a relation and attempt to solve it.
-  There are two cases when solving a type relation:
-  \begin{enumerate}
-    \item If all the relation's type variables
-    are concrete, we the relation function. If that function returns true, the
-    constraint is discharged. Otherwise, type checking fails.
-    \item If any type is fully or partially symbolic, the
-      algorithm will propagate
-      existing concrete type information via unification.
-    All relations affected by new assignments to type
-      variables (as determined by the dependency graph)
-      are moved to the beginning of the queue.
-    If the current type relation is now completely solved, we
-    discard it to avoid unnecessarily visiting it again.
-  \end{enumerate}
-
-  We run this to fixpoint or until the queue is empty.
-  If the queue is non-empty and no progress is made between iterations,
-    then at least one variable is underconstrained and inference fails.
-  Note that a type relation's implementation can
-    compromise type soundness, as they are axiomatic descriptions
-    of operations implemented outside of Relay.
-  In practice, the number of type relations needed to express Relay's
-    operators is small, and their implementations are straightforward
-    and amenable to exhaustive testing.
-
-  \subsection{Compiler Framework}
-
-  The process for compiling Relay proceeds in three stages.
-  First, the frontend converts input formats into the Relay IR.
-  Next, the Relay compiler typechecks and optimizes the program
-    to produce the final program.
-  After performing optimizations,
-    the Relay backend transforms
-    the Relay program into a form that can be executed on
-    the intended hardware, based on the specified execution mechanism.
-  The backend additionally lowers Relay operators into a TVM expression,
-    computes a schedule for the final TVM expression, and lowers it into
-    native code.
-
-  \subsection*{Frontend}
-
-  There are several ways to write an Relay program.
-  A user can build an in-memory representation of
-    a program in C++ or Python,
-    parse one written in the Relay text format,
-    load one from the on-disk serialization format,
-    or import one from popular frameworks and interchange formats
-      (e.g., TensorFlow, MxNet, Keras, DarkNet, and ONNX).
-  Many frameworks and interchange formats use static computation graph-based representations,
-    which can easily be translated into Relay.
-  A greater challenge is translating frameworks
-    with a richer computation model such as TensorFlow (TF).
-  TF supports control flow and includes \verb|TensorArray|, a write-once
-    tensor container.
-  We can extract the loop structure out of the TF graph, converting
-    it to an Relay loop, and transform the \verb|TensorArray| into an Relay list.
-  Once new deep learning languages and IRs under development
-    are stable it is likely they can be translated into Relay (see
-    Section~\ref{sec:pl_techniques_in_dl}).
-  PyTorch provides an expressive programming model, and is a good fit
-    for Relay, which has integration into PyTorch's JIT infrastructure,
-    enabling users to transparently use Relay for improved performance.
-
-  \subsection*{Compiler}
-  Once an Relay abstract syntax tree (AST) is produced,
-    the program is optimized by applying a series of Relay-to-Relay
-    passes.
-  Between each pass, Relay performs type inference and checking,
-    rejecting malformed programs as well as populating shape and type
-    information that passes can utilize.
-  The Relay compiler supports traditional optimizations
-    (e.g., constant folding, common subexpression elimination, and dead code elimination)
-    and domain-specific optimizations
-    (see Sec.~\ref{sec:optimizations}).
-
-  \subsection*{Backends}
-
-  Relay produces machine-specific code
-    by decomposing the problem of code generation into multiple distinct phases.
-  Relay translates all operators into \tvm expressions
-    to produce dense linear algebra kernels~\citep{tvm_osdi18, tensor_comprehensions, halide}.
-  \tvm produces low-level operators that expect a fixed calling convention,
-    as well as preallocated inputs and outputs.
-  The result is an object file containing hardware-specific implementations of all
-    operations.
-  The remaining Relay program then is executed or compiled,
-    with operator invocations replaced by calls to the optimized operators.
-  By representing operators as \tvm expressions, we can programmatically
-    transform them and automatically generate new implementations for the transformed operators.
-  Optimizations like fusion and quantization
-    rely on this novel behavior.
-  After primitive operators are lowered,
-    the remaining Relay program ties
-    together operator invocations, allocation, control-flow,
-    recursion, and high-level data structures.
-  There are multiple options for executing the combined full program:
-    the Relay interpreter (with JIT compilation),
-    an Relay virtual machine,
-    the \tvm graph runtime,
-    and an experimental Relay ahead-of-time compiler
-    that converts programs to C++ to produce a target-specific binary.
-  % We are able to target CPU, GPU,
-  %   iOS and Android mobile devices,
-  %   custom accelerators, and FPGAs.
-
-% % EVAL
-
-% We evaluate Relay on several systems and over a diverse set of vision and NLP workloads to
-%   demonstrate that (1) Relay enables \emph{expressive} programs via a large breadth
-%   of models, (2) Relay supports \emph{composition} of program-level optimizations
-%   such as quantization and fusion, and (3) Relay provides
-%   \emph{portability} by targeting a number of hardware backends.
-% Not only does Relay provide these three properties, we do so while also demonstrating
-%   competitive performance.
-% Relay is an open-source academic project.\footnote{Relay is publicly available at [redacted for review].}
-%   It has been deployed at a popular web service provider,
-%     a telecommunications and consumer electronics manufacturer,
-%     and a social media company, among others.
-%     Our evaluation demonstrates Relay's competitive performance for a
-%     broad class of models and devices
-%     (CPUs, GPUs, and emerging accelerators).
-%   Relay's design demonstrates how a unified IR can provide
-%     expressivity, composability, and portability
-%     without compromising performance.
-
-
-%   We evaluate Relay on several systems and over a diverse set of vision and NLP workloads to
-%   demonstrate that (1) Relay enables \emph{expressive} programs via a large breadth
-%   of models, (2) Relay supports \emph{composition} of program-level optimizations
-%   such as quantization and fusion, and (3) Relay provides
-%   \emph{portability} by targeting a number of hardware backends.
-% Not only does Relay provide these three properties, we do so while also demonstrating
-%   competitive performance.
-% Relay is an open-source academic project.\footnote{Relay is publicly available at [redacted for review].}
-%   It has been deployed at a popular web service provider,
-%     a telecommunications and consumer electronics manufacturer,
-%     and a social media company, among others.
+\input{chapters/represent/type_system.tex}
+\input{chapters/represent/eval.tex}
