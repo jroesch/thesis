@@ -2,59 +2,71 @@
 \label{ch:intro}
 
 Traditionally machine learning algorithms were carefully engineered by humans
-in order to leverage limited data to obtain sufficient task performance.
+  in order to leverage limited data to obtain sufficient task performance.
 During the Big Data era, these hand engineered algorithms were displaced by
-simpler algorithms applied to the abundantly available data [1].
+  simpler algorithms applied to the abundantly available data [1].
 In order to scale these algorithms a number of systems were
-designed most notably MapReduce, Spark and other stream and graph processing systems.
+  designed most notably streaming and graph processing systems such as MapReduce, and Spark.
 In the early 2010s the emergence of deep learning changed the paradigm again
-replacing simple regular computation over streams of data with large models
-composed of compute-hungry tensor computations.
+  replacing simple regular computation over streams of data with large batched-models
+  composed of compute-hungry tensor computations.
+This trend towards models which are applied to more complex data (i.e., full text documents, images, videos, audio)
+  process a greater quantity of data (millions of data points), and are much more expensive to evalute
+  on a single datum (i.e., terra-flops of compute per sample).
 
 This new generation of machine learning applications demanded a corresponding era of
-innovation in systems.
+  innovation in systems.
 The first innovation in deep learning systems were so called
-‘deep learning frameworks’ such as TensorFlow and PyTorch.
+  ‘deep learning frameworks’ such as TensorFlow and PyTorch.
 These monolithic systems can execute a subset of deep learning models
-efficiently on a subset of the available hardware devices.
+  efficiently on a subset of the available hardware devices.
 These rigid systems provide good baseline performance, but often fail
-when straying from well-used models.
+  when straying from well-used models.
 
 Scaling frameworks to span the scope of all models and targets is a human endeavor
-requiring deep expertise often not found in conjunction with the skills of a
-machine learning engineer.
-
+  requiring deep expertise often not found in conjunction with the skills of a
+  machine learning engineer.
 A single machine learning engineer cannot write code that scales across the growing
-sea of models, operators, optimizations, and devices while maintaining state-of-the-art
-performance. From the early days of deep learning frameworks researchers realized the
-potential for apply compilation to this problem.
+  sea of models, operators, optimizations, and devices while maintaining state-of-the-art
+  performance.
+From the early days of deep learning framework development researchers realized the
+  potential for apply compilation to this problem, systems such as Theano were applying
+  this as earlier as 2007.
 
-Deep learning compilers as they are often referred to has made similar tradeoffs to
-those of frameworks accelerating a subset of models on a subset of devices.
-
+Deep learning compilers, systems for performing compilation to accelerate the execution
+  of deep learning models, have made similar tradeoffs as frameworks accelerating
+  a subset of models on a subset of devices.
 Designing a deep learning compiler even for this constrained subset is challenging.
-For example, a popular state-of-the-art DL compiler, Google's XLA, can famously
-slow down a programs on CPU instead of speeding them up (cite needed).
+For example,
+  a popular state-of-the-art DL compiler,
+  Google's XLA, can famously slow down a programs on
+  CPU instead of speeding them up (cite needed).
 
-Compilers for deep learning are an emerging area explored by a variety of solutions both
-industrial and academic.
-Part of my thesis work in graduate school was meaningful contributions to
-the design of and implementation of deep learning compilers in the form of TVM,
-a state-of-the-art deep learning compiler.
+Compilers for deep learning are a rapidly evolving area explored by a
+  variety of solutions both industrial and academic.
+Part of my thesis work in graduate school
+  was meaningful contributions to the design of and implementation of deep learning compilers.
+Much of this work now exists in TVM a production grade deep learning compiler.
 
-In particular I have spent the last several years focused on the representation,
-optimization, differentiation, and execution of dynamic neural networks.
-In this thesis I propose that we can generalize the overspecialized optimizations
-and insights applied to static dataflow graphs to dynamic neural networks by using
-one simple insight: dynamic neural networks are not different then traditional
-programs. The challenge is how to build a representation that captures this generality
-in a principled way allowing us to recover the potential performance loss by generalizing
-the programming model.
+In particular I have spent the last several years focused on the
+  representation,
+  optimization,
+  differentiation,
+  and execution of dynamic neural networks.
+In this thesis I propose that we can generalize overspecialized optimizations
+  and insights applied to static dataflow graphs, the predominant programming model
+  of deep learning to fully dynamic neural networks.
+These generalizations are powered by a simple insight:
+  dynamic neural networks are just programs which manipulate tensors.
+
+The challenge is how to build a representation that captures this generality
+  in a principled way allowing us to recover the potential performance loss by generalizing
+  the programming model.
 
 When I began working on deep learning compilers, input models were high-level
-declarative programs composed of linear algebra and statistics primitives.
+  declarative programs composed of linear algebra and statistics primitives.
 These straight forward representations often appeared in the form of
-a directed acyclic dataflow graph.
+  a directed acyclic dataflow graph.
 
 We realize a unified interface in the form of Relay a set of systems and APIs designed
   to compose together techniques across the stack to achieve state of the art performance.
@@ -73,63 +85,6 @@ One notable impact is its use in
   Alexa.
 
 \section{State of the Art}
-
-The state of the art when I began my thesis work were deep learning frameworks mostly had
-a single "lego" style design. Each technology stack had deep learning frameworks at the top, layered
-from the bottom from high-performance, device specific kernel libraries provided by hardware manufacturers.
-
-As deep learning frameworks began to design deep learning compilers you can see the design of compilers constrained
-by the challenges of the given abstractions, and a constrained programming model. An example of a constraining
-abstraction is an an inflexible static interface at the bo
-
-Practically this has introduced a strict separation between so-called ‘graph-compilers’ and so called ‘kernel libraries’.
-These graph compilers implement a simple DAG of operations which they then map down to kernels.
-The graph compilers are a passable solution, assuming the user can describe their program in a restrictive and awkward language,
-  and only makes use of existing kernels.
-If the user model makes use of the well-optimized subset of kernels and well-optimized devices it can assume passable performance,
-  but with many models this is not that case, with very little recourse for program authors.
-
-In the kernel domain there has been a large amount of existing work on ensuring individual kernels, or pipelines of them are efficient,
-  but these DLSs are not integrated into a larger programming abstraction.
-There existing systems like TensorRT which solve this problem for a specific device, with a series of caveats.
-
-Gestalt approaches have attempted to resolve the host of issues with the above design, but have also failed to provide a solution.
-The best example of this is Lift IR, a functional language designed to bring a principled programming languages approach to generating
-high-performance code on a variety of devices.
-
-Although Lift provides impressive results for a system built on purely rewriting it provides a single programming model for end users,
-  and requires all optimizations to either be written as a pass or phrased as a set of user rewrites.
-This design does not provide a way for users to incorporate outside implementations,
-  prior knowledge or compose with their ML pipelines often written in Python.
-
-Existing approaches using both strategies have limitations.
-Compiler design using the first strategy are limited by each layer only having an opaque view of the layers above and below,
-each layer uses a single semantics with well-defined mappings between layers but limited communication between,
- or in the case of a single monolithic IR, which chooses a functional semantics the inability to use semantics which provide
- hardware specificity or hardware aware semantics.
-
-Imagine a not-so-hypothetical end-user’s desire to support a new Transformer based model on a previously unsupported device such as a microcontroller.
-In order to obtain best in class performance this task will be split across an engineering team.
-For example one user with the correct expertise may contribute code for importing this model into, another with kernel expertise separately implements
-a kernel such as batched matrix multiplication and then optimizes it, and another user contributes the code generation, and another the runtime support.
-
-To accomplish this task in today’s ML frameworks a user must first design and train a model which accomplishes the task, k
-now how to use framework tools such as XLA, or TorchScript, be able to modify their complex source bases, and write a complex code generator
-or LLVM backend and finally modify the runtime to execute on the device, if even possible.
-
-Many engineers in this domain believe that human effort is required to obtain competitive performance that is demonstrated by today’s bleeding edge development,
-my thesis demonstrated this is not the case.
-
-Deep learning (DL) has radically transformed domains like
-  computer vision and
-  natural language processing (NLP)~\citep{yolo, recent_trends_in_nlp}.
-Inspired by these successes,
-  researchers and companies are continually
-  experimenting with increasingly sophisticated DL models and
-  developing specialized hardware backends.
-DL frameworks for writing, optimizing, and compiling DL models
-  reduce the complexity of these tasks,
-  which in turn accelerates DL research and product development.
 
 Popular DL compiler intermediate representations (IRs) offer different tradeoffs
   between expressivity, composability, and portability~\citep{
@@ -179,42 +134,73 @@ Furthermore, if a framework doesn't have specific support for
   the target phone model she cannot take advantage of specialized deep learning
   instructions or coprocessors~\citep{apple_neural_engine}.
 
-  Deep learning (DL) has radically transformed domains like
-  computer vision and
-  natural language processing (NLP)~\citep{yolo, recent_trends_in_nlp}.
-Inspired by these successes,
-  researchers and companies are continually
-  experimenting with increasingly sophisticated DL models and
-  developing specialized hardware backends.
-DL frameworks for writing, optimizing, and compiling DL models
-  reduce the complexity of these tasks,
-  which in turn accelerates DL research and product development.
+The state of the art when I began my thesis work were
+  deep learning frameworks mostly had a single "lego" style design.
+Each technology stack had deep learning frameworks at the top,
+  layered from the bottom from high-performance,
+  device specific kernel libraries provided by hardware manufacturers.
 
-  The scenario above highlights the three-pronged \textit{extensibility challenge}
-  for DL IRs:
-% \begin{enumerate}[label=\arabic*.]
-%   \item \textit{Expressivity}: It should be straightforward to write models involving
-%     control flow, first-class functions and data structures (e.g., trees, graphs, and lists).
-%   \item \textit{Composability}: It should be straightforward to add and compose new optimizations
-%     with existing ones (e.g., quantization, operator fusion, and partial evaluation).
-%   \item \textit{Portability}: It should be straightforward to add new hardware targets
-%     (e.g., TPU, Inferentia)~\citep{tpuv1, inferentia}.
-% \end{enumerate}
+As deep learning frameworks began to evolve deep learning compilers
+  the compiler design was constrained the heavily layered abstractions
+  and the programming model.
+An example of a constraining abstraction is the reliance on individual
+  kernels which can be invoked at the bottom most layer.
+By allowing the lowest level of abstraction to only receive a single
+  kernel invocation you limit the ability to optimize as the final
+  program must map directly to existing kernels which when possible
+  may be sub-optimal.
+Practically this has introduced a strict separation between so-called
+  ‘graph-compilers’ and so called ‘kernel libraries’.
+These graph compilers implement a simple DAG of operations
+  which they then map down to kernels.
+The graph compilers are a passable solution, assuming the user can describe their program in a restrictive and awkward language,
+  and only makes use of existing kernels.
+If the user model makes use of the well-optimized subset of kernels and well-optimized devices it can assume passable performance,
+  but with many models this is not that case, with very little recourse for program authors.
+
+In the kernel domain there has been a large amount of existing work on
+  ensuring individual kernels, or pipelines of them are efficient,
+  but these DLSs are not integrated into a larger programming abstraction.
+There existing systems like TensorRT which solve this problem for a specific device,
+with a series of caveats.
+
+Compiler design using the first strategy are limited by each layer only having an opaque view of the layers above and below,
+each layer uses a single semantics with well-defined mappings between layers but limited communication between,
+ or in the case of a single monolithic IR, which chooses a functional semantics the inability to use semantics which provide
+ hardware specificity or hardware aware semantics.
+
+Imagine a not-so-hypothetical end-user’s desire to support a new Transformer based model on a previously unsupported device such as a microcontroller.
+In order to obtain best in class performance this task will be split across an engineering team.
+For example one user with the correct expertise may contribute code for importing this model into, another with kernel expertise separately implements
+a kernel such as batched matrix multiplication and then optimizes it, and another user contributes the code generation, and another the runtime support.
+
+To accomplish this task in today’s ML frameworks a user must first design and train a model which accomplishes the task, k
+now how to use framework tools such as XLA, or TorchScript, be able to modify their complex source bases, and write a complex code generator
+or LLVM backend and finally modify the runtime to execute on the device, if even possible.
+
+Many engineers in this domain believe that human effort is required to obtain competitive performance that is demonstrated by today’s bleeding edge development,
+my thesis demonstrated this is not the case.
 
 \section{Dynamic Neural Networks}
 
-In this thesis we explore new designs for representing, optimizing, differentiating, and executing dynamic neural networks.
+In particular all previous solutions failed to provide the same optimizations
+  level of performance in the presence of dynamic features.
 
-Existing systems for compiling neural networks do not provide robust solutions that achieve state of the art performance
-  on dynamic models.
-Most solutions for dynamic models either a) use non-shape specialized kernels b) trace based JIT compilation.
+In this thesis we explore new designs for representing,
+  optimizing, differentiating, and executing dynamic neural networks.
+Existing systems for compiling neural networks do not provide robust
+   solutions that achieve state of the art performance on dynamic models.
+Most solutions for dynamic models either
+  a) use non-shape specialized kernels b) trace based JIT compilation.
 
-Relay addresses the challenges laid out in the previous section by using a whole program representation which composes multiple distinct IR dialects,
+Relay addresses the challenges laid out in the previous section by using
+  a whole program representation which composes multiple distinct IR dialects,
   notably an ML-style high-level dialect,
   and the use of TVM’s compute language as a low-level dialect,
   in conjunction with carefully designed runtime and system APIs.
 
-The hypothetical story of the user needing to extend the entire stack is derived from a true sequence of events that occurred in the development of Relay.
+The hypothetical story of the user needing to extend the entire stack is derived
+  from a true sequence of events that occurred in the development of Relay.
 A process like this requires diverse expertise that is often non-compositional. It is nearly impossible to find a single individual who has the ability
   to do all these tasks at a state-of-the-art level.
 One user introduced framework support, another added a kernel, another optimized it, and another added compiler and runtime support for a new target.
@@ -232,12 +218,14 @@ If we attempt to use existing end-to-end tools such as Lift, they provide a sing
 
 By embracing a split semantics, with the ability to introduce new dialects we provide different views of the program at different points in order to solve each optimization task independently.
 
+This work is focused on helping a user wishing to utilize machine learning specify and optimize
+  the neural networks they wish too with minimal fuss and maximal performance.
 
 \section{Thesis Organization}
 
 My thesis is organized around four pillars, representation, differentiation, optimization, execution,
 We first explore related work and background material
-  in \ref{ch:related}, we then discuss the design of the Relay intermediate representation in \ref{ch:design}.
+  in \ref{ch:related}, we then discuss the design of the Relay intermediate representation in \ref{ch:relay}.
 We then discuss how to perform automatic differentiation and training support in \ref{ch:ad} and
   \ref{ch:frameworks}.
 We then discuss how to optimize the compiler in \ref{ch:optimizations} and \ref{ch:opt_for_non_experts}.

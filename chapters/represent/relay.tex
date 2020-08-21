@@ -99,7 +99,7 @@ We make the following contributions:
 \begin{itemize}
   \item The Relay IR, a tensor-oriented, statically typed
     functional IR,
-    which we describe in Section \ref{sec:design}.
+    which we describe in this chapter.
   Relay's design is motivated by the insight that functional IRs, used by
   languages from the ML family\footnote{``ML'' as in ``Meta Language,'' not
   ``Machine Learning''} can be readily adapted to support DL.
@@ -180,7 +180,7 @@ We make the following contributions:
   \begin{itemize}
     \item The Relay IR, a tensor-oriented, statically typed
       functional IR,
-      which we describe in Section \ref{sec:design}.
+      which we describe in this chapter.
     Relay's design is motivated by the insight that functional IRs, used by
     languages from the ML family\footnote{``ML'' as in ``Meta Language,'' not
     ``Machine Learning''} can be readily adapted to support DL.
@@ -201,7 +201,6 @@ We make the following contributions:
 
 
 \section{Design}
-\label{sec:design}
 
 Relay's expressive high-level IR is designed to support
   complex models while abstracting over hardware-specific
@@ -833,7 +832,7 @@ We evaluated Relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx F
   We evaluate the effects of quantized inference applied by Relay on vision workloads running
   on the Raspberry-Pi3 and Firefly RK3399 ARM-based platforms.
   Figure~\ref{fig:arm-eval} shows the effects of different levels
-    of quantization applied to low-power devices~\citep{relay_arixv}.
+    of quantization applied to low-power devices~\citep{roesch2019relay}.
   The numbers show that as we opt for a more aggressive quantization scheme such as \texttt{int8/16} (i.e. 8-bit multiplication and 16-bit accumulation), we achieve much improved performance.
 
   \paragraph{Targeting Deep Learning Accelerators on FPGAs}
@@ -1389,11 +1388,10 @@ It is used to deploy efficient machine learning to
   Luckily, in practice, the number of type relations needed to express most of Relay's
     operators is relatively small, and their implementations are generally straightforward
     and amenable to exhaustive testing.
-The above sections discuss the core of Relay, a full-length paper under submission\citep{relay_arixv}
+The above sections discuss the core of Relay, a full-length paper under submission\citep{roesch2019relay}
   details its design and implementation.
 
   \section{Design}
-  \label{sec:design}
 
   Relay's expressive high-level IR is designed to support
     complex models while abstracting over hardware-specific

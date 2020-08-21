@@ -17,6 +17,19 @@ Deep learning (DL) has been used to achieve state-of-the-art results in
   playing to natural language processing.
 Deep learning provides a collection of techniques for learning functions that are difficult
   to program directly.
+
+
+For example, suppose one wants to construct a function $f(x)$ to extract building addresses from
+images of a street. One approach to writing $f(x)$ explicitly might be to write programs to identify
+regions of the image that contain information pertinent to addresses (like street names or house
+numbers), partition those regions into individual characters, and identify each character.
+One may then write a program that chains together many such modules into a working system.
+It would require hundreds, if not thousands, of human-hours of work and dozens of heuristics to
+write any of those programs by hand, and there is no guarantee it will perform well.
+By contrast, deep learning has, with relatively little code, been
+used to approximate this entire recognition task with a single model. The learned system
+outperforms all hand-crafted solutions \citep{streetview}.
+
 A programmer solving a problem with DL performs three steps.
 First, she specifies a parametric function (often called a \textit{model},
   \textit{neural network}, or simply \textit{network}) $F(\theta, x)$ of the function
@@ -31,34 +44,8 @@ While training and inference were once performed on the same machine,
   since training is very computationally intensive.
 The values learned from training can then be deployed for inference on less powerful systems,
   such as a single GPU, a mobile phone, or an FPGA.
-This work is focused on helping a user wishing to utilize machine learning specify and optimize
-  the neural networks they wish too with minimal fuss and maximal performance.
 
-%\subsection{Deep Learning}
-
-% Deep learning (DL) has been used to achieve state-of-the-art results in applications ranging from
-% computer vision to game playing to natural language processing. Deep learning provides a collection of
-% techniques for learning functions that are difficult to program directly.
-
-% For example, suppose one wants to construct a function $f(x)$ to extract building addresses from
-% images of a street. One approach to writing $f(x)$ explicitly might be to write programs to identify
-% regions of the image that contain information pertinent to addresses (like street names or house
-% numbers), partition those regions into individual characters, and identify each character.
-% One may then write a program that chains together many such modules into a working system.
-% It would require hundreds, if not thousands, of human-hours of work and dozens of heuristics to
-% write any of those programs by hand, and there is no guarantee it will perform well.
-% By contrast, deep learning has, with relatively little code, been
-% used to approximate this entire recognition task with a single model. The learned system
-% outperforms all hand-crafted solutions \citep{streetview}.
-
-% A programmer solving a problem with DL performs three steps. First, she specifies a parametric
-% function (often called a \textit{model}, \textit{neural network}, or simply \textit{network})
-% $F(\theta, x)$ of the function that computes the desired value. She then \textit{trains} the model
-% by applying an optimization algorithm to find a set of parameters $\theta$ that results in an
-% acceptable approximation of the function on a collection of input-output pairs. Finally, she uses
-% her learned function to produce outputs for new inputs in a process called \textit{inference}.
-
-% In practice, DL engineers write procedural programs that manipulate \textit{tensors},
+  % In practice, DL engineers write procedural programs that manipulate \textit{tensors},
 %   multi-dimensional arrays of numbers.
 % These restrictions allow DL practitioners to take advantage of
 %   statistics, linear algebra, and real analysis.
@@ -94,7 +81,6 @@ This work is focused on helping a user wishing to utilize machine learning speci
 % train models on high-powered devices such as a fleet of cloud machines or a custom GPU farm, since
 % training is very computationally intensive. The values learned from training can then be deployed
 % for inference on less powerful systems, such as a single GPU, a mobile phone, or an FPGA.
-
 
 \section{Deep Learning Frameworks}
 
@@ -186,6 +172,83 @@ Operator compilers perform code generation for sets of scalar loop nests,
 Relay focuses on composing generic operators, and the surrounding program
     into an efficiently orchestrated DL program.
 
+
+    {\bf Deep learning frameworks}
+
+    As a framework, TensorFlow~\citep{tensorflow} supports dynamism via the addition
+    of control flow primitives such as \emph{switch} and \emph{merge} in its graph
+    representation~\citep{yu2018dynamic}. Similarly, MXNet~\citep{mxnet, mxnet-control}
+    uses operators such as {\em foreach}, {\em cond}, and {\em while\_loop} to support control flow.
+     The main drawback of this approach is requiring a runtime that uses an inefficient and complex
+     control flow encoding such as TesorFlow, or a hybrid runtime such as MxNet which is inflexible
+     for deploying to edge devices.
+
+     As a separate effort, TensorFlow Fold~\citep{tensorflowfold} adds front-end
+     syntactic sugar to TensorFlow for simplifying dynamic models via dynamic batching.
+
+     Specifically, TensorFlow Fold conducts an analysis of the user's provided computation
+     graphs and identifies dynamic operations that can be batched together. Once such operations
+     are found, it transforms them into an intermediate representation (IR) that can be
+     ingested by TensorFlow for evaluation.
+
+     The nature of this approach can introduce large overhead as each path must
+     be executed as a different sub-computation graph, as well as limiting further optimizaiton.
+
+    Dynet~\citep{neubig2017dynet} and PyTorch~\citep{pytorch} use host language features
+    to dynamically (i.e., Python's control flow) to construct a dynamic model architecture.
+    This allows a friendly and flexible programming model.
+    %as users can conveniently write code which appears no different then standard Python.
+    However, it requires the creation of new static data flow graph for each path through
+    the program introducing control flow overhead, and limiting the scope of optimization
+    to a single trace through the program, a trace which often only executed once~\citep{xu2018cavs}. These challenges were similarly faced by tracing-JIT based systems in the JIT compiler literature. JAX~\citep{jax2018github} also supports both control flow and dynamic features in its programming model, but is fundamentally limited by the ability for XLA, TensorFlow's deep learning compiler to optimize and compile dynamic code. To the best of our knowledge XLA still requires all loop nests to be static at code generation time.
+
+    %JANUS~\citep{jeong2019janus} optimizes the dynamic model execution in TensorFlow via
+    speculative execution. It converts an imperative program that contains control
+    flow defined in the host language (Python) into a symbolic data graph in
+     TensorFlow for better performance. However, the conversion is incomplete
+     due to dynamic typing, control flow, etc.
+
+    Therefore, Janus falls back to imperative execution in
+    the host environment when certain assumption breaks, which can
+    lead to performance loss. In addition, JANUS shares the limitation in
+    portability with the underlying framework.
+
+    Jeong et al.~\citep{jeong2018improving} and JANUS~\citep{jeong2019janus}
+     both extend TensorFlow to improve the performance for dynamic models.
+
+     Jeong et al.~\citep{jeong2018improving} introduces the recursive data structure
+     in the programming model to replace the control flow primitives in the tree-like models.
+
+     The solution is hard to generalize to other dynamic models though.
+
+     JANUS~\citep{jeong2019janus} optimizes the dynamic model execution in
+     TensorFlow via speculative execution. However, the conversion from imperative programs
+     in Python to symbolic data graph in TensorFlow is incomplete due to dynamic typing,
+     control flow, etc. Therefore, JANUS suffers the performance loss when it
+     falls back to imperative execution. In addition, both work share the limitation
+     in portability with the underlying framework.
+
+    %is an extension on top of TensorFlow to address the execution challenges led by dynamic models.
+
+    imed to take the advantage of expressiveness provided by frameworks to represent
+    dynamic models and the performance benefit of ahead of time optimization.
+
+    JANUS takes the model defined in TF Eager and relies on speculative execution
+    to remove control flow for speeding up the execution.
+
+    It works well on certain models that could be executed speculatively but
+    still suffers from performance loss on the other models that fail for
+    speculative execution.
+
+    Deep learning frameworks rely on third-party libraries to implement
+    operators with different data shapes, namely, they achieve good performance
+    for models with dynamic shapes on a specific hardware platform only
+    if the corresponding high-performance third-party library
+    is both used and supports an operation.
+
+    Therefore, frameworks generally perform poorly on devices,
+    such as ARM CPU, which are not in the first tier of device
+    support such as Google's TPU or Nvidia GPU in TensorFlow.
 
 % \subsection{Deep Learning Frameworks}
 
@@ -396,10 +459,6 @@ These \textit{graph compilers} use computation graph IRs and provide
     lowering onto a variety of targets.
 Often graph compilers only perform high-level optimizations
     and then offload to vendor-specific libraries.
-% % TODO(this point is dangling)
-% In particular,
-%     XLA has advanced support for the TPU,
-%     and is focused on lowering static loop nests into efficient kernels.
 
 Due to their limited programming model, they
     provide the same functionality as Relay with
@@ -435,32 +494,39 @@ These stable static traces can then be optimized by lower-level
     compilers such as Glow or Relay to perform the last level of code generation.
 Microsoft released ModelCompiler, a system for efficiently compiling RNNs defined
     in CNTK to CPU.
-ModelCompiler uses Halide to represent low-level operations, but lacks
-    the expressivity of the Relay IR and only demonstrates support for CPUs.
-% \TQC{The discussion in this paragraph was a bit long given the less importance of this compiler,
-%   consider remove everything except for
-%   the paragraph about expressivitity.
-%   I think we can even safely remove this paragraph
-%   and fold it to citations to ngraph etc. mention lack of expressivity.
-%   It is a workshop paper of LearningSys 18 workshop
-%   \url{http://learningsys.org/nips18/assets/papers/30CameraReadySubmissionmodelcompiler_camera_ready_no_final_flag.pdf}
-% }
-% \todo{Suggestion from OOPSLA reviewer A: ``Accelerating recurrent neural networks through
-% compiler techniques and quantization,'' Li-Wen Chang et al., Workshop on Systems for
-% ML, NeurIPS 2018.}
-% ModelCompiler similarly uses Halide to represent low-level operations,
-%     which provides fusion and other standard optimizations.
-% Their high-level IR is not clearly described but appears to lack arbitrary
-%     control-flow, first-class functions, or datatypes.
-% They employ quantization but do not demonstrate how/if it can be extended,
-%     or if low-bit (< 8) quantization is supported.
-% They have shown support for CPU execution but provide no
-%     story for GPUs or accelerators.
+ModelCompiler similarly uses Halide to represent low-level operations,
+    which provides fusion and other standard optimizations.
+Their high-level IR is not clearly described but appears to lack arbitrary
+    control-flow, first-class functions, or datatypes.
+They employ quantization but do not demonstrate how/if it can be extended,
+    or if low-bit (< 8) quantization is supported.
+They have shown support for CPU execution but provide no
+    story for GPUs or accelerators.
+
+Unlike the deep learning frameworks, Nimble is designed as an end-to-end deep learning compiler The existing deep learning compilers, including XLA~\citep{xla}, TVM~\citep{tvm_osdi18}, and Glow~\citep{glow}, offer a means to compile deep learning models to run on multiple hardware platforms, but only focus on static models and fail to support models with dynamism.
+MLIR~\citep{lattner2020mlir} provides compiler infrastructure for deep learning workloads which allows developers to implement new dialects and combine them into a sing application. Its graph-level dialect has the support for dynamism, but has not yet produced work demonstrating how to achieve good performance in dynamic scenarios.
+Nimble enables a deep learning compiler to support dynamism in an efficient and flexible way by adding a dynamic type system, a dynamic code generator, a VM-based runtime and a series of dynamic-specific optimizations.
+
+Nimble's compilation and VM design is largely inspired by production compilers and VMs,
+such as LLVM~\citep{llvm}, GCC~\citep{gcc}, and JVM~\citep{jvm}.
+These generic solutions are able to easily handle dynamic behaviors,
+uch as control flow and variable-length input arrays.
+However, the design of these compilers are heavily tailored t
+o the optimization and execution profile of traditional programs.
+These programs manipulate small scalar values and consist of a large
+number of low level instructions. These VMs have a large number of instructions,
+which requires instruction execution and dispatch to be extremely efficient.
+
+Instead, deep learning compilers like Nimble manipulate primarily
+tensor values using a relatively small number of coarse-grained instructions,
+ i.e. 16 instructions are sufficient for the Nimble VM. The execution hotspots
+ of DL workloads are the compute-intensive operators (i.e. convolution)
+ over large tensors. Thus, the micro-optimization of VM instruction
+  dispatch is not essential to overall performance.
 
 \subsection{Programming Languages for Deep Learning}
 \label{sec:pl_techniques_in_dl}
 
-% TODO ADD tensor type sytems cites
 In recent years, the design of new programming languages,
     or the augmentation of existing ones, has become
     a popular area of research.
@@ -542,131 +608,7 @@ Relay provides an extensible framework for hardware accelerators,
 We demonstrate how we can use an expressive general-purpose deep learning IR, plus
   a few platform specific optimizations
 
-\subsection{High Performance DSLs for Tensors}
-
-My work is focused on the end-to-end compilation of deep learning, and for
-  this reason we do not directly focus on the generation of efficient low-level code for
-  tensor operations.
-Instead my work is focused on optimizing programs which make use of low-level operations
-  and optimizations around programs which combine them with higher-level abstractions,
-  like closures and datatypes.
-In particular Relay is designed as an extension to \tvm~\citep{tvm_osdi18},
-  a tensor expression language used for specifying dense array
-  operations, to support full models.
-Previous work on the \tvm focused on producing efficient operators
-  (dense linear algebra kernels), such as generalized matrix multiplication (GEMM) and convolutions.
-In theory Relay could use other high performance DSLs such as Halide~\citep{halide},
-    which \tvm derived its IR, and its split computation and schedule model.
-\todo{HALIDE EXPAND HERE}
-Tensor Comprehensions (TC) shares common goals with the \tvm framework, but achieves its goal
-through different techniques, such as polyhedral compilation rather than algorithmic
-schedules. TC could replace \tvm in Relay{}'s compilation.
-\todo{TC EXPAND HERE}
-
-\subsection{Programming Language based Deep Learning}
-
-My work is not the first attempt to apply programming language
-    techniques to machine learning or problems such automatic differentiation.
-\todo{LANTERN EXPAND}
-Lantern \citep{lantern} is a deep learning DSL in Scala
-    that uses lightweight modular staging (LMS) to lower code into C++.
-LMS takes a graph as input from the user and converts it to an AST
-    representation, similar to Relay's graph mode.
-LMS removes unnecessary abstractions.
-Going one step further than Lantern,
-    Relay supports accelerators.
-
-\verb|Flux.jl| \citep{fluxjl} is a DL library written in Julia \citep{julia}, a numerical
-computing language. Like Relay, \verb|Flux.jl| adds shapes to the type system; however, unlike Relay, it
-uses a mixture of compile-time inference and runtime checks to enforce shape constraints
-\citep{jlmlpl} and cannot perform platform-specific optimizations. Unlike \verb|Flux.jl|, which
-tightly coupled with Julia, Relay is language agnostic and decouples frontend and IR
-considerations.
-Relay's features, such as type inference and deployment to multiple back-ends, can
-    be easily reused by frameworks in arbitrary languages.
-
-Additionally, previous work in higher-order differentiation from the PL community
-has informed Relay's design.
-In particular, we draw inspiration from various implementations of
-automatic differentiation \citep{beautiful_diff, ad_survey, haskell_ad, toplas_reverse, wang_reverse, DLS, DDF},
-with particular attention to techniques that can compute higher-order gradients of higher-order programs.
-\verb|Zygote.jl| \citep{zygotejl}, like Relay, uses source code transformations to
-    implement automatic differentiation.
-
-
-Systems for machine learning is an active research area with a variety of techniques for ML inference engines which support dynamic features, cross-platform execution, and per-platform code generation. We discuss related work below.
-
-% \hide{
-% \begin{table}[tbp]
-% \begin{tabular}{|c||c|c|c|}
-% \hline
-% Frameworks      & \makecell{Multi-platform \\ Portability}  & \makecell{Model \\ Dynamism} & Compilation \\ \hline
-% TF/TF Fold      &             \xmark                     &         \cmark              &  \xmark     \\ \hline
-% PyTorch         &             \xmark                     &         {\bf !}              &  \xmark     \\ \hline
-% MXNet         &               \xmark                     &         \cmark              &  \xmark     \\ \hline
-% DyNet           &             \xmark                     &         {\bf !}              &  \xmark     \\ \hline
-% Cavs            &             \xmark                     &         \cmark              &  \xmark     \\ \hline
-% Glow            &             \cmark                     &         \xmark              &  \cmark     \\ \hline
-% TVM             &             \cmark                     &         \xmark              &  \cmark     \\ \hline
-% XLA             &             \cmark                     &         \xmark              &  \cmark     \\ \hline
-% Nimble         &             \cmark                     &         \cmark              &  \cmark     \\ \hline
-% \end{tabular}
-% \caption{Summary of popular machine learning systems, in terms of whether or not being easy to port to multiple platforms, performant for dynamic model inference ({\bf !} means supported but not efficient), and capable of compiling kernels.}
-% \label{tab:ml_systems}
-% \end{table}
-% }
-
-\noindent
-{\bf Deep learning frameworks} As a framework, TensorFlow~\citep{tensorflow} supports dynamism via the addition of control flow primitives such as \emph{switch} and \emph{merge} in its graph representation~\citep{yu2018dynamic}. Similarly, MXNet~\citep{mxnet, mxnet-control} uses operators such as {\em foreach}, {\em cond}, and {\em while\_loop} to support control flow. The main drawback of this approach is requiring a runtime that uses an inefficient and complex control flow encoding such as TesorFlow, or a hybrid runtime such as MxNet which is inflexible for deploying to edge devices. As a separate effort, TensorFlow Fold~\citep{tensorflowfold} adds front-end syntactic sugar to TensorFlow for simplifying dynamic models via dynamic batching. Specifically, TensorFlow Fold conducts an analysis of the user's provided computation graphs and identifies dynamic operations that can be batched together. Once such operations are found, it transforms them into an intermediate representation (IR) that can be ingested by TensorFlow for evaluation. The nature of this approach can introduce large overhead as each path must be executed as a different sub-computation graph, as well as limiting further optimizaiton.
-
-Dynet~\citep{neubig2017dynet} and PyTorch~\citep{pytorch} use host language features to dynamically (i.e., Python's control flow) to construct a dynamic model architecture. This allows a friendly and flexible programming model.
-%as users can conveniently write code which appears no different then standard Python.
-However, it requires the creation of new static data flow graph for each path through the program introducing control flow overhead, and limiting the scope of optimization to a single trace through the program, a trace which often only executed once~\citep{xu2018cavs}. These challenges were similarly faced by tracing-JIT based systems in the JIT compiler literature. JAX~\citep{jax2018github} also supports both control flow and dynamic features in its programming model, but is fundamentally limited by the ability for XLA, TensorFlow's deep learning compiler to optimize and compile dynamic code. To the best of our knowledge XLA still requires all loop nests to be static at code generation time.
-
-%JANUS~\citep{jeong2019janus} optimizes the dynamic model execution in TensorFlow via speculative execution. It converts an imperative program that contains control flow defined in the host language (Python) into a symbolic data graph in TensorFlow for better performance. However, the conversion is incomplete due to dynamic typing, control flow, etc. Therefore, Janus falls back to imperative execution in the host environment when certain assumption breaks, which can lead to performance loss. In addition, JANUS shares the limitation in portability with the underlying framework.
-Jeong et al.~\citep{jeong2018improving} and JANUS~\citep{jeong2019janus} both extend TensorFlow to improve the performance for dynamic models. Jeong et al.~\citep{jeong2018improving} introduces the recursive data structure in the programming model to replace the control flow primitives in the tree-like models. The solution is hard to generalize to other dynamic models though. JANUS~\citep{jeong2019janus} optimizes the dynamic model execution in TensorFlow via speculative execution. However, the conversion from imperative programs in Python to symbolic data graph in TensorFlow is incomplete due to dynamic typing, control flow, etc. Therefore, JANUS suffers the performance loss when it falls back to imperative execution. In addition, both work share the limitation in portability with the underlying framework.
-
-%is an extension on top of TensorFlow to address the execution challenges led by dynamic models. It aimed to take the advantage of expressiveness provided by frameworks to represent dynamic models and the performance benefit of ahead of time optimization. JANUS takes the model defined in TF Eager and relies on speculative execution to remove control flow for speeding up the execution. It works well on certain models that could be executed speculatively but still suffers from performance loss on the other models that fail for speculative execution\yida{also mention it is limited by the framework?}.
-
-Deep learning frameworks rely on third-party libraries to implement operators with different data shapes, namely, they achieve good performance for models with dynamic shapes on a specific hardware platform only if the corresponding high-performance third-party library is both used and supports an operation. Therefore, frameworks generally perform poorly on devices, such as ARM CPU, which are not in the first tier of device support such such as Google's TPU or Nvidia GPU in TensorFlow.
-
-\noindent
-{\bf Runtime systems} To address frameworks' challenges with dynamism, e.g. prohibitively high overhead in reconstruction of computation graphs and difficulties in batching together computations with similar input shapes recent works has proposed deep learning runtime systems~\citep{xu2018cavs, gao2018low}. These techniques exhibited effectiveness in improving the performance of dynamic models. However, these approaches suffer from a common limitation--they all heavily rely on the third party libraries, such as cuDNN~\citep{cudnn} and MKL-DNN~\citep{mkldnn}, raising concerns about portability. In addition, they usually only support a narrow subset of dynamic models on each platform.
-
-\noindent
-{\bf Deep learning compilers} Unlike the deep learning frameworks, Nimble is designed as an end-to-end deep learning compiler The existing deep learning compilers, including XLA~\citep{xla}, TVM~\citep{tvm_osdi18}, and Glow~\citep{glow}, offer a means to compile deep learning models to run on multiple hardware platforms, but only focus on static models and fail to support models with dynamism.
-MLIR~\citep{lattner2020mlir} provides compiler infrastructure for deep learning workloads which allows developers to implement new dialects and combine them into a sing application. Its graph-level dialect has the support for dynamism, but has not yet produced work demonstrating how to achieve good performance in dynamic scenarios.
-Nimble enables a deep learning compiler to support dynamism in an efficient and flexible way by adding a dynamic type system, a dynamic code generator, a VM-based runtime and a series of dynamic-specific optimizations.
-
-Nimble's compilation and VM design is largely inspired by production compilers and VMs, such as LLVM~\citep{llvm}, GCC~\citep{gcc}, and JVM~\citep{jvm}. These generic solutions are able to easily handle dynamic behaviors, such as control flow and variable-length input arrays. However, the design of these compilers are heavily tailored to the optimization and execution profile of traditional programs. These programs manipulate small scalar values and consist of a large number of low level instructions. These VMs have a large number of instructions, which requires instruction execution and dispatch to be extremely efficient. Instead, deep learning compilers like Nimble manipulate primarily tensor values using a relatively small number of coarse-grained instructions, i.e. 16 instructions are sufficient for the Nimble VM. The execution hotspots of DL workloads are the compute-intensive operators (i.e. convolution) over large tensors. Thus, the micro-optimization of VM instruction dispatch is not essential to overall performance.
-
-\subsection{Dynamic Neural Networks}
-
-One area in which deep learning has made significant advances is
-  natural language processing (NLP), such as finding keywords in a
-  research paper, determining the sentiment of a tweet,
-  or summarizing a news article.
-Reasoning about text requires context-sensitive analysis and data of
-  non-fixed dimensions, unlike in many vision tasks.
-To allow for context-sensitive analysis, DL researchers have developed networks with persistent
-state, known as \textit{recurrent neural networks}  (RNNs). Like the simple networks described
-earlier, these networks have an input and an output; however, they take an additional input and
-produce an additional output known as the \textit{hidden state}. Beginning with an initial hidden
-state and a list of inputs (for example, characters from a source text), one can produce a
-list of outputs (for example, a translation of the source text). %, as in Fig.~\ref{fig:rnn_graph}.
-Recurrent neural networks have found use not only in NLP, but also in speech recognition, music
-transcription, eSports, and other areas \citep{lstm, speech_recognition, OpenAI_dota}.
-
-Unfortunately, since most machine learning frameworks rely on computation graphs,
-  which cannot represent recursion, RNNs are usually finitely unrolled to a fixed depth.
-This may be acceptable if the depth can be determined statically and the loop unrolled
-  ahead of time; however, if the depth depends on runtime values or complex control flow,
-  unrolling must be performed dynamically.
-% Since the source language is usually an interpreted language like Python, this process incurs significant
-% overhead. Even when unrolling can be computed ahead of time, it destroys information about
-% the original program, which can no longer be used for ahead-of-time optimization.
-
-\subsection{Hardware Backends}
+  \subsection{Hardware Backends}
 
 If a programmer wants to experiment with a new hardware device,
   she must manually account for variations in hardware intrinsics, data
@@ -682,23 +624,6 @@ If she cannot capture her model (e.g., an RNN) in the IR,
 In order to effectively use these devices,
   engineers often redesign the model from scratch to better match the target
   platform's intrinsics and design.
-
-% %   convolutional neural networks (CNNs),
-% %   which are widely used in image processing and computer vision,
-% %   generally utilize a fixed topology of layers
-% %   with tensors of fixed dimension.
-% % In contrast,
-% %   recurrent neural networks (RNNs),
-% %   which are widely used in natural language processing (NLP),
-% %   require recursion, control flow, and
-% %   operations over variable-sized data structures (e.g., lists).
-% % The regular structure of CNNs facilitates
-% %   optimizing compilation to
-% %   common hardware accelerators (e.g., GPUs), but
-% %   RNN-like models are still challenging to optimize.
-
-% % INTEGRATE ME (DONE)
-
 % % INTEGRATE ME PART 2
 % % \subsection{Expressivity}
 % % Most frameworks have employed a computation graph based IR.
@@ -819,3 +744,119 @@ In order to effectively use these devices,
 % %   \todo{cite here, ask luis}
 % % It is essential that frameworks can adapt to new hardware devices
 % %   with minimal changes to applications.
+
+\subsection{High Performance DSLs for Tensors}
+
+My work is focused on the end-to-end compilation of deep learning, and for
+  this reason we do not directly focus on the generation of efficient low-level code for
+  tensor operations.
+Instead my work is focused on optimizing programs which make use of low-level operations
+  and optimizations around programs which combine them with higher-level abstractions,
+  like closures and datatypes.
+In particular Relay is designed as an extension to \tvm~\citep{tvm_osdi18},
+  a tensor expression language used for specifying dense array
+  operations, to support full models.
+Previous work on the \tvm focused on producing efficient operators
+  (dense linear algebra kernels), such as generalized matrix multiplication (GEMM) and convolutions.
+In theory Relay could use other high performance DSLs such as Halide~\citep{halide},
+    which \tvm derived its IR, and its split computation and schedule model.
+\todo{HALIDE EXPAND HERE}
+Tensor Comprehensions (TC) shares common goals with the \tvm framework, but achieves its goal
+through different techniques, such as polyhedral compilation rather than algorithmic
+schedules. TC could replace \tvm in Relay{}'s compilation.
+\todo{TC EXPAND HERE}
+
+\subsection{Programming Language based Deep Learning}
+
+My work is not the first attempt to apply programming language
+    techniques to machine learning or problems such automatic differentiation.
+\todo{LANTERN EXPAND}
+Lantern \citep{lantern} is a deep learning DSL in Scala
+    that uses lightweight modular staging (LMS) to lower code into C++.
+LMS takes a graph as input from the user and converts it to an AST
+    representation, similar to Relay's graph mode.
+LMS removes unnecessary abstractions.
+Going one step further than Lantern,
+    Relay supports accelerators.
+
+\verb|Flux.jl| \citep{fluxjl} is a DL library written in Julia \citep{julia}, a numerical
+computing language. Like Relay, \verb|Flux.jl| adds shapes to the type system; however, unlike Relay, it
+uses a mixture of compile-time inference and runtime checks to enforce shape constraints
+\citep{jlmlpl} and cannot perform platform-specific optimizations. Unlike \verb|Flux.jl|, which
+tightly coupled with Julia, Relay is language agnostic and decouples frontend and IR
+considerations.
+Relay's features, such as type inference and deployment to multiple back-ends, can
+    be easily reused by frameworks in arbitrary languages.
+
+Additionally, previous work in higher-order differentiation from the PL community
+has informed Relay's design.
+In particular, we draw inspiration from various implementations of
+automatic differentiation \citep{beautiful_diff, ad_survey, haskell_ad, toplas_reverse, wang_reverse, DLS, DDF},
+with particular attention to techniques that can compute higher-order gradients of higher-order programs.
+\verb|Zygote.jl| \citep{zygotejl}, like Relay, uses source code transformations to
+    implement automatic differentiation.
+
+
+
+{\bf Runtime systems} To address frameworks' challenges with dynamism,
+e.g. prohibitively high overhead in reconstruction of computation
+graphs and difficulties in batching together computations with
+similar input shapes recent works has proposed
+deep learning runtime systems~\citep{xu2018cavs, gao2018low}.
+These techniques exhibited effectiveness in improving the
+performance of dynamic models.
+
+However, these approaches suffer
+from a common limitation--they all heavily rely on the third party libraries,
+such as cuDNN~\citep{cudnn} and MKL-DNN~\citep{mkldnn},
+raising concerns about portability.
+
+In addition, they usually only support a narrow subset of dynamic models on each platform.
+
+
+\subsection{Dynamic Neural Networks}
+
+
+Systems for machine learning is an active research area with a variety of techniques for ML inference engines which support dynamic features, cross-platform execution, and per-platform code generation. We discuss related work below.
+
+% \begin{table}[tbp]
+% \begin{tabular}{|c||c|c|c|}
+% \hline
+% Frameworks      & \makecell{Multi-platform \\ Portability}  & \makecell{Model \\ Dynamism} & Compilation \\ \hline
+% TF/TF Fold      &             \xmark                     &         \cmark              &  \xmark     \\ \hline
+% PyTorch         &             \xmark                     &         {\bf !}              &  \xmark     \\ \hline
+% MXNet         &               \xmark                     &         \cmark              &  \xmark     \\ \hline
+% DyNet           &             \xmark                     &         {\bf !}              &  \xmark     \\ \hline
+% Cavs            &             \xmark                     &         \cmark              &  \xmark     \\ \hline
+% Glow            &             \cmark                     &         \xmark              &  \cmark     \\ \hline
+% TVM             &             \cmark                     &         \xmark              &  \cmark     \\ \hline
+% XLA             &             \cmark                     &         \xmark              &  \cmark     \\ \hline
+% Nimble         &             \cmark                     &         \cmark              &  \cmark     \\ \hline
+% \end{tabular}
+% \caption{Summary of popular machine learning systems, in terms of whether or not being easy to port to multiple platforms, performant for dynamic model inference ({\bf !} means supported but not efficient), and capable of compiling kernels.}
+% \label{tab:ml_systems}
+% \end{table}
+
+One area in which deep learning has made significant advances is
+  natural language processing (NLP), such as finding keywords in a
+  research paper, determining the sentiment of a tweet,
+  or summarizing a news article.
+Reasoning about text requires context-sensitive analysis and data of
+  non-fixed dimensions, unlike in many vision tasks.
+To allow for context-sensitive analysis, DL researchers have developed networks with persistent
+state, known as \textit{recurrent neural networks}  (RNNs). Like the simple networks described
+earlier, these networks have an input and an output; however, they take an additional input and
+produce an additional output known as the \textit{hidden state}. Beginning with an initial hidden
+state and a list of inputs (for example, characters from a source text), one can produce a
+list of outputs (for example, a translation of the source text). %, as in Fig.~\ref{fig:rnn_graph}.
+Recurrent neural networks have found use not only in NLP, but also in speech recognition, music
+transcription, eSports, and other areas \citep{lstm, speech_recognition, OpenAI_dota}.
+
+Unfortunately, since most machine learning frameworks rely on computation graphs,
+  which cannot represent recursion, RNNs are usually finitely unrolled to a fixed depth.
+This may be acceptable if the depth can be determined statically and the loop unrolled
+  ahead of time; however, if the depth depends on runtime values or complex control flow,
+  unrolling must be performed dynamically.
+% Since the source language is usually an interpreted language like Python, this process incurs significant
+% overhead. Even when unrolling can be computed ahead of time, it destroys information about
+% the original program, which can no longer be used for ahead-of-time optimization.
