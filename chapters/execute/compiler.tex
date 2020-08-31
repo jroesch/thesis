@@ -195,6 +195,76 @@ The backend additionally lowers Relay operators into a TVM expression,
     and an experimental Relay ahead-of-time compiler
     that converts programs to C++ to produce a target-specific binary.
 
+
+  \subsection{Backends}
+  After primitive operators are lowered,
+    the remaining Relay program is the glue that ties
+    together operator invocations, allocation, control-flow,
+    recursion, and high-level data structures.
+  There are multiple options for executing the combined full program:
+      the Relay interpreter (with JIT compilation),
+      the \tvm graph runtime,
+      and an ahead-of-time compiler
+      that converts programs to C++.
   % We are able to target CPU, GPU,
   %   iOS and Android mobile devices,
   %   custom accelerators, and FPGAs.
+
+  \subsection{Compiler Framework}
+  The Relay pipeline can be split into three classic components:
+    the frontend, where input formats are translated to Relay;
+    the compiler, which type checks Relay ASTs, applies optimizations,
+      and compiles operators;
+    and the backend, where an execution mechanism is selected and
+      available hardware accelerators are utilized.
+
+  \subsection{Frontend}
+
+  There are several ways to write an Relay program.
+  A user can build an in-memory representation of
+    a program in C++ or Python;
+    parse one written in the Relay text format;
+    or load one from the on-disk serialization format,
+    similar in design to LLVM's bitcode.
+  Models from popular frameworks, including
+    TensorFlow, PyTorch, MxNet, Keras, and DarkNet, as well as interchange
+    formats, such as ONNX, may be imported directly into Relay.
+  \subsection{Compiler}
+  Once an Relay abstract syntax tree (AST) is produced,
+    the program is optimized by applying a series of Relay-to-Relay
+    passes.
+  Between each pass, Relay performs type inference and checking,
+    rejecting malformed programs as well as populating shape and type
+    information that passes can utilize.
+  Relay optimizations consist of both traditional compiler
+    optimizations as well as domain-specific optimizations.
+  Traditional compiler optimizations include constant folding,
+    common subexpression elimination,
+    and dead code elimination.
+  DL-specific optimizations include
+    operator fusion,
+    quantization,
+    layout transformation,
+    and accelerator-specific optimizations.
+
+  Relay produces machine-specific code
+    by decomposing the problem of code generation into multiple distinct phases.
+  % See Figure~\ref{fig:pipeline} for a visual overview of each stage.
+  Since Relay is a high-level IR, it depends on a low-level code generator,
+    such as \tvm or Halide,
+    to produce dense linear algebra kernels~\citep{tvm_osdi18, halide}.
+  We use \tvm in our experiments.
+  Low-level kernel compilers focus on generating highly efficient operators.
+  The generated kernels have a fixed calling convention and do not
+    handle allocation. Instead, they expect inputs and outputs to be preallocated.
+  From an optimized AST,
+    the compiler extracts a set of Relay operators,
+    translates them to TVM expressions,
+    and then compiles to available hardware targets.
+  The resulting output is an
+    object file that contains the compiled operators
+    and an Relay program that invokes these primitives.
+  In our prototype implementation,
+    we are able to target CPU, GPU,
+    iOS and Android mobile devices,
+    custom accelerators, and FPGAs.

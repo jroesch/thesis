@@ -13,8 +13,8 @@ In the early 2010s the emergence of deep learning changed the paradigm again
   replacing simple regular computation over streams of data with large batched-models
   composed of compute-hungry tensor computations.
 This trend towards models which are applied to more complex data (i.e., full text documents, images, videos, audio)
-  process a greater quantity of data (millions of data points), and are much more expensive to evalute
-  on a single datum (i.e., terra-flops of compute per sample).
+  process a greater quantity of data (millions of data points), and are more computationally and memory expensive
+  to evaluate on a single datum (i.e., terra-flops of compute per sample).
 
 This new generation of machine learning applications demanded a corresponding era of
   innovation in systems.
@@ -23,7 +23,9 @@ The first innovation in deep learning systems were so called
 These monolithic systems can execute a subset of deep learning models
   efficiently on a subset of the available hardware devices.
 These rigid systems provide good baseline performance, but often fail
-  when straying from well-used models.
+  when straying from well-used models, or limited deployment strategies.
+In particular TensorFlow's design was optimized for the distributed case
+  but provides a sub-optimal experience on a single node.
 
 Scaling frameworks to span the scope of all models and targets is a human endeavor
   requiring deep expertise often not found in conjunction with the skills of a
@@ -45,26 +47,27 @@ For example,
 Compilers for deep learning are a rapidly evolving area explored by a
   variety of solutions both industrial and academic.
 Part of my thesis work in graduate school
-  was meaningful contributions to the design of and implementation of deep learning compilers.
-Much of this work now exists in TVM a production grade deep learning compiler.
+  was meaningful contributions to the design of and implementation of
+  production quality deep learning compilers.
+Much of this work now exists in Apache TVM, a deep learning compiler framework.
 
 In particular I have spent the last several years focused on the
   representation,
   optimization,
   differentiation,
   and execution of dynamic neural networks.
-In this thesis I propose that we can generalize overspecialized optimizations
-  and insights applied to static dataflow graphs, the predominant programming model
-  of deep learning to fully dynamic neural networks.
+In this thesis I propose that we can generalize overspecialized
+  compilation techniques applied to static dataflow graphs,
+  the predominant programming model of deep learning,
+  to fully dynamic neural networks.
 These generalizations are powered by a simple insight:
   dynamic neural networks are just programs which manipulate tensors.
 The challenge is how to build a representation that captures this generality
-  in a principled way allowing us to recover the potential performance loss by generalizing
-  the programming model.
-When I began working on deep learning compilers, input models were high-level
-  declarative programs composed of linear algebra and statistics primitives.
-These straight forward representations often appeared in the form of
-  a directed acyclic dataflow graph.
+  in a principled manner, enabling state-of-the-art performance without limiting the programming model.
+% When I began working on deep learning compilers, input models were high-level
+%   declarative programs composed of linear algebra and statistics primitives.
+% These straight forward representations often appeared in the form of
+%   a directed acyclic dataflow graph.
 
 We realize a unified interface in the form of Relay a set of systems and APIs designed
   to compose together techniques across the stack to achieve state of the art performance.
@@ -199,8 +202,14 @@ Many engineers in this domain believe that building state-of-the-art kernels req
 
 \section{Dynamic Neural Networks}
 
-In particular all previous solutions failed to provide the same optimizations
-  level of performance in the presence of dynamic features.
+In particular previous solutions have limited potential optimizations
+  and transformations in the presence of dynamic features.
+In particular these existing systems all employed ways to remove
+  dynamism from the program *before* compilation.
+To the end user it seems that they are able to write any dynamic
+  program they limitations can mostly be ignored by appear in
+  the form of strange inconsistencies, limitations, or lost performance.
+
 In this thesis we explore new designs for representing,
   optimizing, differentiating, and executing dynamic neural networks.
 Existing systems for compiling neural networks do not provide robust

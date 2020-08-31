@@ -19,8 +19,9 @@ Such \textit{ad hoc} extensions can improve expressivity
   while maintaining backwards compatibility with existing execution mechanisms.
 However, they are difficult to design, reason about, and implement,
   often resulting in modifications that are mutually incompatible.
-Many of these representations are designed for mostly static
-  use cases.
+Nearly all popular deep learning representations were designed for
+  static computation graphs, leading to numerous of these types of
+  extensions to support dynamic program features.
 
 We present Relay,
   a new compiler framework for DL.
@@ -155,7 +156,60 @@ We make the following contributions:
         optimizations which work in concert to provide \textit{portability}
         across hardware backends.
   \end{itemize}
+  Previous IRs have struggled to address these challenges because they treat
+  each part of the framework as a disconnected set of libraries.
+Operators are defined in low-level languages like C++,
+  connected with a dataflow graph, and then scripted
+  in a host language such as Python;
+  analyses cannot traverse the boundaries between these components.
+Learning from the steps and missteps of previous IRs, we designed Relay,
+  a principled approach to addressing extensibility.
+By treating the entire stack as a language
+  design problem, Relay enables reasoning across
+  abstraction boundaries, which
+  improves expressivity, composability, and portability over previous frameworks.
+We make the following core contributions:
+\begin{itemize}
+  \item
+  Below we describe Relay, a tensor-oriented, statically typed,
+    functional IR.
+  Collections of \textit{ad hoc} extensions in previous frameworks
+    that patched shortcomings in expressiveness are subsumed by a handful of well-known language
+    constructs like let expressions, ADTs, first-class functions, and references.
+  In addition to improving expressivity,
+    incorporating these features as language constructs
+    allows optimizations to more readily compose.
+  \item
+  By representing DL models as functional programs, we reframe traditional
+    DL framework problems as compiler problems.
+  Backpropagation becomes a source code transformation,
+    transforming an arbitrary Relay function into its gradient function;
+    \textit{ad hoc} shape inference becomes principled type inference;
+    graph rewriting becomes program optimization;
+    and the executor becomes (depending on what the context demands) an
+    interpreter, virtual machine, or ahead-of-time compiler.
+  Using this correspondence, we adapt existing
+    PL techniques to the DL domain.
+  \item
+    A notable example of this approach is Relay's type system (Section \ref{subsec:type_system}).
+    Since operators have complicated semantics, shape inference is usually
+      performed when shapes are fully concrete;
+      however, at compile time, one does not have that luxury.
+    We therefore extend a Hindley-Milner type system with type relations that encode shape
+      constraints induced by operators.
+    This allows Relay passes to reason about shape information at compile time.
+  \item To provide portability,
+    we define a platform-agnostic operator language
+    and a compiler pass manager, which facilitates the development of
+    passes that transform the IR to target new hardware backends.
+\end{itemize}
 
+Relay is an open source component of the \tvm project.
+It has been deployed at Amazon Web Services, Facebook, Huawei,
+  and is currently being adopted by teams at ARM and Qualcomm.
+It is used to deploy efficient machine learning to
+  both commodity and custom hardware with minimal
+  engineering effort.
 
 \section{IR}
 
@@ -342,130 +396,6 @@ The increase in expressivity introduced by the Relay IR introduces
   new optimizations challenges, which we
   discuss in Sec.~\ref{sec:optimizations}.
 
-Previous IRs have struggled to address these challenges because they treat
-  each part of the framework as a disconnected set of libraries.
-Operators are defined in low-level languages like C++,
-  connected with a dataflow graph, and then scripted
-  in a host language such as Python;
-  analyses cannot traverse the boundaries between these components.
-Learning from the steps and missteps of previous IRs, we designed Relay,
-  a principled approach to addressing extensibility.
-By treating the entire stack as a language
-  design problem, Relay enables reasoning across
-  abstraction boundaries, which
-  improves expressivity, composability, and portability over previous frameworks.
-We make the following core contributions:
-\begin{itemize}
-  \item
-  Below we describe Relay, a tensor-oriented, statically typed,
-    functional IR.
-  Collections of \textit{ad hoc} extensions in previous frameworks
-    that patched shortcomings in expressiveness are subsumed by a handful of well-known language
-    constructs like let expressions, ADTs, first-class functions, and references.
-  In addition to improving expressivity,
-    incorporating these features as language constructs
-    allows optimizations to more readily compose.
-  \item
-  By representing DL models as functional programs, we reframe traditional
-    DL framework problems as compiler problems.
-  Backpropagation becomes a source code transformation,
-    transforming an arbitrary Relay function into its gradient function;
-    \textit{ad hoc} shape inference becomes principled type inference;
-    graph rewriting becomes program optimization;
-    and the executor becomes (depending on what the context demands) an
-    interpreter, virtual machine, or ahead-of-time compiler.
-  Using this correspondence, we adapt existing
-    PL techniques to the DL domain.
-  \item
-    A notable example of this approach is Relay's type system (Section \ref{subsec:type_system}).
-    Since operators have complicated semantics, shape inference is usually
-      performed when shapes are fully concrete;
-      however, at compile time, one does not have that luxury.
-    We therefore extend a Hindley-Milner type system with type relations that encode shape
-      constraints induced by operators.
-    This allows Relay passes to reason about shape information at compile time.
-  \item To provide portability,
-    we define a platform-agnostic operator language
-    and a compiler pass manager, which facilitates the development of
-    passes that transform the IR to target new hardware backends.
-\end{itemize}
-
-Relay is an open source component of the \tvm project.
-It has been deployed at Amazon Web Services, Facebook, Huawei,
-  and is currently being adopted by teams at ARM and Qualcomm.
-It is used to deploy efficient machine learning to
-  both commodity and custom hardware with minimal
-  engineering effort.
-
-\subsection{Compiler Framework}
-  The Relay pipeline can be split into three classic components:
-    the frontend, where input formats are translated to Relay;
-    the compiler, which type checks Relay ASTs, applies optimizations,
-      and compiles operators;
-    and the backend, where an execution mechanism is selected and
-      available hardware accelerators are utilized.
-
-  \subsection{Frontend}
-
-  There are several ways to write an Relay program.
-  A user can build an in-memory representation of
-    a program in C++ or Python;
-    parse one written in the Relay text format;
-    or load one from the on-disk serialization format,
-    similar in design to LLVM's bitcode.
-  Models from popular frameworks, including
-    TensorFlow, PyTorch, MxNet, Keras, and DarkNet, as well as interchange
-    formats, such as ONNX, may be imported directly into Relay.
-  \subsection{Compiler}
-  Once an Relay abstract syntax tree (AST) is produced,
-    the program is optimized by applying a series of Relay-to-Relay
-    passes.
-  Between each pass, Relay performs type inference and checking,
-    rejecting malformed programs as well as populating shape and type
-    information that passes can utilize.
-  Relay optimizations consist of both traditional compiler
-    optimizations as well as domain-specific optimizations.
-  Traditional compiler optimizations include constant folding,
-    common subexpression elimination,
-    and dead code elimination.
-  DL-specific optimizations include
-    operator fusion,
-    quantization,
-    layout transformation,
-    and accelerator-specific optimizations.
-
-  Relay produces machine-specific code
-    by decomposing the problem of code generation into multiple distinct phases.
-  % See Figure~\ref{fig:pipeline} for a visual overview of each stage.
-  Since Relay is a high-level IR, it depends on a low-level code generator,
-    such as \tvm or Halide,
-    to produce dense linear algebra kernels~\citep{tvm_osdi18, halide}.
-  We use \tvm in our experiments.
-  Low-level kernel compilers focus on generating highly efficient operators.
-  The generated kernels have a fixed calling convention and do not
-    handle allocation. Instead, they expect inputs and outputs to be preallocated.
-  From an optimized AST,
-    the compiler extracts a set of Relay operators,
-    translates them to TVM expressions,
-    and then compiles to available hardware targets.
-  The resulting output is an
-    object file that contains the compiled operators
-    and an Relay program that invokes these primitives.
-  In our prototype implementation,
-    we are able to target CPU, GPU,
-    iOS and Android mobile devices,
-    custom accelerators, and FPGAs.
-
-  \subsection{Backends}
-  After primitive operators are lowered,
-    the remaining Relay program is the glue that ties
-    together operator invocations, allocation, control-flow,
-    recursion, and high-level data structures.
-  There are multiple options for executing the combined full program:
-      the Relay interpreter (with JIT compilation),
-      the \tvm graph runtime,
-      and an ahead-of-time compiler
-      that converts programs to C++.
 
   \subsection{IR}
   \input{chapters/short_grammar.tex}
@@ -661,134 +591,5 @@ It is used to deploy efficient machine learning to
   In the following subsection we demonstrate how one can adapt techniques
     from type inference and checking to Relay.
 
-
 \input{chapters/represent/type_system.tex}
 \input{chapters/represent/eval.tex}
-
-  % \subsection{IR}
-  % \input{chapters/short_grammar.tex}
-
-  % The Relay IR is designed
-  %   to subsume the functionality of computation graph-based IRs
-  %   while providing greater faculties for abstraction and control flow.
-  % We present Relay's design by incrementally building up to the full IR
-  %   starting from a subset that corresponds to a simple computation graph.
-  % Deep learning models fundamentally operate on tensors.
-  % Hence, Relay's primary value type is a tensor and operators are included as language primitives
-  %   (see the \verb|tensor constant| and \verb|operator| rules in Figure \ref{fig:short_bnf}).
-  % Relay leaves the implementation of each operator opaque; the operators
-  %   are represented by a lower-level IR, which is optimized independently.
-  % A computation graph, in its simplest form, is a directed acyclic
-  %   graph with multiple inputs and a single output.
-  % Relay uses three constructs to support these simple graphs:
-  %   (1) \verb|variable|, (2) function \verb|call|,
-  %   and (3) \verb|operator|; see Figure~\ref{fig:short_bnf} for the corresponding rules.
-
-  % \subsection*{Multiple Outputs}
-
-  % Computation graph IRs have primitive support for multiple outputs
-  %   because many tensor operators require it.
-  % For example, the \verb|split| operator separates a tensor along a given axis
-  %   and returns each component.
-  % In Relay, multiple outputs can be modeled as tuples,
-  %   requiring only two rules: \verb|tuple formation| and \verb|tuple projection|.
-
-  % \subsection*{Let}
-
-  % By construction, computation graphs enjoy implicit sharing of subcomputations
-  %   via multiple outgoing dependency edges.
-  % Implicit sharing is often implemented via pointers that uniquely identify subgraphs,
-  %   a property useful for both execution and analysis.
-  % Previous frameworks often obtain this sharing by using a host
-  %   language's name binding to construct a graph (e.g., by binding a Python variable
-  %   to a subgraph and using that variable to construct other subgraphs).
-  % General-purpose programming languages, on the other hand, provide \textit{explicit}
-  %   sharing via binding constructs, such as \verb|let|.
-  % In programs free of scope, ordering, and effects, implicit sharing
-  %   and explicit sharing are semantically equivalent.
-  % However, in practice, user programs rely on effects and ordering,
-  %   requiring previous approaches to provide workarounds.
-  % For example, TensorFlow's Eager Mode inserts dummy control edges
-  %   in its generated graphs to impose effect ordering.
-  % The lack of lexical scope in computation graphs complicates language features,
-  %   like first-class functions and control flow,
-  %   and reduces the precision of traditional analyses,
-  %   such as liveness,
-  %   because the high-level program structure is absent~\citep{funarg, funarg_sol}.
-  % The addition of a humble \verb|let| binding, a central concept in functional languages,
-  %   provides explicit sharing and a solution to the problems outlined above.
-
-  % \subsection*{Control Flow}
-
-  % \begin{figure*}[htb!]
-  %   \begin{tabular}{ccc}
-  %   \begin{minipage}{0.4\textwidth}
-  %   \begin{minted}[fontsize=\small]{python}
-  % i = tf.constant(1)
-  % j = tf.constant(1)
-  % k = tf.constant(5)
-
-  % def c(i, j, k):
-  %   return
-  %     tf.equal(
-  %       tf.not_equal(
-  %         tf.less(i + j, 10),
-  %         tf.less(j * k, 100)),
-  %        tf.greater_equal(k, i + j))
-  % def b(i, j, k): return [i+j, j+k, k+1]
-  % tf.while_loop(c, b, loop_vars=[i, j, k])
-  %   \end{minted}
-  %   \end{minipage}
-  % & \hspace{-2.0em}
-  % \begin{Huge}
-  %   $\Rightarrow$
-  % \end{Huge}
-  % &
-  %   \begin{minipage}{0.5\textwidth}
-  %   \begin{minted}[fontsize=\footnotesize]{python}
-  %   fn %while_loop(
-  %     %lvar0: Tensor[(1,), int32], %lvar1: Tensor[(1,), int32],
-  %     %lvar2: Tensor[(1,), int32]) {
-  %     %0 = add(%lvar0, %lvar1)
-  %     %1 = less(%0, meta[Constant][0])
-  %     %2 = multiply(%lvar1, %lvar2)
-  %     %3 = less(%2, meta[Constant][1])
-  %     %4 = not_equal(%1, %3)
-  %     %5 = add(%lvar0, %lvar1)
-  %     %6 = greater_equal(%lvar2, %5)
-  %     if (min(equal(%4, %6))) {
-  %       %9 = add(%lvar0, %lvar1)
-  %       %10 = add(%lvar1, %lvar2)
-  %       %11 = add(%lvar2, meta[Constant][2])
-  %       %while_loop(%9, %10, %11)
-  %     } else { (%lvar0, %lvar1, %lvar2)
-  %     }
-  %   }
-  %   %while_loop(meta[Constant][3], meta[Constant][4], meta[Constant][5])
-  %   \end{minted}
-  %   \end{minipage}
-  %   \end{tabular}
-  %   \caption{\textmd{
-  %     A simple TensorFlow loop in the user-facing DSL and the Relay
-  %       loop produced by automatically converting it.
-  %     Note the TensorFlow while loop corresponds neatly to a tail recursive
-  %       function.
-  %     The Relay text format supports a ``metadata'' section which functions
-  %       as a constant pool among other things.
-  %     \texttt{meta[Constant][n]} represents the \texttt{n}-th constant in the
-  %       pool.
-  %   }}
-  %   \label{fig:tf_to_relay_loop}
-  %   \end{figure*}
-
-  % Emerging models, particularly in the domain of natural language processing, increasingly
-  %   rely on data-dependent control flow, forcing frameworks based on computation graph IRs
-  %   to incorporate control flow, often through \textit{ad hoc} and difficult-to-extend constructs.
-  % For example, TensorFlow Fold~\citep{tf_fold} extends TF with special combinators that
-  %   dynamically compute a graph for each shape permutation;
-  %   these high-level constructs are opaque to further optimizations.
-  % The functional programming community has demonstrated that recursion and pattern matching are sufficient
-  %   to implement arbitrary combinators for control flow and iteration (e.g., maps, folds, and scans).
-  % To support the definition of functional combinators
-  %   we enrich Relay with two more language
-  %   features to implement arbitrary combinators: \verb|if| and first-class recursive functions.
