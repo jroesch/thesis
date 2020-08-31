@@ -51,6 +51,32 @@ Learning from previous IRs, we have designed Relay,
   and improves expressivity, composability, and portability
   over previous frameworks.
 
+  Previous IRs have struggled to address these challenges, treating each
+    component of the framework as a disconnected set of programming tasks.
+  Operators are defined in low-level languages like C++,
+    connected by a dataflow graph, and then scripted
+    in a host language like Python.
+  Consequently,
+    program analyses cannot cross language boundaries between components,
+    inhibiting optimization and deployment.
+  Learning from previous IRs, we have designed Relay,
+    which features a principled approach to addressing extensibility
+    and improves expressivity, composability, and portability
+    over previous frameworks.
+
+
+Previous IRs have struggled to address these challenges because they treat
+    each part of the framework as a disconnected set of libraries.
+  Operators are defined in low-level languages like C++,
+    connected with a dataflow graph, and then scripted
+    in a host language such as Python;
+    analyses cannot traverse the boundaries between these components.
+  Learning from the steps and missteps of previous IRs, we designed Relay,
+    a principled approach to addressing extensibility.
+  By treating the entire stack as a language
+    design problem, Relay enables reasoning across
+    abstraction boundaries, which
+    improves expressivity, composability, and portability over previous frameworks.
 % The principle of least semantic dictates we should make design choices which give further optimization stages
 %   the ability to perform optimizations without unnecessary detail.
 % For example enabling implicit effects and non-explicit control complicates computational graph semantics,
@@ -111,63 +137,6 @@ We make the following contributions:
       across hardware backends.
 \end{itemize}
 
-  The scenario above highlights the three-pronged \textit{extensibility challenge}
-    for DL IRs:
-%   \begin{enumerate}[label=\arabic*.]
-%     \item \textit{Expressivity}: It should be straightforward to write models involving
-%       control flow, first-class functions and data structures (e.g., trees, graphs, and lists).
-%     \item \textit{Composability}: It should be straightforward to add and compose new optimizations
-%       with existing ones (e.g., quantization, operator fusion, and partial evaluation).
-%     \item \textit{Portability}: It should be straightforward to add new hardware targets
-%       (e.g., TPU, Inferentia)~\citep{tpuv1, inferentia}.
-%   \end{enumerate}
-
-  Previous IRs have struggled to address these challenges, treating each
-    component of the framework as a disconnected set of programming tasks.
-  Operators are defined in low-level languages like C++,
-    connected by a dataflow graph, and then scripted
-    in a host language like Python.
-  Consequently,
-    program analyses cannot cross language boundaries between components,
-    inhibiting optimization and deployment.
-  Learning from previous IRs, we have designed Relay,
-    which features a principled approach to addressing extensibility
-    and improves expressivity, composability, and portability
-    over previous frameworks.
-  We make the following contributions:
-  \begin{itemize}
-    \item The Relay IR, a tensor-oriented, statically typed
-      functional IR,
-      which we describe in this chapter.
-    Relay's design is motivated by the insight that functional IRs, used by
-    languages from the ML family\footnote{``ML'' as in ``Meta Language,'' not
-    ``Machine Learning''} can be readily adapted to support DL.
-    With its \textit{expressive} semantics,
-      including control flow, data structures, and first-class functions,
-      Relay can represent entire state-of-the-art models.
-    \item The insight that common features in ML frameworks,
-      such as quantization and shape inference,
-      can be reframed as standard compiler passes.
-    By using this reframing we can tap into
-      decades of traditional compilers research to design
-      \textit{composable} optimization passes.
-    \item
-      A platform-agnostic representation of operators and domain specific
-        optimizations which work in concert to provide \textit{portability}
-        across hardware backends.
-  \end{itemize}
-  Previous IRs have struggled to address these challenges because they treat
-  each part of the framework as a disconnected set of libraries.
-Operators are defined in low-level languages like C++,
-  connected with a dataflow graph, and then scripted
-  in a host language such as Python;
-  analyses cannot traverse the boundaries between these components.
-Learning from the steps and missteps of previous IRs, we designed Relay,
-  a principled approach to addressing extensibility.
-By treating the entire stack as a language
-  design problem, Relay enables reasoning across
-  abstraction boundaries, which
-  improves expressivity, composability, and portability over previous frameworks.
 We make the following core contributions:
 \begin{itemize}
   \item
@@ -592,4 +561,4 @@ The increase in expressivity introduced by the Relay IR introduces
     from type inference and checking to Relay.
 
 \input{chapters/represent/type_system.tex}
-\input{chapters/represent/eval.tex}
+\input{chapters/represent/eval.tex}s

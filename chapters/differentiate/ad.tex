@@ -1,4 +1,355 @@
-\chapter{Program Transforms: Automatic Differentiation and Partial Evaluation}
+\chapter{Automatic Differentiation}
 \label{ch:ad}
 
-Examine passes we wrote for Relay.
+\subsection{Higher-Order, Higher-Order Automatic Differentiation}
+\label{sec:autodiff}
+
+An important property of machine learning computations is
+  differentiability.
+Optimization algorithms like stochastic gradient descent require
+  computing gradients of functions (Section~\ref{sec:background}).
+Previous automatic differentiation (AD) techniques used on
+  computation graphs cannot be directly applied to \relay due to new
+  language features such as closures, recursion, and control flow.
+Furthermore, it is becoming increasingly important to compute not
+  only first-order gradients of functions
+  but potentially $n$th-order gradients~\cite{neural_ode, darts}.
+\relay requires an algorithm that operates as a source code transformation
+  and supports higher-order functions and higher-order gradients.
+There is a large body of work on performing AD
+  of programs.
+Several full-length papers have been written about automatic
+  differentiation (AD).
+This section highlights the important differences
+  between our approach and other recent work.
+Previous approaches like Lantern~\cite{lantern} (see Section~\ref{sec:related})
+  define a generic and powerful version of AD.
+Lantern uses delimited continuations to implement AD.
+Delimited continuations are an elegant solution
+  but require language and compiler support,
+  as well garbage collection.
+Furthermore, delimited continuations are challenging
+  to reason about when performing optimization.
+
+Our AD algorithm is conceptually similar to Lantern's,
+  with a few key differences.
+First, our algorithm is defined as a source code
+  transformation.
+Given an expression, \relay produces a corresponding
+  expression that computes its gradient.
+Figure \ref{fig:autodiff_rules} provides a denotation from
+  \relay expression to \relay expression that defines our
+  AD algorithm.
+Second, our algorithm eschews delimited continuations in favor of
+  an approach using closures and references.
+\relay simply pairs all tensor values with a reference
+  that tracks its partial derivative with respect to its
+  output.
+This form of reverse mode AD is similar to how one
+  would implement forward mode AD.
+\relay lifts all tensor-typed values to a pair,
+  an expression of some tensor type \verb|T| becomes a tuple of \verb|(T, Ref<T>)|
+  where the second component contains the sensitivity variable
+  needed to compute the partial derivative.
+For each gradient function generated, \relay allocates
+  a single reference which stores the ``backpropagator,''
+  a closure which propagates gradients from the output to the input.
+Each subcomputation affecting the gradient updates this closure; when it is
+  finally executed, the built-up closure returns the final derivatives with respect to
+  to the arguments.
+
+As described in Figure~\ref{fig:autodiff_rules}, only
+  computations involving tensors contribute to the gradient.
+For example, we support mutability for free because mutation
+  does not affect the gradients.
+In this sense, our design is simple.
+All tracing needed to compute derivatives is done at run time, enabling
+  support for higher order functions, higher order gradients,
+  data-dependent control flow, and mutability without requiring changes
+  to the algorithm.
+% TODO: Remove or rectify this sentence, because the current interface to
+% autodiff is via an IR pass.
+Finally, \relay exposes this transformation as an operator, allowing users
+  to compute the gradient of a function \verb|f| simply by writing \verb|grad(f)|.
+
+Many other variants of AD, including algorithms with different
+  complexity bounds (e.g., forward-mode AD), exist.
+Forward-mode AD is useful for computing the
+  Hessian vector product, which is necessary for techniques like differentiable architecture search
+  (DARTS)~\cite{darts}.
+Because our AD algorithm just another \relay pass,
+  it is possible for users to implement and experiment with different
+  AD techniques without changing the system.
+To this end, we also implemented a  forward-mode AD algorithm using the traditional method of dual
+  numbers~\cite{ad_survey}.
+Both forward-mode and reverse-mode AD are higher-order and extensible: they
+  support closures, abstract data types, control flow, and recursion.
+Although we have not investigated
+  composing forward and reverse modes,
+  it is possible to mix gradient functions
+  because they are regular \relay functions.
+Because our algorithm enjoys a closure property,
+  we can perform AD over the composition of the gradient
+  functions.
+
+\begin{figure}
+  % NOTE: We need to explain that `\revv{f}' is the registered gradient of `f'.
+  \centering
+  \makebox[0pt][c]{%
+  \begin{footnotesize}
+  \begin{minipage}{0.625\textwidth}
+  \[
+  \begin{array}{lll}
+    % Tensor Type
+    \textsf{ADType}\left(\kwd{Tensor } t\right) &=& \rTuple{t}{\kwd{Ref[}t\kwd{]}} \\[0.5em]
+    % Tuple Type
+    \textsf{ADType}\left(\rTuple{t_0}{\cdots}{t_n}\right) &=& \rTuple{\textsf{ADType}(t_0)}{\cdots}{\textsf{ADType}(t_n)} \\[0.5em]
+    % Variable
+    \textsf{ADTerm}\left(\kwd{Var } x\right) &=& x \\[0.5em]
+    % Reference
+    \textsf{ADTerm}\left(\kwd{Ref } e\right) &=& \kwd{ref(}\textsf{ADTerm}(e)\kwd{)} \\[0.5em]
+    % Literal
+    \textsf{ADTerm}\left(\kwd{Lit } l\right) &=& \rTuple{l}{\kwd{ref(}\texttt{0}\kwd{)}} \\[0.5em]
+    % Tuple
+    \textsf{ADTerm}\left(\rTuple{e_0}{\cdots}{e_n}\right) &=& \rTuple{\textsf{ADTerm}(e_0)}{\cdots}{\textsf{ADTerm}(e_n)} \\[0.5em]
+    % Match
+    \textsf{ADTerm}(\kwd{match (} e\kwd{) \textbraceleft} &=& \kwd{match (}\textsf{ADTerm}(e)\kwd{)} \kwd{ \textbraceleft} \\
+    \quad \kwd{| } p_0 \rightarrow e_0 & & \quad \kwd{| } p_0 \kwd{ $\rightarrow$ } \textsf{ADTerm}(e_0) \\
+    \quad \vdots & & \quad \vdots \\
+    \quad \kwd{| } p_n \rightarrow e_n & & \quad \kwd{| } p_n \kwd{ $\rightarrow$ } \textsf{ADTerm}(e_n)\\
+    \kwd{\textbraceright}) & & \kwd{\textbraceright}
+    \\[0.5em]
+    % Function
+    \textsf{ADTerm}(\kwd{fn (} &=& \kwd{fn (} \\
+    \quad \rParam{x_0}{t_0}\kwd{,} & & \quad \rParam{x_0}{\textsf{ADType}(t_0)}\kwd{,} \\
+    \quad \vdots\kwd{,} & & \quad \vdots\kwd{,} \\
+    \quad \rParam{x_n}{t_n} \kwd{)} & & \quad \rParam{x_n}{\textsf{ADType}(t_n)} \kwd{)} \\
+    \quad \quad \kwd{$\rightarrow$ } t_{\text{ret}} & & \quad \kwd{$\rightarrow$ } \textsf{ADType}(t_{\text{ret}}) \\
+    \kwd{\textbraceleft }\,\,\, e \kwd{ \textbraceright}) & & \kwd{\textbraceleft }\,\,\, \textsf{ADTerm}(e) \kwd{ \textbraceright}
+  \end{array}
+  \]
+  \end{minipage}%
+  \hfill\vline\hfill
+  \begin{minipage}{0.4\textwidth}
+  \[
+  \begin{array}{l}
+    % Call
+    \textsf{ADTerm}\left(f\rTuple{e_0}{\cdots}{e_n}\right) \ \ \  = \\
+    \quad \rLet{\revv{e_0}}{}{\textsf{ADTerm($e_0$)}}{} \\
+    \quad \vdots \\
+    \quad \rLet{\revv{e_n}}{}{\textsf{ADTerm($e_n$)}}{} \\
+    \quad \rLet{v}{}{f\rTuple{\revv{e_0}\kwd{.}\texttt{0}}{\cdots}{\revv{e_n}\kwd{.}\texttt{0}}}{} \\
+    \quad \rLet{\bper{v}}{}{\kwd{ref(}\texttt{0}\kwd{)}}{} \\
+    \quad \kwd{let } \delta \kwd{ = fn () \textbraceleft} \\
+    \quad \quad \rLet{\rTuple{\sens{e_0}}{\cdots}{\sens{e_n}}}{}{\\ \quad \quad \quad \revv{f}\rTuple{v}{\kwd{!}\bper{v}}{\kwd{!}\revv{e_0}\kwd{.}\texttt{0}}{\cdots}{\kwd{!}\revv{e_n}\kwd{.}\texttt{0}}}{} \\
+    \quad \quad \revv{e_0}\kwd{.}\texttt{1} \kwd{ $\pluseq$ } \sens{e_0} \kwd{;} \\
+    \quad \quad \vdots \\
+    \quad \quad \revv{e_n}\kwd{.}\texttt{1} \kwd{ $\pluseq$ } \sens{e_n} \kwd{;} \\
+    \quad \quad \kwd{()} \\
+    \quad \kwd{\textbraceright;} \\
+    \quad \Delta \kwd{ $\coloneqq$ } \kwd{!}\Delta \kwd{ $\circ$ } \delta \kwd{;} \\
+%    \quad \Delta \kwd{ := } \kwd{!}\Delta \kwd{ $\circ$ } \delta \kwd{;} \\
+    \quad \rTuple{v}{\bper{v}}
+  \end{array}
+  \]
+  \end{minipage}%
+  \end{footnotesize}
+  }
+  \caption{
+    Transformation Rules for Automatic Differentiation in \relay.
+    The most interesting case is for function calls.
+    The backpropagator $\Delta$ is initialized to \kwd{ref(fn() \textbraceleft\ ()
+      \textbraceright)} at the top level of each \textsf{ADTerm} call.
+    Successive update closures $\delta$ are then composed with $\Delta$ to
+      form a chain.
+    Syntactic sugar is used for some constructs which are not available as
+      primitives in \relay.
+  }
+  \label{fig:autodiff_rules}
+\end{figure}
+
+\subsection{Partial Evaluator}
+\label{sec:partial_eval}
+
+\usemintedstyle{borland}
+\begin{figure}
+  \centering
+  % \texttt{\bf Identity Function}
+  \begin{minipage}{0.4\textwidth}
+  \judgbox{\texttt{\bf Identity Function}}{}
+  \vspace{0.8em}
+    \begin{minted}[fontsize=\footnotesize]{ocaml}
+fn <s, bt>(%d: Tensor[s, bt]) {
+  %d
+}
+    \end{minted}
+  \vspace{0.5em}
+  \judgbox{\texttt{\bf Post-AD}}{}
+  \vspace{0.8em}
+    \begin{minted}[fontsize=\footnotesize]{ocaml}
+fn <s, bt>(%d: Tensor[s, bt]) {
+  let %x = ref(fn () { () });
+  let %x1 = (%d, ref(zeros_like(%d)));
+  let %x2 =
+    (fn <s, bt>(
+      %d1: (Tensor[s, bt],
+            ref(Tensor[s, bt]))) {
+      %d1
+    })(%x1);
+  %x2.1 := ones_like(%x2.0);
+  let %x3 = read(%x)();
+  (%x2.0, (read(%x1.1),))
+}
+    \end{minted}
+  \end{minipage}%
+  \begin{minipage}{0.4\textwidth}
+  \judgbox{\texttt{\bf Post-PE}}{}
+  \vspace{0.8em}
+    \begin{minted}[fontsize=\footnotesize]{ocaml}
+fn <s, bt>(%d: Tensor[s, bt]) {
+  let %x = fn () {
+    let %x1 = ();
+    %x1
+  };
+  let %x2 = ref(%x);
+  let %x3 = zeros_like(%d);
+  let %x4 = ref(%x3);
+  let %x5 = (%d, %x4);
+  let %x6 =
+    fn <s, bt>(
+      %d1: (Tensor[s, bt],
+            ref(Tensor[s, bt]))) {
+      %d1
+    };
+  let %x7 = ones_like(%d);
+  %x4 := %x7;
+  let %x8 = ();
+  let %x9 = (%x7,);
+  let %x10 = (%d, %x9);
+  %x10
+}
+    \end{minted}
+  \vspace{0.5em}
+  \judgbox{\texttt{\bf Post-DCE}}{}
+  \vspace{0.8em}
+    \begin{minted}[fontsize=\footnotesize]{ocaml}
+fn <s, bt>(%d: Tensor[s, bt]) {
+  (%d, (ones_like(%d),))
+}
+  \end{minted}
+\end{minipage}
+  \caption{
+    Example of running the compiler pass pipeline for AD on the identity
+    function.
+    First, we run the base AD pass on the original function (described in Section \ref{sec:autodiff}).
+    Then, we run the partial evaluator,
+      which primarily optimizes away the reads and calls in \texttt{\%x2} and
+      \texttt{\%x3} in post-AD.
+    Since it conservatively determines whether a subexpression is effectful,
+      it generates many bindings which are dead code.
+    At this point, we run the dead code elimination pass to crunch the code back down.
+  }
+  \label{fig:pe-example}
+\end{figure}
+\usemintedstyle{default}
+
+In order to handle differentiating the full IR,
+  our AD algorithm makes use of closures and references.
+However many of the programs are effectively
+  first-order and do not require allocating
+  references or a backpropagator closure.
+It is essential we remove unnecessary uses
+  of closures and references as they inhibit
+  optimizations like operator fusion.
+Previous approaches have used staging to manually
+  phase computation, but this requires modifications
+  to the language itself.
+A partial evaluator (PE) allows the use of high-level abstractions
+  without limiting code that \textit{could} in practice be
+  compiled to a particular target.
+The benefits of partial evaluation do not only extend to code
+  generated by AD but for all of \relay.
+\relay's partial evaluator works by defining a interpreter
+  where the value domain is partially static values.
+The partially static domain represents simple values,
+  such as constant tensors, as themselves. The representations
+  of aggregate values mirror their structure, enabling
+  values which are a mixture of static and dynamic.
+This makes the partial evaluator more powerful
+  than a constant-folding pass.
+The appendix presents an implementation of PE.
+
+There are two important features of our partial evaluator:
+  managing effectful computations and handling references.
+In order to handle effects, we keep the generated
+  program in A-normal form to ensure effects are properly ordered
+  and to avoid the duplication of effectful computations.
+The partial evaluator supports references by
+  simulating the store at partial evaluation time.
+The explicit store is threaded throughout execution
+  and is managed to achieve flow sensitivity.
+After evaluation we construct a new program with
+  static subcomputations evaluated
+  away.
+The reconstructed program contains all original
+  expressions, as well as evaluated expressions,
+  because interleaving dead-code elimination (DCE) is
+  non-trivial.
+Afterwards, we separately apply DCE.
+The result of this entire process is illustrated
+  in Figure~\ref{fig:pe-example}.
+
+\subsection{Partial Evaluator}
+\label{sec:partial_eval}
+Existing deep learning IRs have relied on
+  a mixture of staging and constant evaluation
+  in order to optimize user programs.
+Partial evaluation is a generalized form of constant
+  evaluation that can reduce partially constant
+  programs.
+A partial evaluator (PE) allows the use of high-level abstractions
+  without limiting code that \textit{could} in practice be
+  compiled to a particular target.
+\relay is the first compiler to apply partial evaluation
+  techniques to deep learning, the
+  core approach of which is based on \cite{pe_ref}.
+Partial evaluation, when composed with other
+  optimizations like fusion, yields a variety
+  of useful optimizations without requiring
+  a separate implementation of each.
+For example, the partial evaluator can be used to perform
+  loop unrolling, which then enables further fusion,
+  without any additional compiler passes.
+
+\relay's partial evaluator works by defining a interpreter
+  where the value domain is partially static values.
+The partially static domain represents simple values,
+  such as constant tensors, as themselves.
+The representations
+  of aggregate values mirror their structure; for example,
+  tuples become a tuple of partially static values.
+The partially static domain represents dynamic values,
+  which may not be known until execution time,
+  alongside the static values traditionally supported by
+  constant evaluators.
+Our partial evaluator must solve two important problems:
+  managing effectful computations and handling references.
+In order to handle effects, the evaluator keeps the generated
+  program in A-normal form to ensure effects are properly ordered
+  and restrict duplication of effectful computations.
+The partial evaluator supports references by
+  simulating the store at partial evaluation time.
+The explicit store is threaded throughout execution
+  and provides a flow-sensitive PE.
+Finally, the evaluator constructs a new program with
+  the static subcomputations evaluated away.
+% The reconstructed program contains all original
+%   expressions, as well as evaluated expressions,
+%   because interleaving dead-code elimination (DCE) is
+%   non-trivial.
+% Afterwards, we separately apply DCE.
+% The partial evaluator has use cases beyond inference
+%   optimizations, separately it enabled the design of an automatic
+%   differentiation algorithm that makes use of hard to optimize
+%   features such as references of closures, as the partial evaluator
+%   can remove unneeded abstraction.
