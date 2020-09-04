@@ -28,7 +28,7 @@ For example we can break down a deep neural network training
 Furthermore barring differentiation, the above pieces can all be expressed
   in the tensor computations exposed by deep learning frameworks.
 
-Fortunately there is a wide body of literature on automatic differention,
+Fortunately there is a wide body of literature on automatic differentiation,
   the process of automatically computing gradients given a function,
   enabling the final missing piece.
 Early systems such as Theano demonstrated that automatic
@@ -48,7 +48,45 @@ The rest of this chapter explores how we can generalize previous
   differentiation.
 
 \subsection{Automatic-Differentiation}
-TODO
+
+As discussed in Section \ref{sec:related} Automatic Differentiation has a long history
+  and numerous applications across many fields.
+The style of automatic differentiation popular when we began this work was the
+  what is known as a Wengert-list, a runtime data structure which tracks
+  all the operations performed on each variable, this recorded tape can then
+  be played to compute the derivative with respect to each variable.
+Approaching automatic differentiation in this style leads to a relatively simple
+  implementation which can handle arbitrary language features.
+Dynamic approaches although straight forward have a few short comings
+  including the need to track extra runtime state and computation,
+  overload all relevant operations, and most importantly prevents
+  ahead of time optimization.
+
+When we began this project we were interested in an approach which
+  provides the expressivity of the dynamic approach without
+  sacrificing our ability to optimize, or deploy the code.
+In 2017 people began to look into applying previously explored
+  ideas which cast automatic differentiation as a source code
+  transformation.
+During the period we did this work there were numerous
+  groups working on this problem for various systems
+  as detailed in ~\ref{sec:related}.
+Relay introduced some new challenges for us, a hypothesis we
+  believed is that true dynamic features would come be required
+  by models.
+Due to this we needed a technicuqe which can handle dynamic
+  features at runtime.
+Competing work such ass ZZZ, YYYYYYYY< ZZzZ.
+Don't solve this problem.
+
+Our design goals can be summed up as
+\begin{itemize}
+  \item Handle closures, control flow, and data structures.
+  \item Can be performed as an ahead of time source code
+    transformation.
+  \item Can be optimized to remove unnecessary computation.
+\end{
+\end{itemize}
 
 \subsection{Higher-Order, Higher-Order Automatic Differentiation}
 \label{sec:autodiff}
