@@ -79,14 +79,17 @@ Due to this we needed a technicuqe which can handle dynamic
 Competing work such ass ZZZ, YYYYYYYY< ZZzZ.
 Don't solve this problem.
 
-Our design goals can be summed up as
+Our design goals can be summed up as:
 \begin{itemize}
   \item Handle closures, control flow, and data structures.
   \item Can be performed as an ahead of time source code
     transformation.
   \item Can be optimized to remove unnecessary computation.
-\end{
 \end{itemize}
+
+After many iterations we discovered that we could use a
+  technique that achieves these three goals with relative
+  simplicity.
 
 \subsection{Higher-Order, Higher-Order Automatic Differentiation}
 \label{sec:autodiff}

@@ -416,3 +416,111 @@ The above sections discuss the core of Relay, a full-length paper under submissi
         Function types may include
           one or more type relations over a subset of the argument types and the return type.
         The type checker enforces that these relationships hold at each call site.
+
+
+        \section{Compiler Support for Dynamism}
+        \label{sec:Relay-compliation}
+
+        A key challenge preventing existing deep learning compilers from handling dynamism is the lack of a uniform and dynamic representation. For example, optimizations and runtime of existing IR, e.g. TVM \citep{tvm_osdi18}, assume the presence of static shape information in numerous places. These assumptions are present in many other so-called graph compilers and introduce quite a few challenges for optimization.
+
+        In order to handle dynamism, we design a set of IR extensions which expose the essential semantics required to optimize dynamic programs. The approach is implemented in Relay on top of the Apache TVM (version 0.6) deep learning compiler infrastructure \citep{tvm_osdi18} to leverage its frontend converters from various DL frameworks to its IR. TVM's frontends alleviate the need to frontend specific details enabling our work to focus on contributions such as IR extensions and optmizations. To use Relay, one only needs to feed it with a pre-trained model, perform compilation and then inference. Furthermore, the lessons
+        here are applicable to other compiler efforts such as TensorFlow's MLIR support or PyTorch's TorchScript and TensorExpr (a Halide and TVM inspired DSL for kernel codegen) work. The below section
+        describes how we transform standard TVM programs into a our dynamic dialect which enables us to easily apply static optimizations to dynamic programs, much as we do in traditional compiler optimization.
+
+        In this section, we detail three key components required to compile dynamic models.
+
+        \begin{itemize}
+            \item An extended type system which enables statically tracking dynamic shapes.
+            \item A series of optimization passes that make dynamic output shapes, allocation, and device placement explicit.
+            \item A set of codegen techniques for producing code for kernels with dynamic input and output shapes.
+        \end{itemize}
+
+        \subsection{Typing}
+        \label{sec:compliation:typing}
+        Deep learning compilers use type systems to represent, check and infer the data types and shapes of tensors. In some frameworks and compilers this is separated into two steps, shape inference and data type inference. TVM~\citep{roesch2019relay} performs both simultaneously and refer to them as type inference, terminology we will use throughout the section.
+
+        A {\em Tensor Type} is designated by an $n$-dimensional shape (defined as a tuple of integers describing the tensor's dimensions) and a data type (e.g. \texttt{float32} or \texttt{int64}).
+        Current deep learning IRs only support codegen when all dimensions of a tensor's shape are known at compile-time.
+        Static shapes are mandatory for type inference and checking in existing deep learning compilers.
+
+        In the context of dynamic models, many data shapes can only be determined at runtime. Therefore, the previous assumption of static data shapes does not hold.
+        In order to support dynamic data shapes, Relay introduces a special dimension called Any~to represent statically unknown dimensions.
+        For example, we can represent a tensor type as \texttt{Tensor[(1, 10, Any), float32]},
+        where the size of the third dimension in this tensor is unknown while the other
+        two dimensions have concrete values.
+        This concept is relatively uncontroversial, and has been introduced in other frameworks.
+        Janus \citep{jeong2019janus} uses similar denotation to represent a dynamic dimension but only for type unification, while Relay extends type inference to handle Any~as described next. We do not support tensor types with dynamic ranks given the relatively limited use cases and optimization opportunities.
+        %\yida{Do we need the following sentence?}The challenge of introducing a dynamic shape extension is adapting each layer of the system to handle it in a way that does not greatly degrade performance.
+
+        \noindent
+        {\bf Operator Type Relation} A type relation describes the relationship between the types of operator inputs and outputs. The type system of TVM's Relay IR relies on these type relations to infer and bidirectionally propagate type and shape relationships between inputs and outputs of operators across the whole program.
+        For example, the type relation for broadcasting operators (e.g. \texttt{broadcast\_add}) performs the shape calculation following the NumPy broadcasting rules\footnote{\url{https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html}}.
+
+        The type relation must be generalized to properly handle dynamic shapes. For example, a program which grows a tensor on each loop iteration (a case existing in the decoder of many NLP models) is both impossible to type and compile without proper type system support. With the introduction of Any, we are able to improve the existing type relations to support dynamic models.
+
+        There are two cases that must be handled after we introduce Any~to the type relations.
+        First, operators such as {\tt arange}\footnote{{\tt arange} generates a range of values in a (start, stop, step) interval the arrays output size is a function of input arguments.} and {\tt unique}\footnote{{\tt unique} selects the unique elements of a tensor.} have dynamic output shapes depending on the input data, which will be described in Any.
+        % We can now describe the type relation using the enhanced type relation functions with Any but not before.
+        % For example, type relation of {\tt arange} can be expressed as follows
+        % \[
+        % arange: fn(start: fp32, stop: fp32, step: fp32) \rightarrow \langle [Any], fp32 \rangle
+        % \]
+        Second, when input shapes of a type relation contain Any~dimension, the type relation needs to propagate Any~correctly to the output types and relax typing constraints that hold in the static cases when necessary.
+        %For example, type relation for {\tt broadcasting} operators determines the compatibility between corresponding dimensions from both inputs if they are equal or one of them is 1 according to the Numpy broadcasting rule.
+        For example, the rules
+        for broadcast type relation given the matching dimension from two inputs when having Any~are defined as follows:
+        \begin{align*}
+          \textrm{broadcast\_rel}(Any, 1) &\rightarrow Any \\
+          \textrm{broadcast\_rel}(Any, d) &\rightarrow d ~~~~~~(d > 1) \\
+          \textrm{broadcast\_rel}(Any, Any) &\rightarrow Any.
+        \end{align*}
+        Note that due the presence of dynamic shapes these type relation rules can no longer rule out all type errors at compile-time.
+        For example, for the second rule shown above, when Any~is neither 1 nor $d$ at runtime, it then violates the broadcast type constraints.
+        To address this, we take the gradual typing~\citep{gradualtyping} approach and leave certain type checking at runtime after Any~is instantiated by a
+        concrete value (see \autoref{sec:compilation:shape-func} for more details).
+        One could eliminate these errors using a more advanced type system, but at increased complexity.
+
+        \noindent
+        {\bf Type Inference} One caveat of the Any~dimension is that unknown dimensions will propagate during type inference, reducing chances for shape specialization.
+        For example, if we use an operator such as {\tt arange} to produce a tensor with dynamic shape (i.e., \texttt{Tensor[(Any,), f32]}) and later {\tt broadcast\_add} to a tensor with static shape (i.e., \texttt{Tensor[(5, 1), f32]}), the output shape will also contain an Any~dimension (i.e., \texttt{Tensor[(5, Any), f32])}.
+
+        To limit the contamination of Any, we further introduce {\em sub-shaping} to improve the precision of types computed by type-inference.
+        Much like sub-typing used in popular programming languages \citep{LiskovTPLS1994,AmadioAmadioTPLS1993}, our extension enables values with more specific shape information to be passed in contexts which require less specific shapes.
+        Further, we perform extra analysis on each Any~dimension to detect if two Any~dimensions point to an identically sized dimension. We can use this analysis in the downstream compilation to generate shape-specialized code during codegen.
+        % We treat concrete dimension and symbolic dimension as a sub-shape of Any.
+        % \yida{The following sentence is problematic with grammatical error. We need to explicitly define what is an argument.}Rules for invoking a function, suppose fn type is $fn\langle T_1, \dots, T_n\rangle$,
+        % and arguments are $T'_1, \dots, T'_n$, the rules are defined as follows
+        % \begin{align*}
+        %   \textrm{union}(T_i, T'_i) &\rightarrow T_i \\
+        %   \textrm{join}(T_i, T'_i) &\rightarrow T'_i
+        % \end{align*}
+
+        \subsection{Shape Function}
+        \label{sec:compilation:shape-func}
+        %Existing deep learning compilers only deal with static shapes, enabling all shape computation to occur at compile-time.
+        %Therefore, it is easy to allocate memory for the tensors using static shape information to compute the precise amount of storage needed for each tensor.
+        %However, introducing Any~invalidates this pre-allocation mechanism as the tensors may now contain dynamic dimensions.
+        The introduction of Any~dimension invalidates the pre-allocation mechanism adopted in the existing deep learning compiler.
+        Instead, we now have to track the amount of memory required to be allocated in parallel to computing.
+        Furthermore, static type checking cannot eliminate all type errors at compile-time due to dynamic tensor shapes.
+        Consequently, we define a {\em shape function} to compute the output shape for storage allocation and verify the type relation in accord with the semantics of every operators.
+        The shape function is similar in structure to the type relations described in \autoref{sec:compliation:typing} but are present at runtime instead of compile-time.
+        The shape function enables compiling and embedding the computation of output shapes into the program.
+
+        According to the characteristics of the operator, we divide the shape functions in three different modes: data independent, data dependent, and upper bound.
+        {\em Data independent} shape functions are used for operators in which the output shape only depends on the shapes of inputs such as normal 2-D convolution.
+        {\em Data dependent} shape functions require the concrete input values to compute the output shapes. For example, the output shape of \texttt{arange} depends on the value of start, stop, and step.
+        In addition, there are certain operators such as Non Maximum Suppression (\texttt{nms}) where the complexity of computing the output shapes is on par with the complexity of executing the operator itself.
+        In order to avoid the redundant computation, we use an {\em upper bound} shape function to quickly estimate an upper bound shape for the output.
+        We also require such operators to return the output shape along with output value, so as to use the real shape to slice the output tensors into precise output shape and layout.
+
+        It is worth noting that in the presence of dynamic shape functions, operator fusion needs to be specially taken care of.
+        Operator fusion, which combines {\em basic operators} into a {\em composite operator}, is a critical technique for performance optimization as it reduces unnecessary memory copies and improves the cache locality.
+        %However, we only define the shape function at elementary operator level. As a result, we also must fuse shape functions in parallel with the operator fusion.
+        The compiler can easily connect the shape functions of basic operators to form the shape function for a composite operator when all shape functions are data independent.
+        However, a basic operator with a data dependent or upper bound shape function cannot be fused to other operators, i.e., taking the outputs of other operators as its inputs to fuse together, as the shape function requires to access to the intermediate result within a composite operator.
+        As a result, we explicitly define the fusion policy to prevent this from happening.
+        %If all basic ops in a composite op have data independent shape functions, it is straightforward to generate shape function for this composite op as we can just connect the shape functions of basic ops together. However, a composite op is invalid if a basic op that has a data dependent or upper bound shape function takes the intermediate output of another basic op as input.
+        %Because the intermediate result in a composite op is inaccessible from outside, the data dependent shape function cannot collect all arguments it required. Thus, we revise the operator fusion policy correspondingly to make sure composite ops generated by the operator fusion pass will be valid.
+
+        %Due to our definition of shape functions we are able to perform fusion using a generalized version of the algorithm used for standard operator fusion which handles passing the appropriate input shape or input depending on the shape function. For example imagine that the fuse operator has a single input that was originally used an operator that requires the input, and the second fused operator requires the input shape. Depending on the type of the shape function defined above, we handle operator fusion in the following manner. Any data independent shape functions could be fused with other operators. Any fused group can only have at most one shape function and it should be fused together with the operator that needs shape function.
