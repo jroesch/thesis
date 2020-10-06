@@ -18,6 +18,8 @@
 \usepackage{tabularx}
 \usepackage{longtable}
 \usepackage{booktabs}
+\usepackage{color}
+\usepackage{geometry}
 % \usepackage{caption}
 % \usepackage{subcaption}
 \usepackage{joshuadunfield}
@@ -182,3 +184,13 @@
 
 \newcommand{\affiliation}[1]{//\texttt{#1}}
 \newcommand{\email}[1]{//\texttt{#1}}
+
+\usepackage{color}
+\usepackage{textcase} % for \MakeTextUppercase
+\usepackage{soul} % for letterspacing
+% Maybe come back and turn off ligatures?
+\sodef\allcapsspacing{\upshape}{0.25em}{0.8em}{0.6em} % : {space between letters}{space between words}{0.6em}
+\DeclareRobustCommand{\spacedallcaps}[1]{\MakeTextUppercase{\allcapsspacing{#1}}} % all caps with better spacing
+
+\sodef\lowsmallcapsspacing{\scshape}{0.075em}{0.5em}{0.6em}%
+\DeclareRobustCommand{\spacedlowsmallcaps}[1]{\MakeTextLowercase{\textsc{\lowsmallcapsspacing{#1}}}}%\protect

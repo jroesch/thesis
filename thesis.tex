@@ -126,6 +126,16 @@
 %----------------------------------------------------------------------------------------
 %	BOOK META-INFORMATION
 %----------------------------------------------------------------------------------------
+% Thesis metadata.
+\input{metadata}
+
+% \hypersetup{
+%     pdftitle={\metadata{title}},
+%     pdfauthor={\textcopyright\ \metadata{author}, \metadata{school}},
+%     pdfsubject={},
+%     pdfkeywords={},
+%     pdfcreator={pdfLaTeX},
+% }
 
 \title{Principled Optimization of Dynamic Neural Networks} % Title of the book
 
@@ -141,20 +151,7 @@
 
 \frontmatter
 
-%----------------------------------------------------------------------------------------
-%	EPIGRAPH
-%----------------------------------------------------------------------------------------
-
-% \thispagestyle{empty}
-% \openepigraph{The public is more familiar with bad design than good design. It is, in effect, conditioned to prefer bad design, because that is what it lives with. The new becomes threatening, the old reassuring.}{Paul Rand, {\itshape Design, Form, and Chaos}}
-% \vfill
-% \openepigraph{A designer knows that he has achieved perfection not when there is nothing left to add, but when there is nothing left to take away.}{Antoine de Saint-Exup\'{e}ry}
-% \vfill
-% \openepigraph{\ldots the designer of a new system must not only be the implementor and the first large-scale user; the designer should also write the first user manual\ldots If I had not participated fully in all these activities, literally hundreds of improvements would never have been made, because I would never have thought of them or perceived why they were important.}{Donald E. Knuth}
-
-%----------------------------------------------------------------------------------------
-
-\maketitle % Print the title page
+\input{title}
 
 %----------------------------------------------------------------------------------------
 %	COPYRIGHT PAGE
@@ -197,37 +194,8 @@ Abstract ...
 %----------------------------------------------------------------------------------------
 
 \cleardoublepage
-~\vfill
-\begin{doublespace}
-\noindent\fontsize{18}{22}\selectfont\itshape
-\nohyphenation
-Dedicated to those who appreciate \LaTeX{} and the work of \mbox{Edward R.~Tufte} and \mbox{Donald E.~Knuth}.
-\end{doublespace}
-\vfill
-\vfill
+\input{ack.tex}
 
-
-\noindent For example,
-\begin{docspec}
-\doccmdnoindex{documentclass}[symmetric,justified,marginals=raggedouter]\{tufte-book\}
-\end{docspec}
-will set the body text of the document to be fully justified and all of the margin material (sidenotes, margin notes, captions, and citations) to be flush against the body text with ragged outer edges.
-
-\newthought{The font and style} of the marginal material may also be modified using the following commands:
-
-\begin{docspec}
-\doccmd{setsidenotefont}\{\docopt{font commands}\}\\
-\doccmd{setcaptionfont}\{\docopt{font commands}\}\\
-\doccmd{setmarginnotefont}\{\docopt{font commands}\}\\
-\doccmd{setcitationfont}\{\docopt{font commands}\}
-\end{docspec}
-
-The \doccmddef{setsidenotefont} sets the font and style for sidenotes, the \doccmddef{setcaptionfont} for captions, the \doccmddef{setmarginnotefont} for margin notes, and the \doccmddef{setcitationfont} for citations. The \docopt{font commands} can contain font size changes (e.g., \doccmdnoindex{footnotesize}, \doccmdnoindex{Huge}, etc.), font style changes (e.g., \doccmdnoindex{sffamily}, \doccmdnoindex{ttfamily}, \doccmdnoindex{itshape}, etc.), color changes (e.g., \doccmdnoindex{color}\texttt{\{blue\}}), and many other adjustments.
-
-If, for example, you wanted the captions to be set in italic sans serif, you could use:
-\begin{docspec}
-\doccmd{setcaptionfont}\{\doccmdnoindex{itshape}\doccmdnoindex{sffamily}\}
-\end{docspec}
 
 \input{chapters/intro}
 \input{chapters/background}
@@ -245,7 +213,6 @@ If, for example, you wanted the captions to be set in italic sans serif, you cou
 % \input{chapters/optimize/rewriting.tex}
 % Execution
 \input{chapters/execute/execute.tex}
-\input{chapters/execute/vm.tex}
 % Future Work/Conclusion
 \input{chapters/future.tex}
 
