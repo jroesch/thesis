@@ -15,7 +15,7 @@ In particular optimizing programs using these features
 
 The central issue limiting the optimization of dynamic
     neural network was a focus on runtime based approaches.
-Previous work tries to solve this problem by detecting
+Previous work tries to solve the above problems by detecting
     dynamic cases and using runtime modifications, or
     recasting the dynamic problem as a static problem
     in order to avoid needing to ever perform dynamic
@@ -32,6 +32,15 @@ In compilation the key challenges tend to be representation,
     optimizations, and code generation or execution.
 In machine learning this story is a bit more complex.
 
+In this thesis I propose that we can generalize overspecialized
+  compilation & runtime techniques applied to static dataflow graphs,
+  the predominant programming model of deep learning,
+  to fully dynamic neural networks.
+These generalizations are powered by a simple insight:
+  dynamic neural networks are just programs which manipulate tensors.
+The challenge is how to build a representation that captures this generality
+  in a principled manner, enabling state-of-the-art performance without limiting the programming model.
+
 To do this we believe there are 4 key pieces
     * representation, we need a compiler representation rich enough to capture dynamic behaviors
     * differentiation, in machine learning applications it is essential we can perform automatic differentiation of programs
@@ -40,7 +49,7 @@ To do this we believe there are 4 key pieces
 
 The remainder of this talk discusses how we adapted
     ideas from the traditional compiler literature
-    to deep learning, and acheived state-of-the-art
+    to deep learning, and achieved state-of-the-art
     performance on key models.
 
 My thesis is split into the above 4 parts, we will first discuss the design of
