@@ -261,9 +261,8 @@ Because our algorithm enjoys a closure property,
 \begin{figure}
   \centering
   % \texttt{\bf Identity Function}
-  \begin{minipage}{0.4\textwidth}
   \judgbox{\texttt{\bf Identity Function}}{}
-    \begin{minted}[fontsize=\footnotesize]{ocaml}
+    \begin{minted}{rust}
 fn <s, bt>(%d: Tensor[s, bt]) {
   %d
 }
@@ -271,7 +270,7 @@ fn <s, bt>(%d: Tensor[s, bt]) {
 
   \judgbox{\texttt{\bf Post-AD}}{}
 
-    \begin{minted}[fontsize=\footnotesize]{ocaml}
+    \begin{minted}{rust}
 fn <s, bt>(%d: Tensor[s, bt]) {
   let %x = ref(fn () { () });
   let %x1 = (%d, ref(zeros_like(%d)));
@@ -286,11 +285,9 @@ fn <s, bt>(%d: Tensor[s, bt]) {
   (%x2.0, (read(%x1.1),))
 }
     \end{minted}
-  \end{minipage}%
-  \begin{minipage}{0.4\textwidth}
   \judgbox{\texttt{\bf Post-PE}}{}
 
-    \begin{minted}[fontsize=\footnotesize]{ocaml}
+    \begin{minted}{rust}
 fn <s, bt>(%d: Tensor[s, bt]) {
   let %x = fn () {
     let %x1 = ();
@@ -317,12 +314,11 @@ fn <s, bt>(%d: Tensor[s, bt]) {
 
   \judgbox{\texttt{\bf Post-DCE}}{}
 
-    \begin{minted}[fontsize=\footnotesize]{ocaml}
+    \begin{minted}{rust}
 fn <s, bt>(%d: Tensor[s, bt]) {
   (%d, (ones_like(%d),))
 }
   \end{minted}
-\end{minipage}
   \caption{
     Example of running the compiler pass pipeline for AD on the identity
     function.
