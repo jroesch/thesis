@@ -525,7 +525,7 @@ The above sections discuss the core of Relay, a full-length paper under submissi
 
         %Due to our definition of shape functions we are able to perform fusion using a generalized version of the algorithm used for standard operator fusion which handles passing the appropriate input shape or input depending on the shape function. For example imagine that the fuse operator has a single input that was originally used an operator that requires the input, and the second fused operator requires the input shape. Depending on the type of the shape function defined above, we handle operator fusion in the following manner. Any data independent shape functions could be fused with other operators. Any fused group can only have at most one shape function and it should be fused together with the operator that needs shape function.
 
-% \vspace{-1.5em}
+%
 % \subsection{Typing}
 % \label{sec:compliation:typing}
 % Deep learning compilers use type systems to represent, check and infer the data types and shapes of tensors. In some frameworks and compilers this is separated into two steps, shape inference and data type inference. TVM performs both simultaneously and refers to them as type inference~\citep{roesch2019relay}, a terminology we will use throughout the section.
@@ -559,14 +559,14 @@ The above sections discuss the core of Relay, a full-length paper under submissi
 % %For example, type relation for {\tt broadcasting} operators determines the compatibility between corresponding dimensions from both inputs if they are equal or one of them is 1 according to the Numpy broadcasting rule.
 % For example, the rules
 % for broadcast\footnote{\url{https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html}} type relation with \any~are defined as follows:
-% %\vspace{-1em}
+% %
 % \begin{align*}
 %   \textrm{broadcast\_rel}(\any, 1) &\rightarrow \any \\
 %   \textrm{broadcast\_rel}(\any, d) &\rightarrow d ~~~~~~(d > 1) \\
 %   \textrm{broadcast\_rel}(\any, \any) &\rightarrow \any
-%   \vspace{-1em}
+%
 % \end{align*}
-% %\vspace{-1em}
+% %
 % Note that due to the presence of dynamic shapes, these type relation rules can no longer rule out all type errors at compile-time.
 % For example, for the second rule shown above, when \any~is neither 1 nor $d$ at runtime, it then violates the broadcast type constraints.
 % To address this, we take the gradual typing~\citep{gradualtyping} approach and leave certain type checking at runtime after \any~is instantiated by a
@@ -591,4 +591,4 @@ The above sections discuss the core of Relay, a full-length paper under submissi
 % %   \textrm{union}(T_i, T'_i) &\rightarrow T_i \\
 % %   \textrm{join}(T_i, T'_i) &\rightarrow T'_i
 % % \end{align*}
-% %\vspace{-1em}
+% %

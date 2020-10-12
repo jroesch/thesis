@@ -32,6 +32,7 @@ In this chapter we evaluate Relay's performance specifically
 
 To begin we first refresh the reader on the end-to-end
   of the Relay compiler.
+
 First, the frontend converts input formats into the Relay IR.
 Next, the Relay compiler typechecks and optimizes the program.
 Processes such as automatic differentiation can be performed
@@ -386,7 +387,7 @@ VM uses a tagged object representation reminiscent of those used by programming 
 In sum, the interpreter handles instructions in the following categories.
 %\yida{somewhat mention interpreter in the above two paragraphs, otherwise it feels disconnected}
 
-\begin{itemize}[leftmargin=*]
+\begin{itemize}
     \item Register-to-Register Operations. Register-to-Register operations, e.g. \texttt{Move}, transfers data between different offset of the register file. Objects are reference counted, make use of copy-on-write and passed by reference ensuring register operations are cheap even if the size of underlying container is large.
 
     \item Memory Operations. Memory operations can allocate space for tensors, load constant tensors, and so on. Due the design of our constant pool, weights (which are constant during inference) can remain in-memory with no specialized support they can be referenced by the\texttt{LoadConst} instruction.
@@ -418,7 +419,7 @@ This section describes how we transform standard TVM programs into our dynamic d
     \item A set of codegen techniques for producing code of kernels with dynamic input and output shapes.
 \end{itemize}
 
-% %\vspace{-1em}
+% %
 % \subsection{Shape Function}
 % \label{sec:compilation:shape-func}
 % %Existing deep learning compilers only deal with static shapes, enabling all shape computation to occur at compile-time.

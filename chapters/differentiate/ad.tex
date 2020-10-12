@@ -263,15 +263,14 @@ Because our algorithm enjoys a closure property,
   % \texttt{\bf Identity Function}
   \begin{minipage}{0.4\textwidth}
   \judgbox{\texttt{\bf Identity Function}}{}
-  \vspace{0.8em}
     \begin{minted}[fontsize=\footnotesize]{ocaml}
 fn <s, bt>(%d: Tensor[s, bt]) {
   %d
 }
     \end{minted}
-  \vspace{0.5em}
+
   \judgbox{\texttt{\bf Post-AD}}{}
-  \vspace{0.8em}
+
     \begin{minted}[fontsize=\footnotesize]{ocaml}
 fn <s, bt>(%d: Tensor[s, bt]) {
   let %x = ref(fn () { () });
@@ -290,7 +289,7 @@ fn <s, bt>(%d: Tensor[s, bt]) {
   \end{minipage}%
   \begin{minipage}{0.4\textwidth}
   \judgbox{\texttt{\bf Post-PE}}{}
-  \vspace{0.8em}
+
     \begin{minted}[fontsize=\footnotesize]{ocaml}
 fn <s, bt>(%d: Tensor[s, bt]) {
   let %x = fn () {
@@ -315,9 +314,9 @@ fn <s, bt>(%d: Tensor[s, bt]) {
   %x10
 }
     \end{minted}
-  \vspace{0.5em}
+
   \judgbox{\texttt{\bf Post-DCE}}{}
-  \vspace{0.8em}
+
     \begin{minted}[fontsize=\footnotesize]{ocaml}
 fn <s, bt>(%d: Tensor[s, bt]) {
   (%d, (ones_like(%d),))
