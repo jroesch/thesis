@@ -193,7 +193,11 @@ In summary, the Relay VM is built around three core design contributions:
 
 TVM although named Tensor Virtual Machine, follows in the lineage of LLVM
   where its name is technically inaccurate.
-
+In fact this is the first abstract or virtual machine introduced to the
+  TVM compiler stack.
+The Relay VM is a realization a tensor abstraction machine,
+  where each operation corresponds to high-level tensor operations such
+  as allocating a tensor, invoking an operation like conv2d, or performing a device copy.
 Conventional deep learning runtimes, those which apply interpretation of the
   computation graph by walking each node in topological order, are non-optimal
   for dynamic neural networks.
@@ -208,29 +212,24 @@ The interpreter offers simple solutions for these,
 The simplicity of the graph runtime provides attractive
   properties such as simple serialization, straightforward
   optimal memory layout, and ease of deployment.
+An alternative solution to the VM is ahead of time
+  compilation, we discuss below.
 
-In fact this is the first abstract or virtual machine introduced to the
-  TVM compiler stack.
-The Relay VM is a realization a tensor abstraction machine,
-  where each operation corresponds to high-level tensor operations such
-  as allocating a tensor, invoking an operation like conv2d, or performing a device copy.
-An alternative solution to the VM could be ahead of time
-  compilation from our abstract machine into machine code.
-But due to the granularity of the operations, dispatch time makes
-  up a very small portion of the execution time.
-More importantly, the VM provides flexibility traditionally attributed
-  to virtual machines and a clear compiler/runtime split.
-We see the potential of VM to be integrated as a runtime module into a larger system.
-For example, VM can provide resource isolation where multiple inference
-  instances share the same hardware in the cloud.
-Furthermore, a Quality of Service (QoS)-aware system, e.g., \citep{kang2018hotmobile, Yachir2009rsj},
-  could leverage VM to pause the current model execution for a higher priority or time-critical model.
-Last, because of the simplicity of the VM design, one can verify the implementation of VM for security and privacy purposes.
+Virtual machine (VM) design is a
+  well-studied area in programming languages and systems,
+  and there have been various virtual machine designs
+  for both full-fledged and embedded programing languages.
+VMs provide are a sweet spot between
+  poorly optimized naive interpreters
+  and full ahead of time compilers.
+The key advantage of VMs is the flexibility provided
+  by having fine grained control over program execution.
+For example dynamic scheduling or customized observability
+  is much easier in the virtual machine setting vs. ahead of time compilation.
 
-
-Virtual machine (VM) design is a well-studied area in programming languages and systems,
-  and there have been various virtual machine designs for both full-fledged and embedded programing languages.
-Previous language VM designs have been heavily tailored to the execution profile of traditional programs.
+The Relay VM's design differs from traditional language VMs though.
+Previous language VM designs have been heavily
+  tailored to the execution profile of traditional programs.
 Traditional programs manipulate small scalar values
   and consist of a large number of low-level instructions.
 The sheer quantity of instructions requires instruction execution
@@ -240,67 +239,11 @@ In the context of machine learning we manipulate primarily tensor values,
 ML programs’ cost centers are expensive operator invocations,
   such as GEMM or convolution, over a large input.
 Due to the execution profile exhibited by ML programs,
-  micro-optimizations present in scalar VMs are dramatically less important.
+  micro-optimizations present in scalar VMs are dramatically less important,
+  and thus the removal of dispatch overhead from ahead of time compilation
+  is also less important.
 
-% The Relay virtual machine implement a simple register based VM.
-
-% The VM consists of three pieces:
-% \begin{enumerate}
-%   \item A tensor instruction set for a tensor virtual machine.
-%   \item A compiler from Relay to the tensor VM.
-%   \item An implementation of the virtual machine.
-% \end{enumerate}
-
-In Relay, we compile a dynamic model into a {\em VM executable} which contains
-  platform-independent bytecode and platform-dependent kernel code, which can be later loaded and executed.
-The bytecode consists of a series of instructions that predicate the order of kernel invocation and control flow execution logic.
-This design compliments conventional runtime's capability for executing highly optimized kernels but not directly handling orchestration between kernels.
-Relay's instruction set is designed as an abstract machine for executing tensor valued
-computations. We can realize this abstract machine by either interpreting it or generating
-machine code. This is a tried and true approach utilized by existing languages and languages
-runtime such as Java, or C\#.
-
-By lowering the full language to an abstract machine we can reduce it to its core operations,
-resulting in a small set of operations we can implement. Our implementation uses a virtual
-machine design over an ahead of time compiler. In traditional virtual machines the key
-reason to perform ahead of time compilation is to reduce dispatch time, and specialize
-away dynamic features such as virtual dispatch.
-
-Due to the design of the Relay instruction set, instruction dispatch is a very minimal
-part of the total runtime, the runtime is defined by kernel execution time.
-A virtual machine allows easier experimentation and modification at the cost of dynamically
-dispatching instructions, though nothing in our design prevents ahead of time compilation
-of the instruction set, but it provides little value for this reason.
-
-For example if we need to produce ahead of time
-compiled code, we either must generate calls into a runtime system (which is dynamic),
-only removing instruction dispatch, or statically schedule limiting flexibility and
-extensibility.
-
-Furthermore our use of TVM means all kernels are ahead of time compiled meaning the
-code which dominates execution time, remember most kernels are quadratic or cubic in
-complexity, have efficient implementations.
-
-Our extensions for dynamically sized kernels also utilize TVM code generation, enabling
-ahead compilation of kernels which perform a form of polymorphic inline caching for shapes,
-playing a similar role to what an ahead of time compiler does in traditional JITs.
-
-Figure~\ref{fig:vm} shows the system architecture of Relay that we propose to achieve the aforementioned design goals.
-It is a system consisting of two major components, namely a compiler and a runtime.
-Relay takes a model in the format of mainstream deep learning frameworks, converts it into a unified intermediate representation (\textit{IR}), then optimizes and compiles the IR into an executable that contains both platform-agnostic bytecode and platform-dependent kernel code, and finally loads the executable to execute in the VM-based runtime.
-%The bytecode is designed to only express the semantics of the IR, e.g. the control-flow and platform-dependent kernel invocation, through dedicated instructions, which contributes a negligible portion of the total execution time, as we will show in~\autoref{sec:eval}.
-The bytecode is executed by Relay's runtime interpreter, which is shareable across various platforms.
-This design effectively enables us to only maintain one version of the execution logic, but focus more on the performance critical operator kernels.
-The kernels are highly-optimized for a specific hardware platform to achieve high performance.
-%Kernels optimized for data with different shapes are compiled separately and dispatched accordingly.
-
-To effectively support dynamic models without performance degradation for static models, we introduced various analysis and optimization techniques in Relay's compiler.
-First, a set of IR extensions are devised to represent dynamic shapes (\textit{Any} shape) and dynamic allocations for static optimization of dynamic program behaviors (\autoref{sec:compliation:typing}).
-Second, shape functions are attached to operators to compute the output shapes dynamically and perform type checking at runtime (\autoref{sec:compilation:shape-func}).
-Third, a memory planning optimization is employed to reduce amount of memory consumed (\autoref{sec:compliation:memory}).
-Fourth, a heterogeneous device placement mechanism is designed to place IR nodes on ``the-best'' device to reduce expensive cross-device data transferring and synchronization (\autoref{sec:compliation:hetero}).
-Finally, the compiler features a code generator that is capable of specializing the code generation of certain likely shapes (\autoref{sec:compliation:codegen}). Once the executable with dynamic behavior is compiled, the VM-based runtime can load and interpret it with intelligent dynamic kernel dispatching (\autoref{sec:runtime}). We detail the design and implementation of each of these features in the followed sections.
-
+s.
 
 \subsection{VM Compiler}
 
@@ -357,8 +300,6 @@ A complete list of instruction set can be found in the appendices.
 We naturally select a register-based virtual machine design~\citep{davis2003case} for compact a bytecode, which is easy for users to read and modify. We provide the abstraction of an infinite set of virtual registers as it significantly simplifies optimizations and allocation (similar to SSA) and minimizes conceptual barriers to rapid prototyping and modification.
 
 Instructions are represented using a traditional tagged union containing the op-code and the data payload. This representation enables both efficient serialization and instruction decoding and dispatch. Relay uses variable-length instruction format due to the inclusion of variable sized operands such as data shapes in the instructions.
-
-
 
 % This design has the following benefits. First, both CISC instructions and variable length encoding contribute to better code density. This is a significant advantage for edge devices that only have limited resources. Second, allowing multiple addressing modes to execute a single instruction can reduce the amount of data fetched from cache hierarchy and main memory. It may also lead to better spatial locality as the data (e.g. the tensor value) may remain in the cache. Third, a variable-length instruction encoding paves the way for extending extra information to instructions, e.g. debugging and even branch prediction. Last but not least, the instruction designed in Relay effectively separates hardware-dependent kernels from model control logic. The Relay bytecode is hardware-independent which eases bytecode serialization, and can be paired with hardware-dependent kernels being invoked by the \texttt{InvokePacked} instruction.
 
@@ -438,6 +379,18 @@ This section describes how we transform standard TVM programs into our dynamic d
 % %Due to our definition of shape functions we are able to perform fusion using a generalized version of the algorithm used for standard operator fusion which handles passing the appropriate input shape or input depending on the shape function. For example imagine that the fuse operator has a single input that was originally used an operator that requires the input, and the second fused operator requires the input shape. Depending on the type of the shape function defined above, we handle operator fusion in the following manner. Any data independent shape functions could be fused with other operators. Any fused group can only have at most one shape function and it should be fused together with the operator that needs shape function.
 
 \subsection{Ahead-of-time}
+
+Given we sep from our abstract machine into machine code.
+But due to the granularity of the operations, dispatch time makes
+  up a very small portion of the execution time.
+More importantly, the VM provides flexibility traditionally attributed
+  to virtual machines and a clear compiler/runtime split.
+We see the potential of VM to be integrated as a runtime module into a larger system.
+For example, VM can provide resource isolation where multiple inference
+  instances share the same hardware in the cloud.
+Furthermore, a Quality of Service (QoS)-aware system, e.g., \citep{kang2018hotmobile, Yachir2009rsj},
+  could leverage VM to pause the current model execution for a higher priority or time-critical model.
+Last, because of the simplicity of the VM design, one can verify the implementation of VM for security and privacy purposes.
 
 
 \section{Supporting Hardware Accelerators}
