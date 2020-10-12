@@ -197,3 +197,110 @@ Meanwhile, kernel tuning under symbolic shape settings become more challenging a
 \end{itemize}
 
 Figure~\ref{fig:dlc} summarizes a generic deep learning compiler workflow in multiple stages, with the missing parts to supporting dynamism listed in each stage.  %\zhicomment{Figure needs to be updated, add heterogeneous device placement to optimization}.
+
+% ------------------------------------------
+
+
+% \subsubsection{Memory pass}
+
+% \subsubsection{Symbolic code generation}
+
+% \subsubsection{VM overhead}
+% \label{sec:eval:overhead}
+% Finally, we compared the performance of model inference for static neural networks using Relay with unmodified TVM. TVM is known to be efficient in processing CNN models on various hardware platforms~\citep{tvm_osdi18, liu2019optimizing}. Relay extended TVM to support dynamism while inheriting the optimizations original TVM has. Relay's VM-based runtime was designed to be generic enough to handle static model inference as well. Therefore, comparing between Relay and the original TVM on static model inference should indicate how much overhead Relay introduces while introducing dynamic support.
+
+% \autoref{fig:static-performance} and \autoref{fig:memory-overhead} show the latency and memory footprint comparison between Relay and original TVM on different static CNN models. The models were optimized via the TVM pipeline in both systems. The difference is that Relay uses its VM-based runtime while TVM uses its original graph runtime. From the figure we can tell that Relay's VM-based runtime adds minimal overhead compared to TVM's original runtime, by adding up to 13\% more execution time and 8\% more memory footprint. Also, \autoref{fig:memory-overhead} further testifies that our memory planning optimization reduces the memory usage on static model inference as well.
+
+% We have evidence that this overhead is due to missing micro-optimizations, and not inherent to our approach, and should be erased over time.
+
+% \begin{figure}
+% \centering
+% \input{figs/static_perf}
+% \caption{Latency comparison between Relay and TVM on static model inference. The latency was tested for both systems on Intel CPUs, Nvidia GPUs and ARM CPUs by setting batch size=1. The latency of TVM on those platforms was normalized to 1, the lower the better.}
+% \label{fig:static-performance}
+% \end{figure}
+
+% \begin{figure}
+% \centering
+% \input{figs/memory}
+% \caption{Memory usage comparison between Relay and TVM on static models. Relay was done with and without optimization on memory planning. The results were obtained on Intel CPUs. Nvidia GPUs and ARM CPUs would lead to the identical results. The amount of memory used by TVM was normalized to 1, the lower the better.}
+% \label{fig:memory-overhead}
+% \end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%555
+
+%\vspace{-1em}
+\subsection{Memory Planning}
+\label{sec:compliation:memory}
+
+Deep learning workloads are dominated by two key components,
+    compute-intensive kernels and memory allocation.
+Many deep learning compilers use a form of static memory planning
+    coalesces memory into contiguous chunks and minimize allocations.
+For devices such as GPUs these optimizations are essential for
+    reducing memory fragmentation and ensuring allocation does not hamper kernel performance.
+Existing deep learning compiler IRs hide memory allocation behind a
+    functional interface, where each operator implicitly allocates their output storage.
+Then before execution, the system performs static-memory planning on the data
+    flow graph enabling efficient pre-allocation of the required output buffers.
+Due to this ``out-of-band'' nature of memory allocation,
+    it is challenging to customize, modify, or compose memory optimizations with other passes.
+For example, if one needs to adjust memory allocation for heterogeneous execution,
+    modifications to the runtime system are required.
+TVM's graph runtime is one such example of static memory planning.
+Due to the coarse-grained memory semantics of deep learning models,
+    it is essential that memory optimizations occur at a suitably high-level of abstraction,
+    unlike traditional compilers.
+Existing work provides no clear path to performing static optimization on dynamic memory
+    allocation.
+
+In order to perform what we refer to as ```dynamic memory planning'' we have extended
+    TVM to transform its IR with implicit memory allocations to one with explicit
+    buffer allocation and manipulation.
+The key to this transformation is an inter-procedural change of calling convention,
+    with each operator now taking its outputs explicitly.
+The transformation makes it possible to track and optimize dynamic memory allocations in the IR.
+In order to perform this optimization we have introduced four new IR constructs,
+    (a) \verb|invoke_mut(op, inputs, outputs)| which takes outputs as mutable in-out arguments,
+    (b) \texttt{alloc\_storage(size, alignment, device)} which allocates a region of memory of a particular size,
+    (c) \texttt{alloc\_tensor(storage, offset, shape, dtype, attrs)} which allocates a tensor at a particular storage offset with a shape and data type, and
+    (d) \verb|kill(tensor)| which frees a tensor before its reference count becomes zero due to exiting the frame.
+
+We illustrate how this works with an example of transforming a single statically shaped operation such as broadcasting addition.
+Note that in the below code examples \texttt{Tensor<d1, ..., dn>} is shorthand for a tensor of shape \texttt{(d1, ..., dn)} containing floating point values.
+
+%\begin{Verbatim}[fontsize=\small]
+\begin{lstlisting}
+fn main() -> Tensor<10> {
+  let t1, t2 : Tensor<10> = ...;
+  add(t1, t2)
+}
+\end{lstlisting}
+\vspace{-1em}
+%\end{Verbatim}
+
+Here we only must allocate a single buffer, that is, the return buffer for the addition operation.
+
+%\begin{Verbatim}[fontsize=\small]
+\begin{lstlisting}
+fn main() -> Tensor<10> {
+  let t1 = ...; let t2 = ...;
+  let buf1 = alloc_storage(40,64,cpu);
+  let out1 = alloc_tensor(buf1,0,(10),f32);
+  invoke_mut(add, (t1, t2), (out1));
+  out1
+}
+\end{lstlisting}
+\vspace{-1em}
+%\end{Verbatim}
+
+The above transformation replaces the operator invocation \verb|add| to code which
+first allocates an output tensor from backing storage at offset zero, and call to
+\verb|invoke_mut|.
+For the sake of space, we present a more complex example in the \autoref{appx:mem-plan-example}, which illustrates how to handle memory allocation when operators have dynamic shaped inputs.
+The key insight is to internalize a notion of memory allocation into the IR, enabling static optimization of
+both static and dynamic allocations in the presence of control and dynamic shapes.
+Now that all allocations are explicit in the IR, we can provide analogous optimizations in the static
+case on dynamic programs, for example we have implemented a storage coalescing pass to group storage
+into a larger region which allows the multiplexing of multiple tensor allocations to a single piece of storage.
+Futher optimization like liveness analysis and graph coloring algorithm can be applied to the program to reuse  the storages.

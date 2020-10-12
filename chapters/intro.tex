@@ -182,6 +182,7 @@ As we will see in ~\ref{ch:nimble} it is possible to write an LSTM in pure Relay
 Many engineers in this domain believe that building state-of-the-art kernels requires
   human effort to obtain bleeding-edge performance, the rest of this thesis demonstrates
   this is not the case.
+
 % Compiler design using the first strategy are limited by each layer only having an opaque
 %   view of the layers above and below, each layer uses a single semantics with well-defined
 %    mappings between layers but limited communication between,
@@ -257,6 +258,30 @@ We then discuss how to lower, execute, and compile these programs in
 \ref{ch:compiler}, \ref{ch:dynamic}.
 Finally we look to \ref{ch:future} to discuss future work and extensions to this work.
 
+% % MOVE ME
+% As deep learning-based applications have become ubiquitous,
+%   so have systems for optimizing, executing, and deploying such applications.
+% A number of systems research projects focus on enhancing the performance of a
+%   subset of pre-trained models produced by deep learning (DL)
+%   researchers~\citep{Dahl2011taslp, han2016isca, NIPS2016johnson, liu2019optimizing}.
+% Specifically, these models are represented as static data flow graphs where the sizes
+%   of each input and output (i.e. tensors or $n$-dimensional arrays) are known a priori,
+%   ensuring the execution path remains unchanged on every invocation.
+% We refer to models with this static nature as \emph{static models}.
+%   Continued advances in neural networks, especially those in natural language processing, have introduced new dynamism in models, such as control flow
+%   \citep{lstm, language_model}, dynamic data structures \citep{tree_lstm, graph_lstm}, and dynamic shapes \citep{devlin2018bert}.
+% We refer to models exhibiting these behaviors as {\em dynamic models}.
+
+
+% An alternative approach which has generated significant interest
+%   in both academia and industry is the end-to-end optimization of
+%   neural networks using deep learning compilers,
+%   such as XLA \citep{xla}, Glow \citep{glow}, TVM \citep{tvm_osdi18}, and MLIR \citep{lattner2020mlir}.
+% Deep learning compilers differ from traditional deep learning frameworks
+%   by separating execution into a compilation, and a runtime phase.
+% The compilation phase enables whole-model optimization at the graph level,
+%   and workload specific kernel code-generation for multiple hardware platforms,
+%   while the runtime phase executes the compiled module.
 
 % Bibliography
 

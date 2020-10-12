@@ -49,7 +49,7 @@ The rest of this chapter explores how we can generalize previous
 
 \subsection{Automatic-Differentiation}
 
-As discussed in Section \ref{sec:related} Automatic Differentiation has a long history
+As discussed in Chapter~\ref{ch:related} Automatic Differentiation has a long history
   and numerous applications across many fields.
 The style of automatic differentiation popular when we began this work was the
   what is known as a Wengert-list, a runtime data structure which tracks
@@ -70,7 +70,7 @@ In 2017 people began to look into applying previously explored
   transformation.
 During the period we did this work there were numerous
   groups working on this problem for various systems
-  as detailed in ~\ref{sec:related}.
+  as detailed in Chapter~\ref{ch:related}.
 Relay introduced some new challenges for us, a hypothesis we
   believed is that true dynamic features would come be required
   by models.
@@ -99,7 +99,7 @@ Previous automatic differentiation (AD) techniques used on
   language features such as closures, recursion, and control flow.
 Furthermore, it is becoming increasingly important to compute not
   only first-order gradients of functions
-  but potentially $n$th-order gradients~\cite{neural_ode, darts}.
+  but potentially $n$th-order gradients~\citep{neural_ode, darts}.
 Relay requires an algorithm that operates as a source code transformation
   and supports higher-order functions and higher-order gradients.
 There is a large body of work on performing AD
@@ -108,7 +108,7 @@ Several full-length papers have been written about automatic
   differentiation (AD).
 This section highlights the important differences
   between our approach and other recent work.
-Previous approaches like Lantern~\cite{lantern} (see Section~\ref{sec:related})
+Previous approaches like Lantern~\citep{lantern} (see Chapter~\ref{ch:related})
   define a generic and powerful version of AD.
 Lantern uses delimited continuations to implement AD.
 Delimited continuations are an elegant solution
@@ -162,12 +162,12 @@ Many other variants of AD, including algorithms with different
   complexity bounds (e.g., forward-mode AD), exist.
 Forward-mode AD is useful for computing the
   Hessian vector product, which is necessary for techniques like differentiable architecture search
-  (DARTS)~\cite{darts}.
+  (DARTS)~\citep{darts}.
 Because our AD algorithm just another Relay pass,
   it is possible for users to implement and experiment with different
   AD techniques without changing the system.
 To this end, we also implemented a  forward-mode AD algorithm using the traditional method of dual
-  numbers~\cite{ad_survey}.
+  numbers~\citep{ad_survey}.
 Both forward-mode and reverse-mode AD are higher-order and extensible: they
   support closures, abstract data types, control flow, and recursion.
 Although we have not investigated
@@ -398,7 +398,7 @@ A partial evaluator (PE) allows the use of high-level abstractions
   compiled to a particular target.
 Relay is the first compiler to apply partial evaluation
   techniques to deep learning, the
-  core approach of which is based on \cite{pe_ref}.
+  core approach of which is based on \citep{pe_ref}.
 Partial evaluation, when composed with other
   optimizations like fusion, yields a variety
   of useful optimizations without requiring

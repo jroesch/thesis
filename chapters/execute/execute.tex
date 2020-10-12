@@ -5,54 +5,53 @@ The final piece of the puzzle is taking a sufficiently
     lowered Relay program and executing it.
 In theory a naive interpretation strategy could be applied
     to the entire Relay program.
-In fact Relay has a definitional interpreter written in
-  C++ which implements exactly this strategy,
-  a recursive AST traversal.
-A definitional interpreter is a good way to
+In fact Relay definitional interpreter
+  implements exactly this strategy,
+  it just performs a straightforward recursive AST traversal.
+A definitional interpreter is sufficient to
   specify the behavior of program, but not
-  to efficiently execute them.
-The program in its current form is not
-  suitable to efficient execution and
-  must be further transformed.
-Finally the dynamic behaviors must
-  be accounted for and some require
-  runtime support.
+  to efficiently execute one.
+ Most compilers have a final code generation
+  pipeline which transforms a generic optimized
+  program to a specific backend.
+Finally dynamic behaviors require
+  runtime support, such as memory allocation,
+  device selection, or scheduling.
 
 The remainder of this chapter focuses on the back
   half of the Relay compiler and its runtime mechanisms.
 We describe the general backend compilation strategy,
-  then lowering Relay to the graph runtime, the virtual machine,
-  ahead of time compiler, and finally VTA a hardware accelerator
-  built by my collaborators.
-In this chapter we evaluate state-of-the-art NLP
-  applications and demonstrate state-of-the-art performance
-  beating leading industry standards such as TensorFlow and
-  PyTorch.
+  lowering Relay to the graph runtime, the virtual machine,
+  ahead of time compiler, and hardware accelerators.
+In this chapter we evaluate Relay's performance specifically
+  on state-of-the-art NLP applications and demonstrate
+  state-of-the-art performance out performing leading industry standards
+  such as TensorFlow and PyTorch.
 
 \section{Compiler Framework}
 
 To begin we first refresh the reader on the end-to-end
   of the Relay compiler.
 First, the frontend converts input formats into the Relay IR.
-Next, the Relay compiler typechecks and optimizes the program
-    to produce the final program.
+Next, the Relay compiler typechecks and optimizes the program.
 Processes such as automatic differentiation can be performed
   during this step.
-Next we extract so called primitive functions
-  from the Relay program, the process for selecting these
+Next we extract primitive functions
+  from the Relay program, functions which may be lowering to TE or TIR,
+  the process for selecting these
   is defined in Section \ref{sec:fusion}.
-These are lowered into TIR the low-level IR of TVM.
-Relay then further transforms the remaining code
-  around the primitive functions in multiple passes
-  described below.
-The backend additionally lowers Relay operators into a TVM expression,
-    computes a schedule for the final TVM expression, and lowers it into
-Finally we lower the remaining Relay code to one of our runtimes,
+We then perform scheduling and lowering on these
+  expressions to produce low-level target-specific versions
+  of these functions.
+Relay then further transforms the code which can not be lowered
+  into TIR in a sequence of passes depending on which backend
+  we are targeting.
+Finally we execute the remaining Relay code via a TVM runtime
   either the interpreter, which directly interprets the AST,
-  the virtual machine which requires more compilation steps
-  as described below,
-  the graph runtime,
-  or to native code.
+  the virtual machine, graph runtime, or native compiler all
+  of which requires separate compilation phases.
+The focus of this chapter is describing this process in
+  detail for each compilation and runtime target.
 
 \subsection{Frontend}
 
@@ -69,16 +68,18 @@ A greater challenge is translating frameworks
     with a richer computation model such as TensorFlow (TF).
 TF supports control flow and includes \verb|TensorArray|, a write-once
     tensor container.
-We can extract the loop structure out of the TF graph, converting
+We can extract the loop structure out of a TensorFlow graph, converting
     it to an Relay loop, and transform the \verb|TensorArray| into an Relay list.
+Many "importers" struggle to translate TensorFlow's full graph as their intermediate representation
+  is not rich enough to capture the full IR, and often result in ad-hoc hacks to replicate
+  TensorFlow's behavior.
 Once new deep learning languages and IRs under development
-    are stable it is likely they can be translated into Relay (see
+    are stable it is likely that they can all be translated into Relay (see
     Section~\ref{sec:pl_techniques_in_dl}).
 PyTorch provides an expressive programming model, and is a good fit
-    for Relay, which has integration into PyTorch's JIT infrastructure,
-    enabling users to transparently use Relay for improved performance.
-
-
+    for Relay, which has been previously integrated into PyTorch's
+    % TODO CITE
+    JIT infrastructure, enabling users to transparently use Relay for improved performance.
 
 \subsection{Compiler}
 Once an Relay abstract syntax tree (AST) is produced,
@@ -89,10 +90,9 @@ Between each pass, Relay performs type inference and checking,
     information that passes can utilize.
 The Relay compiler supports traditional optimizations
     (e.g., constant folding, common subexpression elimination, and dead code elimination)
-    and domain-specific optimizations
-    (see Sec.~\ref{sec:optimizations}).
+    and domain-specific optimizations, see Chapter~\ref{ch:related} for more details.
 
-\section{Runtimes}
+\subsection{Runtimes}
 
 Relay produces machine-specific code
     by decomposing the problem of code generation into multiple distinct phases.
@@ -119,12 +119,143 @@ There are multiple options for executing the combined full program:
     and an experimental Relay ahead-of-time compiler
     that converts programs to C++ to produce a target-specific binary.
 
-\subsection{Interpreter}
-\subsection{TVM Graph Runtime}
-\subsection{Virtual Machine}
-\subsection{Virtual Machine}
+\section{Interpreter \& Graph Runtime}
+\label{sec:interp_graph_rt}
+
+In the tradition of definitional interpreters we introduced
+  a simple interpreter for Relay which implements its formal semantics, which
+  we have separately formalized.
+Relay’s interpreter can execute the full language but has notable limitations
+  that make it unsuited for production deployments.
+It is structured as an inefficient interpreter that performs
+  AST traversal to execute the program.
+Each time we want to run a sub-expression we must traverse each child node
+  a large cost that can be easily avoided.
+Furthermore we perform JIT compilation of concrete observed shapes in the
+  interpreter, a flexible, but also costly choice.
+This approach is conceptually simple but inefficient, as the AST traversal heavily relies on indirection.
+For example the initial Relay prototype reused the existing ``graph runtime'', to obtain
+  acceptable performance for vision tasks.
+
+The graph runtime is heavily over engineered for completely static
+  models.
+The graph runtime can only execute simple control-free,
+    DAGs of operations.
+We can optimize Relay programs and map a subset of them
+    to the graph runtime, but any use of new Relay features
+    are unsupported.
+
+\section{Virtual Machine}
 \label{sec:vm}
 
+Existing approaches to dynamic model optimization apply or extend existing
+  deep learning frameworks~\citep{xu2018cavs, gao2018low, yu2018dynamic, jeong2018improving, jeong2019janus, dynet, tf_fold}.
+As discussed in Section~\ref{sec:dl_frameworks} frameworks are large monolithic pieces
+  of software that still has serve portability and performance challenges.
+Existing work which builds on frameworks extends the programming model either
+`via sophisticated additions~\citep{yu2018dynamic} or significant runtime overhead~\citep{tf_fold, jeong2019janus}.
+Other work~\citep{xu2018cavs, gao2018low, tf_fold} which is focused on optimizing specific types of models
+  is often hard to generalize to new models, or generalize over all models.
+Moreover, approaches which inherit from frameworks rely on third-party kernel libraries such as
+  OpenBLAS~\citep{xianyi2014openblas}, cuDNN~\citep{cudnn}, and MKL-DNN~\citep{mkldnn} to achieve competitive performance.
+These libraries expose a fixed set of operators for the corresponding hardware, compromising the portability of dynamic models
+  which require a large number of operators with varying data types and shapes. Designing a new interface independent of existing frameworks
+  provides a clean programming model but often at the cost of performance, due to dynamic interpretation of the model~\citep{dynet}.
+
+However, deep learning compilers have been primarily restricted
+  to static models due to lack of support for dynamism.
+Specifically, in order to compile and execute the dynamic models,
+  a system requires an intermediate representation (IR) which can statically represent dynamic constructs,
+  a code generator which can generate kernels for dynamically varying data shapes,
+  and a runtime to handle the dynamic execution and kernel dispatch accordingly.
+In addition, dynamic-specific optimizations, such as dynamic memory planning, the process of statically optimizing dynamic allocations,
+  are necessary to achieve desirable performance.
+None of these features exist in the current deep learning compilers.
+
+To this end, we present Relay VM, a high-performance and portable system for compiling, optimizing,
+  and executing dynamic neural networks on multiple platforms.
+To the best of our knowledge, this is the first attempt to systematically handle dynamic models from a compiler perspective.
+First, we introduce type system extensions to handle data with unknown dimension,
+  which is common in dynamic models,
+  by performing type checking and inference for shapes with {\em Any}.
+Second, we devise several optimizations specific to dynamic models,
+  including dynamic shape-aware code generation,
+  memory planning, and device placement.
+Third, we propose a virtual machine (VM)-based runtime,
+  which decouples the platform-independent controlling logic and platform-dependent kernel implementation,
+  to be portable, light-weight, and most importantly, able to execute dynamic models.
+Experimental results on LSTM~\citep{lstm}, Tree-LSTM~\citep{tree_lstm} and BERT~\citep{devlin2018bert}
+  show that Relay VM~lowers the latency by 1.05$\times$ to 19.9$\times$ compared to the best solution whichever
+  on mainstream hardware platforms both in the cloud (Intel CPUs and Nvidia GPUs) and at the edge (ARM CPUs).
+
+In summary, the Relay VM is build around three core design contributions:
+\begin{itemize}
+  \item IR extensions for dynamical shaped tensors
+  \item Optimization for internalizing Tensor memory management
+  \item Designs and implements tensor based abstract machine with a platform-independent instruction set to efficiently and flexibly execute dynamic models across platforms.
+\end{itemize}
+
+\subsection{A Tensor Virtual Machine}
+
+The first iteration of Relay defined an IR with formal semantics
+  but did not provide a state-of-the-art execution mechanism (see above more discussion on this point).
+For completely static models we relied on the graph runtime,
+  but did not provide an efficient solution for executing
+  programs beyond the reference interpreter.
+
+Conventional deep learning runtimes, those which apply interpretation of the
+  computation graph by walking each node in topological order, are non-optimal
+  for dynamic neural networks.
+These interpreters are reminiscent of the earliest
+  languages interpreters where the input language is directly
+  processed to execute the program.
+
+By introducing models which make use of new features such
+  as control flow, recursion, dynamic shapes, and dynamic allocation,
+  we must change how execution works.
+There are further challenges in compiling dynamic code, such as dynamic scheduling and allocation,
+  fully dynamic tensor shapes, and control flow.
+The interpreter offers simple solutions for these, but none is sufficiently compelling or optimized.
+The simplicity of the graph runtime provides attractive
+  properties such as simple serialization, straightforward
+  optimal memory layout, and ease of deployment.
+
+To address these challenges we designed a new Relay
+  virtual machine.
+The Relay virtual machine balances the competing approaches to execution,
+  providing a dynamic execution environment which can be extended, instrumented,
+  and integrated with other approaches
+  like ahead-of-time compilation via flexible extension mechanisms.
+The virtual machine strikes balance between performance and flexibility
+  when deploying and executing Relay programs, without giving up the benefits of TVM.
+
+Virtual machine (VM) design is a well-studied area in programming languages and systems,
+  and there have been various virtual machine designs for both full-fledged and embedded programing languages.
+Previous language VM designs have been heavily tailored to the execution profile of traditional programs.
+Traditional programs manipulate small scalar values
+  and consist of a large number of low-level instructions.
+The sheer quantity of instructions requires instruction execution
+  and dispatch to be extremely efficient.
+In the context of machine learning we manipulate primarily tensor values,
+  using a (relatively) low number of high level instructions.
+ML programs’ cost centers are expensive operator invocations,
+  such as GEMM or convolution, over a large input.
+Due to the execution profile exhibited by ML programs,
+  micro-optimizations present in scalar VMs are dramatically less important.
+
+% The Relay virtual machine implement a simple register based VM.
+
+% The VM consists of three pieces:
+% \begin{enumerate}
+%   \item A tensor instruction set for a tensor virtual machine.
+%   \item A compiler from Relay to the tensor VM.
+%   \item An implementation of the virtual machine.
+% \end{enumerate}
+
+In Relay, we compile a dynamic model into a {\em VM executable} which contains
+  platform-independent bytecode and platform-dependent kernel code, which can be later loaded and executed.
+The bytecode consists of a series of instructions that predicate the order of kernel invocation and control flow execution logic.
+This design compliments conventional runtime's capability for executing highly optimized kernels but not directly handling orchestration between kernels.
 Relay's instruction set is designed as an abstract machine for executing tensor valued
 computations. We can realize this abstract machine by either interpreting it or generating
 machine code. This is a tried and true approach utilized by existing languages and languages
@@ -155,83 +286,23 @@ Our extensions for dynamically sized kernels also utilize TVM code generation, e
 ahead compilation of kernels which perform a form of polymorphic inline caching for shapes,
 playing a similar role to what an ahead of time compiler does in traditional JITs.
 
+Figure~\ref{fig:vm} shows the system architecture of Relay that we propose to achieve the aforementioned design goals.
+It is a system consisting of two major components, namely a compiler and a runtime.
+Relay takes a model in the format of mainstream deep learning frameworks, converts it into a unified intermediate representation (\textit{IR}), then optimizes and compiles the IR into an executable that contains both platform-agnostic bytecode and platform-dependent kernel code, and finally loads the executable to execute in the VM-based runtime.
+%The bytecode is designed to only express the semantics of the IR, e.g. the control-flow and platform-dependent kernel invocation, through dedicated instructions, which contributes a negligible portion of the total execution time, as we will show in~\autoref{sec:eval}.
+The bytecode is executed by Relay's runtime interpreter, which is shareable across various platforms.
+This design effectively enables us to only maintain one version of the execution logic, but focus more on the performance critical operator kernels.
+The kernels are highly-optimized for a specific hardware platform to achieve high performance.
+%Kernels optimized for data with different shapes are compiled separately and dispatched accordingly.
+
+To effectively support dynamic models without performance degradation for static models, we introduced various analysis and optimization techniques in Relay's compiler.
+First, a set of IR extensions are devised to represent dynamic shapes (\textit{Any} shape) and dynamic allocations for static optimization of dynamic program behaviors (\autoref{sec:compliation:typing}).
+Second, shape functions are attached to operators to compute the output shapes dynamically and perform type checking at runtime (\autoref{sec:compilation:shape-func}).
+Third, a memory planning optimization is employed to reduce amount of memory consumed (\autoref{sec:compliation:memory}).
+Fourth, a heterogeneous device placement mechanism is designed to place IR nodes on ``the-best'' device to reduce expensive cross-device data transferring and synchronization (\autoref{sec:compliation:hetero}).
+Finally, the compiler features a code generator that is capable of specializing the code generation of certain likely shapes (\autoref{sec:compliation:codegen}). Once the executable with dynamic behavior is compiled, the VM-based runtime can load and interpret it with intelligent dynamic kernel dispatching (\autoref{sec:runtime}). We detail the design and implementation of each of these features in the followed sections.
 
 
-\subsection{Tensor Virtual Machine}
-
-Although Relay defines an IR and formal semantics
-  it does not provide an efficient execution mechanism for the full language.
-In the tradition of definitional interpreters we introduced
-  a simple interpreter for Relay which implements its formal semantics, which
-  we have separately formalized.
-Relay’s interpreter can execute the full language but has notable limitations
-  that make it unsuited for production deployments.
-It is structured as an inefficient interpreter that performs AST traversal to execute the program.
-This approach is conceptually simple but inefficient, as the AST traversal heavily relies on indirection.
-For example the initial Relay prototype reused the existing ``graph runtime'', to obtain
-  acceptable performance for vision tasks.
-The graph runtime can only execute simple control-free,
-  DAGs of operations.
-We can optimize Relay programs and map a subset of them
-  to the graph runtime, but any use of new Relay features
-  are unsupported.
-By introducing models which make use of new features such
-  as control flow, recursion, dynamic shapes, and dynamic allocation,
-  we must change how execution works.
-There are further challenges in compiling dynamic code, such as dynamic scheduling and allocation,
-  fully dynamic tensor shapes, and control flow.
-The interpreter offers simple solutions for these, but none is sufficiently compelling or optimized.
-The simplicity of the graph runtime provides attractive
-  properties such as simple serialization, straightforward
-  optimal memory layout, and ease of deployment.
-
-To address these challenges we designed a new Relay
-  virtual machine.
-The Relay virtual machine balances framework the competing approaches to execution,
-  providing a dynamic execution environment which can be extended, instrumented, and integrated with other approaches
-  like ahead-of-time compilation via a flexible extension mechanism.
-The virtual machine is designed to strike a balance between performance and flexibility
-  when deploying and executing Relay programs, without giving up the benefits of TVM.
-Virtual machine (VM) design is a well-studied area in programming languages and systems,
-  and there have been various virtual machine designs for both full-fledged and embedded programing languages.
-Previous language VM designs have been heavily tailored to the execution profile of traditional programs.
-Traditional programs manipulate small scalar values
-  and consist of a large number of low-level instructions.
-The sheer quantity of instructions requires instruction execution
-  and dispatch to be extremely efficient.
-In the context of machine learning we manipulate primarily tensor values,
-  using a (relatively) low number of high level instructions.
-ML programs’ cost centers are expensive operator invocations,
-  such as GEMM or convolution, over a large input.
-Due to the execution profile exhibited by ML programs,
-  micro-optimizations present in scalar VMs are dramatically less important.
-
-The Relay virtual machine implement a simple register based VM.
-
-The VM consists of three pieces:
-\begin{enumerate}
-  \item A tensor instruction set for a tensor virtual machine.
-  \item A compiler from Relay to the tensor VM.
-  \item An implementation of the virtual machine.
-\end{enumerate}
-
-\subsection{ISA}
-\begin{itemize}
-    \item \verb|ret| Returns a value.
-    \item \verb|invoke_packed| Invoke a packed function with the specified arguments.
-    \item \verb|alloc_tensor| Allocate a tensor of the given size.
-    \item \verb|alloc_datatype| Allocate a datatype with the fields.
-    \item \verb|alloc_closure| Allocate a closure.
-    \item \verb|get_field| Project a field.
-    \item \verb|if| Conditional jump based on the condition register.
-    \item \verb|get_tagi| Get the object's tag.
-    \item \verb|fatal|
-    \item \verb|invoke| Invoke a Relay function.
-    \item \verb|invoke_closure| Invoke a Relay closure.
-    \item \verb|load_const| Load a constant from the constant pool.
-    \item \verb|int_const| Store a constant integer in destination.
-
-\end{itemize}
 \subsection{VM Compiler}
 
 In order to execute on the VM we wrote a new compiler which
@@ -253,51 +324,23 @@ The compiler performs a set of transformations on the high-level
 \end{itemize}
 
 
-\section{System Overview}
-\label{sec:Relay-overview}
-
-% \begin{figure}[t]
-%   \centering
-%   \includegraphics[width=\linewidth]{figs/Relay.pdf}
-%   \captionof{figure}{Relay overview. Relay consists of a compiler that handles model with dynamism and a runtime that executes dynamic models in multiple platforms. Both components have multiple modules, which will be introduced in detail in the corresponding sections.}
-%   \label{fig:vm}
-% \end{figure}
-
-After reviewing systems for dynamic deep learning models, this section gives an overview of Relay, a high-performance and flexible system for compiling and optimizing dynamic models for multiple platforms. In general, the design goals of Relay are:
-\begin{enumerate}[leftmargin=*]
-    \itemsep 0em
-    \item {\bf Supporting dynamic models.} Relay targets models with all types of dynamism, including control flow, dynamic data structures and varied data shapes.
-    \item {\bf Being portable and light-weight.} The module that Relay produces should be executable across a number of platforms on the cloud (high-end CPUs and GPUs) and at the edge (low-power CPUs and GPUs). The runtime should be light enough to run on devices with minimal compute power and memory capacity.
-    \item {\bf Enabling high performance.} Relay should be performant in the context of dynamism across platforms.
-\end{enumerate}
-
-Figure~\ref{fig:vm} shows the system architecture of Relay that we propose to achieve the aforementioned design goals.
-It is a system consisting of two major components, namely a compiler and a runtime.
-Relay takes a model in the format of mainstream deep learning frameworks, converts it into a unified intermediate representation (\textit{IR}), then optimizes and compiles the IR into an executable that contains both platform-agnostic bytecode and platform-dependent kernel code, and finally loads the executable to execute in the VM-based runtime.
-%\yida{The VM high-level description may be moved to the next paragraph, after compiler high-level description.}
-%The bytecode is designed to only express the semantics of the IR, e.g. the control-flow and platform-dependent kernel invocation, through dedicated instructions, which contributes a negligible portion of the total execution time, as we will show in~\autoref{sec:eval}.
-The bytecode is executed by Relay's runtime interpreter, which is shareable across various platforms.
-This design effectively enables us to only maintain one version of the execution logic, but focus more on the performance critical operator kernels.
-The kernels are highly-optimized for a specific hardware platform to achieve high performance.
-%Kernels optimized for data with different shapes are compiled separately and dispatched accordingly.
-
-To effectively support dynamic models without performance degradation for static models, we introduced various analysis and optimization techniques in Relay's compiler.
-First, a set of IR extensions are devised to represent dynamic shapes (\textit{Any} shape) and dynamic allocations for static optimization of dynamic program behaviors (\autoref{sec:compliation:typing}).
-Second, shape functions are attached to operators to compute the output shapes dynamically and perform type checking at runtime (\autoref{sec:compilation:shape-func}).
-Third, a memory planning optimization is employed to reduce amount of memory consumed (\autoref{sec:compliation:memory}).
-Fourth, a heterogeneous device placement mechanism is designed to place IR nodes on ``the-best'' device to reduce expensive cross-device data transferring and synchronization (\autoref{sec:compliation:hetero}).
-Finally, the compiler features a code generator that is capable of specializing the code generation of certain likely shapes (\autoref{sec:compliation:codegen}). Once the executable with dynamic behavior is compiled, the VM-based runtime can load and interpret it with intelligent dynamic kernel dispatching (\autoref{sec:runtime}). We detail the design and implementation of each of these features in the followed sections.
-
-\section{Virtual Machine}
-\label{sec:runtime}
-The conventional runtime of existing deep learning compilers which naively executes a model node by node in topological order does not work for executing the compiled modules of dynamic models. A more intelligent and powerful execute engine is required to handle the control flow execution logic, and dispatch different kernels accordingly. In order to achieve these goals and be portable to different platforms, we design and implement a virtual machine (VM)-based runtime.
-
-In Relay, we compile a dynamic model into a {\em VM executable} that contains platform-independent bytecode and platform-dependent kernel code, which can be later loaded and executed.
-The bytecode consists of a series of instructions that predicate the order of kernel invocation and control flow execution logic.
-This design compliments conventional runtime's capability for executing highly optimized kernels but not directly handling orchestration between kernels.
-%The VM compiler lowers dynamic models to VM instructions, while kernels are lowered to native code via our modified version of TVM.
-
 \subsection{VM ISA}
+
+% \begin{itemize}
+%     \item \verb|ret| Returns a value.
+%     \item \verb|invoke_packed| Invoke a packed function with the specified arguments.
+%     \item \verb|alloc_tensor| Allocate a tensor of the given size.
+%     \item \verb|alloc_datatype| Allocate a datatype with the fields.
+%     \item \verb|alloc_closure| Allocate a closure.
+%     \item \verb|get_field| Project a field.
+%     \item \verb|if| Conditional jump based on the condition register.
+%     \item \verb|get_tagi| Get the object's tag.
+%     \item \verb|fatal|
+%     \item \verb|invoke| Invoke a Relay function.
+%     \item \verb|invoke_closure| Invoke a Relay closure.
+%     \item \verb|load_const| Load a constant from the constant pool.
+%     \item \verb|int_const| Store a constant integer in destination.
+% \end{itemize}
 
 %The implementation of the VM compiler is straightforward, with the interesting design decisions found in our instruction set's design.
 The design of the VM instruction set is motivated by the simple observation that kernel execution dominates neural network execution time. If we treat kernel invocation as a single instruction, the cost of surrounding instructions is negligible in the total execution.
@@ -313,7 +356,7 @@ Instructions are represented using a traditional tagged union containing the op-
 \begin{table*}[t]
 \centering
 \small
-\input{figs/table_isa}
+\input{chapters/execute/isa_table}
 \caption{The opcode and the description of the Relay instruction set \label{tab:isa}}
 \end{table*}
 \end{comment}
@@ -397,309 +440,237 @@ void RunLoop() {
 
 \subsection{Discussion}
 
-%\haichen{compare against AOT. discuss other use cases for vm, e.g., resource isolation, security, integration into a larger system}
 
-%The VM can be seen as the realization of a tensor abstraction machine, which corresponds to high-level tensor operations such as allocating a tensor, invoking an operation like conv2d, or performing a device copy.
+The VM can be seen as the realization of a tensor abstraction machine, which corresponds to high-level tensor operations such as allocating a tensor, invoking an operation like conv2d, or performing a device copy.
 An alternative solution to the VM could be ahead of time compilation from our abstract machine into machine code.
-But due to the granularity of the operations, dispatch time makes up a very small portion of the execution time. More importantly, the VM provides flexibility traditionally attributed to virtual machines and a clear compiler/runtime split.
+But due to the granularity of the operations, dispatch time makes up a very small portion of the execution time.
+More importantly, the VM provides flexibility traditionally attributed to virtual machines and a clear compiler/runtime split.
 We see the potential of VM to be integrated as a runtime module into a larger system.
-For example, VM can provide resource isolation where multiple inference instances share the same hardware in the cloud. Furthermore, a Quality of Service (QoS)-aware system, e.g., \citep{kang2018hotmobile, Yachir2009rsj}, could leverage VM to pause the current model execution for a higher priority or time-critical model. Last, because of the simplicity of the VM design, one can verify the implementation of VM for security and privacy purposes.
+For example, VM can provide resource isolation where multiple inference instances share the same hardware in the cloud.
+Furthermore, a Quality of Service (QoS)-aware system, e.g., \citep{kang2018hotmobile, Yachir2009rsj}, could leverage VM to pause the
+current model execution for a higher priority or time-critical model. Last, because of the simplicity of the VM design, one can verify the implementation of VM for security and privacy purposes.
 
-%Our VM is designed to execute the dynamic models by removing the limitations of the existing runtimes which only support statically shaped programs.
-%\yida{Mention the bytecode+kernel design. Also mention other potential use case of VM, like isolation?}
+Our VM is designed to execute the dynamic models by removing the limitations of the existing runtimes which only support statically shaped programs.
 
-%\subsection{Kernel dispatcher}
-%Op fusion across control flow, e.g., pushing ops into if/else branch for more fusion.
+\section{Compiler Support for Dynamism}
+\label{sec:compliation}
 
-% we probably want to talk about this in the instruction set or memory planning. No need to have a separate paragraph here.
-%The design of Relay focuses on the simplicity without sacrificing performance. In order to accomplish this, we design a tensor VM rather than a scalar VM. In the tensor VM setting, we optimize for cheap ``allocation'' of objects (by trying to avoid real allocation), reuse of static fragments, and the ability to support dynamic shape (i.e jagged tensors). \autoref{fig:vm} depicts the overview design of VM. It essentially contains a compiler and a runtime system. The compiler compiles a Relay program into both hardware dependent and hardware independent modules/libraries. The hardware independent code consists of low-level bytecode that is specifically designed for efficient execution of VM. The hardware dependent code is composed of coarse-grain operators registered in the TVM operator inventory (TOPI). The runtime system takes charge of the execution of generated bytecode, i.e. dispatching the instructions and managing the stack frame and registers. We will detail the design of the VM in the following sections.
+A key challenge preventing existing deep learning compilers from handling dynamism is the lack of a uniform and dynamic representation. For example, optimizations and runtime of existing IR, e.g., TVM \citep{tvm_osdi18}, always assume the presence of static shape information. These assumptions introduce quite a few challenges for optimization to dynamism.
 
-%\zhicomment{@haichen,  Do you still need push and pop? I think we probably don't need them now, instead we use \textit{Move} to manage stack. Am I right?}
-%\textit{stack-based} and \textit{register-based} virtual machines are the two major types of VM in programming languages. Stack-based VM aims at simplicity, using \textit{push} and \textit{pop} instructions to maintain a unified stack. However, it complicates tasks such as dataflow analysis and enforces certain orders in the execution. Instead, register-based VM design manages registers to designate the operands and results rather than the stack. This type of VM simplifies the calling convention as values are carried by registers. But it may bring some cost in terms of code size as it needs to decode instructions to fetch the values at specific positions. As aforementioned that our VM mainly targets tensor-level instructions instead of low-level machine instructions. The code size is thus generally small. Furthermore, we would emphasize the convenience of optimizations, such as liveness analysis and memory allocation in the model inference scenario. Therefore, the register-based VM provides more benefits which meets our selection.
+In order to handle dynamism, we design a set of IR extensions which expose the essential semantics required to optimize dynamic programs. The approach is implemented in Relay VM on top of the Apache TVM (version 0.6) deep learning compiler infrastructure \citep{tvm_osdi18} to leverage its frontend converters from various DL frameworks to its IR. TVM's frontends alleviate the need to frontend specific details enabling our work to focus on contributions such as IR extensions and optimizations. To use Relay VM, one only needs to feed it with a pre-trained model, perform compilation and then inference. Furthermore, the lessons
+here are applicable to other compiler efforts.
+%such as TensorFlow's MLIR support or PyTorch's TorchScript and TensorExpr (a Halide and TVM inspired DSL for kernel codegen) work.
 
-\section{Evaluation}
-\label{sec:eval}
+This section describes how we transform standard TVM programs into our dynamic dialect which enables us to easily apply static optimizations to dynamic programs, much as we do in traditional compiler optimization. Particularly, we detail three key components required to compile dynamic models.
 
-This section evaluates the performance of Relay on dynamic models against existing state-of-the-art solutions, as well as discussing the role of the optimizations performed by Relay. Specifically, the section seeks to answer the following questions:
-\begin{enumerate}
-    \item What is the overall performance of Relay for dynamic models when compared against state-of-the-art alternatives on various hardware platforms?
-    %\item How much overhead does Relay introduce for static models on top of the state-of-the-art solutions?
-    \item How much overhead does Relay VM introduce for handling dynamism at runtime?
-    \item How effective are the proposed optimization techniques, such as memory planning and symbolic codegen?
-\end{enumerate}
+\begin{itemize}
+    \item An extended type system which enables static tracking of dynamic shapes.
+    \item A series of optimization passes that make dynamic output shapes, allocation, and device placement explicit.
+    \item A set of codegen techniques for producing code of kernels with dynamic input and output shapes.
+\end{itemize}
 
-%\yida{Evaluate the execution time of the bytecode as a portion of the total execution time, to show that VM overhead is negligible}
-%\note{End-to-end: BERT, LSTM, Tree-LSTM on Intel CPU, ARM CPU, NVidia GPU; Relay-runtime vs. graph runtime. Optimization implication: Kernel dispatch or not; memory planning or not; number of dispatched kernels.}
-\subsection{Experiment setup}
-\label{sec:eval:setup}
+% \vspace{-1.5em}
+% \subsection{Typing}
+% \label{sec:compliation:typing}
+% Deep learning compilers use type systems to represent, check and infer the data types and shapes of tensors. In some frameworks and compilers this is separated into two steps, shape inference and data type inference. TVM performs both simultaneously and refers to them as type inference~\citep{roesch2019relay}, a terminology we will use throughout the section.
 
-All experiments were conducted on Amazon EC2 instances. We evaluated Relay on three hardware platforms: Intel Skylake CPUs (c5.9xlarge, 18 physical cores, hereinafter called {\em Intel CPU}), Nvidia Tesla T4 GPUs (g4dn.4xlarge, 1 card, 2,560 CUDA cores, hereinafter called {\em Nvidia GPU}), and ARM Cortex A72 (a1.4xlarge, 16 physical cores, hereinafter called {\em ARM CPU}). Although all tests are done on the cloud, our results of ARM CPU are portable to the edge devices, e.g. Raspberry Pi, due to the same architecture. %All cores have uniform memory access.
+% A {\em Tensor Type} is designated by an $n$-dimensional shape (defined as a tuple of integers describing the tensor's dimensions) and a data type (e.g. \texttt{float32} or \texttt{int64}).
+% Current deep learning IRs only support codegen when all dimensions of a tensor's shape are known at compile-time, i.e., static shapes are mandatory for type inference and checking.
 
-To study the efficiency of Relay in handling dynamic models, we compared it with mainstream deep learning frameworks, including TensorFlow (v1.15), MXNet (v1.6), PyTorch (v1.5) \footnotemark, as well as dynamic-specific systems TensorFlow Fold based on TensorFlow v1.0.
-\footnotetext{We use PyTorch v1.4 on ARM CPU because PyTorch v1.5 fails to build on ARM instance.}
-%For TensorFlow Fold, its execution latency would include the compilation time (\zhicomment{@haichen, we probably need a bit argument here for why compile time is included.}).
-We were unable to compare Relay with Cavs~\citep{xu2018cavs}, JANUS~\citep{jeong2019janus}, or Jeong et al.\citep{jeong2018improving} as none of them is open-source. No public deep learning compiler has claimed support for dynamic models.
-%For static models, TVM~\citep{tvm_osdi18} was selected as the baseline to investigate the cost of Relay since it represents the state-of-the-art performance for static models on CPUs~\citep{liu2019optimizing}.
+% In the context of dynamic models, many data shapes can only be determined at runtime. Therefore, the previous assumption of static data shapes does not hold.
+% In order to support dynamic data shapes, Relay VM introduces a special dimension called \any~to represent statically unknown dimensions.
+% For example, we can represent a tensor type as \texttt{Tensor[(1, 10, Any), float32]},
+% where the size of the third dimension in this tensor is unknown while the other
+% two dimensions have concrete values.
+% This concept has been introduced in other frameworks.
+% Janus \citep{jeong2019janus} uses similar denotation to represent a dynamic dimension but only for type unification, while Relay VM extends type inference to handle \any~as described next. %We do not support tensor types with dynamic ranks given the relatively limited use cases and optimization opportunities.
+% %\yida{Do we need the following sentence?}The challenge of introducing a dynamic shape extension is adapting each layer of the system to handle it in a way that does not greatly degrade performance.
 
-Three popular models that represent different classes of dynamism were chosen in this experiment, viz. LSTM~\citep{lstm} (dynamic control flow), Tree-LSTM~\citep{tree_lstm} (dynamic data structure), and BERT~\citep{devlin2018bert} (dynamic data shape).
-The input size / hidden size used in the LSTM and Tree-LSTM model are 300/512 and 300/150, respectively.
-%while we use input size 300 and hidden size 150 in the Tree-LSTM model.
-We used BERT base implementation.
-For LSTM and BERT, we used Microsoft Research's Paraphrase Corpus (MRPC)~\citep{dolan2005microsoft} with variable input lengths as our input dataset. For Tree-LSTM, we used the Stanford Sentiment Treebank (SST)~\citep{socher2013recursive} with various tree structures as the input dataset.
-%\note{missing model size, e.g. LSTM number of layers, length, BERT size}
-%For the measurement of the overhead on static models, we completed model inference for ResNet~\citep{he2016deep}, MobileNet~\citep{howard2017mobilenets}, VGG~\citep{simonyan2014very}, and SqueezeNet~\citep{iandola2016squeezenet} on the ImageNet dataset~\citep{deng2009imagenet}. Only one input is needed to feed to the system each time for the task of model inference.
+% \noindent
+% {\bf Operator Type Relation} A type relation describes the relationship between types of operator inputs and outputs. The type system of TVM relies on these type relations to infer and bidirectionally propagate type and shape relationships between inputs and outputs of operators across the whole network.
+% %For example, the type relation for broadcasting operators (e.g. \texttt{broadcast\_add}) performs the shape calculation following the NumPy broadcasting rules.
 
-\subsection{Overall performance}
-\label{sec:eval:overall}
-We compare the overall performance of Relay against baselines for each dynamic models. Relay successfully accomplished inference for all models on all platforms. However, not all baseline systems could perform inference for these models. For instance, TensorFlow Fold was not designed to process LSTM and BERT hence no result was obtainable, and Tree-LSTM only runs on PyTorch and TensorFlow Fold as other frameworks cannot handle dynamic data structures. Finally the model inference of Tree-LSTM on Nvidia GPU was omitted as it's hard to saturate GPU compute capability due to too many control flows and its model size, making GPUs less favorable deployment targets.
-% typical use cases.
+% The type relation must be generalized to properly handle dynamic shapes. For example, a program which grows a tensor on each loop iteration (a case existing in the decoder of many NLP models) is both impossible to type and compile without proper type system support. With the introduction of \any, we are able to improve the existing type relations to support dynamic models.
 
-The baseline systems all make use of third-party kernel libraries to achieve high-performance by leveraging the heavily hand-optimized operators. We observe that dynamic models are often well-optimized on a single platform but perform poorly in other frameworks or on other targets. However, Relay has the ability to select either the self-compiled kernels or the ones provided by third-party library based on which one maximizes performance. It uses dynamic dispatch logic to invoke the selected kernels using platform-independent bytecode at runtime. This enables Relay to deliver portable and consistent results as many compiler optimizations are platform agnostic.
-%, and Relay has the freedom to choose whatever implementation that produces better performance.
+% There are two dynamic type relation cases in particular.
+% First, operators with dynamic output shapes depending on the input data, such as {\tt arange}\footnote{{\tt arange} generates a range of values in a (start, stop, step) interval the arrays output size is a function of input arguments.} and {\tt unique}\footnote{{\tt unique} selects the unique elements of a tensor.}, will use \any~to describe those shapes.
+% % We can now describe the type relation using the enhanced type relation functions with \any but not before.
+% % For example, type relation of {\tt arange} can be expressed as follows
+% % \[
+% % arange: fn(start: fp32, stop: fp32, step: fp32) \rightarrow \langle [\any], fp32 \rangle
+% % \]
+% Second, when input shapes contain \any~dimension, the type relation needs to propagate \any~correctly to the output types and relax typing constraints that hold in the static cases when necessary.
+% %For example, type relation for {\tt broadcasting} operators determines the compatibility between corresponding dimensions from both inputs if they are equal or one of them is 1 according to the Numpy broadcasting rule.
+% For example, the rules
+% for broadcast\footnote{\url{https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html}} type relation with \any~are defined as follows:
+% %\vspace{-1em}
+% \begin{align*}
+%   \textrm{broadcast\_rel}(\any, 1) &\rightarrow \any \\
+%   \textrm{broadcast\_rel}(\any, d) &\rightarrow d ~~~~~~(d > 1) \\
+%   \textrm{broadcast\_rel}(\any, \any) &\rightarrow \any
+%   \vspace{-1em}
+% \end{align*}
+% %\vspace{-1em}
+% Note that due to the presence of dynamic shapes, these type relation rules can no longer rule out all type errors at compile-time.
+% For example, for the second rule shown above, when \any~is neither 1 nor $d$ at runtime, it then violates the broadcast type constraints.
+% To address this, we take the gradual typing~\citep{gradualtyping} approach and leave certain type checking at runtime after \any~is instantiated by a
+% concrete value (see \autoref{sec:compilation:shape-func} for more details).
+% One could eliminate these errors using a more advanced type system, but at increased complexity.
 
-First, the latency results of Relay, MXNet, PyTorch, and TensorFlow on LSTM are shown in \autoref{tab:lstm}. Relay consistently outperforms the baseline on both 1- and 2-layer cases. For example, it reduces the latency of 1-layer LSTM model inference by $\fpeval{round(79.3 / 47.8, 1)}\times$, $\fpeval{round(212.9 / 47.8, 1)}\times$, and $\fpeval{round(301.4 / 47.8, 1)}\times$ over PyTorch, MXNet, and TensorFlow on Intel CPU,
-and $\fpeval{round(110.3/93.0, 1)}\times$, $\fpeval{round(135.7/93.0, 1)}\times$, $\fpeval{round(304.7/93.0, 1)}\times$ on Nvidia GPU, respectively.
-%On Nvidia GPU, Relay reduces the latency by  over PyTorch, MXNet, and TensorFlow on Nvidia GPU, respectively.
-On ARM CPU, Relay decreases the latency numbers even more remarkably, i.e. $\fpeval{round(1729.5 / 182.2, 1)}\times$ over PyTorch, $\fpeval{round(3695.9 / 182.2, 1)}\times$ over MXNet, and $\fpeval{round(978.3 / 182.2, 1)}\times$ over TensorFlow, respectively.
-The similar trend applies to 2-layer case of the LSTM model.
-We observe that latency on Nvidia GPU is higher than Intel CPU. This is because the size of LSTM model is relative small so that it cannot fully utilize the massive parallelism in the GPU.
-The significant performance improvement is due to Relay encoding the control flow into platform-independent instructions that have minimal overhead while deep learning frameworks use control flow specific primitives to process the sequence, which introduces a large performance penalty.
+% \noindent
+% {\bf Type Inference} One caveat of the \any~dimension is that unknown dimensions will propagate during type inference, reducing chances for shape specialization.
+% For example, if we use an operator such as {\tt arange} to produce a tensor with dynamic shape (i.e., \texttt{Tensor[(\any,), float32]}) and later {\tt broadcast\_add} to a tensor with static shape (i.e., \texttt{Tensor[(5, 1), float32]}), the output shape will also contain an \any~dimension (i.e., \texttt{Tensor[(5, \any), float32])}.
 
-\begin{table}[t]
-\centering
-\small
-\begin{tabular}{p{0.9cm}|ccc|ccc}
-\toprule
-Unit: & \multicolumn{3}{c|}{1 layer} & \multicolumn{3}{c}{2 layers} \\
-$\mu$s/token & Intel & NV & ARM & Intel & NV & ARM \\ \midrule
-Relay & \bf{47.8} & \bf{93.0} & \bf{182.2} & \bf{97.2} & \bf{150.9} & \bf{686.4} \\
-PT & 79.3 & 110.3 & 1729.5 & 158.1 & 214.6 & 3378.1 \\
-MX  & 212.9 & 135.7 & 3695.9 & 401.7 & 223.8 & 7768.0 \\
-TF & 301.4 & 304.7 & 978.3 & 687.3 & 406.9 & 2192.8 \\
-\bottomrule
-\end{tabular}
-\caption{LSTM model inference latency of Relay, PyTorch (PT), MXNet (MX), and TensorFlow (TF) on Intel CPU, Nvidia (NV) GPU, and ARM CPU.}
-\label{tab:lstm}
-\end{table}
+% To limit the contamination of \any, we further introduce {\em sub-shaping} to improve the precision of types computed by type-inference.
+% Much like sub-typing used in popular programming languages \citep{LiskovTPLS1994,AmadioAmadioTPLS1993}, our extension enables values with more specific shape information to be passed in contexts which require less specific shapes.
+% Further, we perform extra analysis that repeatedly replace one \any~dimension by a symbolic variable followed by a type inference pass to identify if other \any~dimensions share the same symbolic expression.
+% %on each \any~dimension to detect if two \any~dimensions point to an identically sized dimension.
+% This information is passed to downstream compilation and can reduce the search space during the symbolic codegen.
+% %We can use this analysis in the downstream compilation to generate shape-specialized code during codegen.
 
-Next, we inspect the performance of model inference on Tree-LSTM as exhibited in \autoref{tab:treelstm} by comparing Relay with PyTorch and TensorFlow Fold. The table shows that Relay runs substantially faster than the baselines. On PyTorch, the performance speedups are $\fpeval{round(701.1/40.3, 1)}\times$ on Intel CPU and $\fpeval{round(1711.1/86.3, 1)}\times$ on ARM CPU as PyTorch uses Python to handle the tree data structure. TensorFlow Fold is $\fpeval{round(209.9/40.3, 1)}\times$ slower than Relay on Intel CPU because it has to re-compile upon every input.
+% % We treat concrete dimension and symbolic dimension as a sub-shape of \any.
+% % \yida{The following sentence is problematic with grammatical error. We need to explicitly define what is an argument.}Rules for invoking a function, suppose fn type is $fn\langle T_1, \dots, T_n\rangle$,
+% % and arguments are $T'_1, \dots, T'_n$, the rules are defined as follows
+% % \begin{align*}
+% %   \textrm{union}(T_i, T'_i) &\rightarrow T_i \\
+% %   \textrm{join}(T_i, T'_i) &\rightarrow T'_i
+% % \end{align*}
+% %\vspace{-1em}
 
-\begin{table}[t]
-\centering
-\begin{tabular}{l|ll}
-\toprule
-Unit: $\mu$s/token        & Intel     & ARM \\ \midrule
-Relay  & \bf{40.3}  & \bf{86.3}  \\
-PyTorch & 701.6 & 1717.1  \\
-TF Fold & 209.9 & --  \\
-\bottomrule
-\end{tabular}
-\caption{Tree-LSTM model inference latency on Intel CPU and ARM CPU. TensorFlow Fold was not built successfully on ARM CPU.}
-\label{tab:treelstm}
-\end{table}
+% %\vspace{-1em}
+% \subsection{Shape Function}
+% \label{sec:compilation:shape-func}
+% %Existing deep learning compilers only deal with static shapes, enabling all shape computation to occur at compile-time.
+% %Therefore, it is easy to allocate memory for the tensors using static shape information to compute the precise amount of storage needed for each tensor.
+% %However, introducing \any~invalidates this pre-allocation mechanism as the tensors may now contain dynamic dimensions.
+% The introduction of \any~dimension invalidates the pre-allocation mechanism adopted in the existing deep learning compiler.
+% Instead, we now have to track the amount of memory required to be allocated in parallel to computing.
+% Furthermore, static type checking cannot eliminate all type errors at compile-time due to dynamic tensor shapes.
+% Consequently, we define a {\em shape function} to compute the output shape for storage allocation and verify the type relation in accord with the semantics of every operator.
+% The shape function is similar in structure to the type relations described in \autoref{sec:compliation:typing} but are present at runtime instead of compile-time.
+% It enables compiling and embedding the computation of output shapes into the program.
 
-Third, \autoref{tab:bert} summarizes the performance of BERT for Relay, MXNet, and TensorFlow. The results indicate that Relay outstrips the baselines for all frameworks on all platforms in the experiment. The reduction in latency compared to the best framework on each platform is $\fpeval{round(455.8/307, 1)}\times$, $\fpeval{round(2995.4/2862.6, 2)}\times$, and $\fpeval{round(125.2/95.2, 1)}\times$ on Intel CPU, ARM CPU, and Nvidia GPU, respectively.
-%Surprisingly, Relay is $\fpeval{round(455.8/307, 1)}\times$ faster than MXNet on Intel CPU even the latter was known to be heavily optimized on this platform~\footnote{\url{https://medium.com/apache-mxnet/optimization-for-bert-inference-performance-on-cpu-3bb2413d376c}}.
-The reasons are two-fold: (a) similar to frameworks, Relay is also able to use the well-tuned third-party libraries on Intel CPU (MKL) and Nvidia GPU (cuDNN). (b) Relay can further enjoy the benefit of powerful operator fusion brought by the deep learning compiler. One can observe that we obtained more speedups on the ARM CPU for PyTorch and MXNet as the third-party libraries performed less favorable. However, Relay is only slightly faster than TensorFlow on the ARM CPU. This is because the dense operators (contributing to more than 90\% of the overall latency in Bert) on the ARM CPU was not well optimized by the underlying compiler. Therefore, the performance of the combination of operators it selected is on par with the ones used by TensorFlow.
+% According to the characteristics of the operator, we divide the shape functions in three different modes: data independent, data dependent, and upper bound.
+% {\em Data independent} shape functions are used for operators in which the output shape only depends on the shapes of inputs such as normal 2-D convolution.
+% {\em Data dependent} shape functions require the concrete input values to compute the output shapes. For example, the output shape of \texttt{arange} depends on the value of start, stop, and step.
+% In addition, there are certain operators such as Non Maximum Suppression (\texttt{nms}) where the complexity of computing the output shapes is on par with the complexity of executing the operator itself.
+% In order to avoid the redundant computation, we use an {\em upper bound} shape function to quickly estimate an upper bound shape for the output.
+% We also require such operators to return the output shape along with output value, so as to use the real shape to slice the output tensors into precise output shape and layout.
+% %\yida{use a diagram to summarize three modes and remove the text}
 
-In sum, the evaluation results demonstrate that Relay produces more portable performance for all dynamic models on different platforms. Instead, the performance of frameworks is more platform dependent and varies from model to model.
+% It is worth noting that in the presence of dynamic shape functions, operator fusion needs to be specially taken care of.
+% Operator fusion, which combines {\em basic operators} into a {\em composite operator}, is a critical technique for performance optimization as it reduces unnecessary memory copies and improves the cache locality.
+% %However, we only define the shape function at elementary operator level. As a result, we also must fuse shape functions in parallel with the operator fusion.
+% The compiler can easily connect the shape functions of basic operators to form the shape function for a composite operator when all shape functions are data independent.
+% However, a basic operator with a data dependent or upper bound shape function cannot be fused to other operators, i.e., taking the outputs of other operators as its inputs to fuse together, as the shape function requires to access to the intermediate result within a composite operator.
+% As a result, we explicitly define the fusion policy to prevent this from happening.
+% %If all basic ops in a composite op have data independent shape functions, it is straightforward to generate shape function for this composite op as we can just connect the shape functions of basic ops together. However, a composite op is invalid if a basic op that has a data dependent or upper bound shape function takes the intermediate output of another basic op as input.
+% %Because the intermediate result in a composite op is inaccessible from outside, the data dependent shape function cannot collect all arguments it required. Thus, we revise the operator fusion policy correspondingly to make sure composite ops generated by the operator fusion pass will be valid.
 
-\begin{table}[t]
-\centering
-\begin{tabular}{l|lll}
-\toprule
-Unit: $\mu$s/token    & Intel  &   Nvidia       &  ARM     \\ \midrule
-Relay     & \bf{307.0} & \bf{95.2} & \bf{2862.6} \\
-PyTorch & 479.5 & 220.4 & 11851.2 \\
-MXNet      & 455.8 & 152.9 & 8628.0   \\
-TensorFlow & 768.7 & 125.2 & 2995.4 \\
-\bottomrule
-\end{tabular}
-\caption{BERT model inference latency on Intel CPU, Nvidia GPU, and ARM CPU.}
-\label{tab:bert}
-\end{table}
+% %Due to our definition of shape functions we are able to perform fusion using a generalized version of the algorithm used for standard operator fusion which handles passing the appropriate input shape or input depending on the shape function. For example imagine that the fuse operator has a single input that was originally used an operator that requires the input, and the second fused operator requires the input shape. Depending on the type of the shape function defined above, we handle operator fusion in the following manner. Any data independent shape functions could be fused with other operators. Any fused group can only have at most one shape function and it should be fused together with the operator that needs shape function.
 
-% \begin{figure}[t]
-%     \centering
-%     \includegraphics[height=5cm]{figs/bert_cdf_c5.pdf}
-%     \caption{BERT latency CDF on Intel CPU.}
-%     \label{fig:bert-cdf}
-% \end{figure}
+% \input{mlsys/memory}
 
-%\subsection{Optimization implications}
-%\label{sec:eval:opt}
-%\subsubsection{Memory planning}
-
-%\subsubsection{Dynamic kernel dispatch}
-\subsection{Microbenchmark}
-
-% \begin{table}[t]
-%     \centering
-%     \begin{tabular}{c|cc|cc}
-%         \toprule
-%         \multirow{2}{*}{Device} & TVM & Relay  & kernel & others  \\
-%         & lat. (ms) & lat. (ms) & lat. (ms) &  (ms) \\ %&  (\%) \\
-%         \midrule
-%         Intel  & 19.38 & 24.32 & 21.06 & 3.26 \\% & 13.4\%
-%         ARM & 223.50 & 237.41 & 228.59 & 8.82 \\%& 3.72\% \\
-%         Nvidia & 5.58 & 5.86 & 5.60 & 0.26 \\%& 4.44\% \\
-%         \bottomrule
-%     \end{tabular}
-%     \caption{BERT model latency (sequence length 128) using TVM and Relay on different hardware.
-%     {\it kernel latency} shows the latency of kernel invocation in Relay, and {\it others} shows the extra latency introduced by other instructions.
-%     }
-%     \label{tab:overhead}
-%     \vspace{-1em}
-% \end{table}
-
-% \hide{
-% \begin{figure}[t]
-%     \centering
-%     \includegraphics[height=3.5cm]{figs/op_fusion.pdf}
-%     \caption{Relative latency comparison between Relay with and without operator fusion for BERT model with sequence length 128.}
-%     \label{fig:fusion}
 % \vspace{-1em}
-% \end{figure}
-% }
+% \subsection{Heterogeneous Device Placement}
+% \label{sec:compliation:hetero}
+% As discussed in \autoref{sec:compilation:shape-func}, shape functions are executed at runtime to calculate the output shape of an operator. These functions should execute on the CPU as their outputs are used to compute the size of allocated memory. In the case of heterogeneous execution (i.e., CPU and GPU), it is essential to carefully place the execution of IR nodes to proper devices. Otherwise, considerable overhead from data transfers and device synchronization will occur if the inputs to shape functions and kernels need to be copied from or to GPU. To minimize the performance penalty, we analyze the program to place sub-expressions on the most suitable devices.
 
-\begin{figure}[t]
-    \centering
-    \includegraphics[height=4.5cm]{figs/sym_codegen.pdf}
-    \caption{Relative latency comparison between symbolic codegen and static codegen of 3 dense operators on ARM CPU. The latency of kernel compiled with static shapes is used as the baseline. ``dispatch/$k$'' indicates that we generate $k$ symbolic kernels to be dispatched at runtime. ``no dispatch'' means that only one symbolic kernel is generated and therefore no dispatching is needed. %\protect\yida{The labels of x-axis, can we make them Dense 1, Dense 2 and Dense 3? L1, L2, L3 are like cache level to me at the first glance}
-    }
-    \label{fig:sym-codegen}
-\end{figure}
-
-This section analyzes the performance gain of Relay by using BERT as the microbenchmark. Three studies will be conducted to examine (a) the overhead introduced by the VM, %(b) the effectiveness of operator fusion\yida{Can we somehow relate this to any proposed techniques? For example, op fusion is enabled by carefully taking care of shape functions?},
-(b) the advantage of the proposed memory planning pass, and (c) the performance discrepancy between symbolic and static codegen.
-
-\noindent {\bf Overhead in handling dynamism} In order to understand the overhead that Relay spends to take care of dynamism, we compared it to TVM where static sequence length and TVM static runtime is used to execute BERT.
-%\yida{how do you map this to the aforementioned four points?}
-\autoref{tab:overhead} details the performance difference between Relay and TVM.  TVM is 5\% to 25\% faster than Relay on static shapes, though the absolute latency difference is small. The overhead comes from two aspects: (a) kernels generated with symbolic shapes cause extra overhead in the index computation. (b) other instructions in the virtual machine are required to handle the dynamic execution, such as shape functions, dynamic memory allocation, instruction dispatch, etc.
-On Nvidia GPU, most of bytecode latency is overlapped with the GPU execution thanks to heterogeneous device placement (\autoref{sec:compliation:hetero}), and therefore the overhead of other instructions is negligible.
-
-% \hide{
-% \noindent {\bf Operator fusion}
-% One of the most important benefits from deep learning compiler is its flexibility to fuse operators for better cache locality. \autoref{fig:fusion} depicts the comparison between Relay with and without operator fusion. With operator fusion, the latency can be reduced by 44\%, 10\%, and 46\% on Intel CPU, ARM CPU, and Nvidia GPU, respectively. This is because operator fusion provides better opportunities for (a) achieving better cache locality, and (b) reducing the buffer allocation for temporary intermediates as well as the number of shape functions to be executed.\yida{Mention that this is not available if we don't take care of the shape functions properly. Op fusion is not our contribution, but enabling it in the context of dynamism is.}}
-%so that some memory copies and synchronization between devices as well as irregular memory accesses for calculating shapes can be possibly eliminated.
-
-\noindent {\bf Memory planning} % Memory allocation at runtime is expensive.
-\autoref{sec:compliation:memory} proposed memory planning to coalesce memory allocation together and reuse the already allocated memory chunks. Thanks to this pass, we are able to reduce the number of buffer allocation by 47\%, and the memory allocation latency is reduced by 75\% from 2.0 ms to 0.5 ms on Intel CPU. We also compared the memory usage of Relay with memory planning to TVM which statically analyze and pre-allocate memory on popular computer vision models such as ResNet~\citep{he2016deep}, MobileNet~\citep{howard2017mobilenets}, VGG~\citep{simonyan2014very} and SqueezeNet~\citep{iandola2016squeezenet}. It turned out that Relay leads up to 8\% more memory footprint.
-
-\noindent {\bf Symbolic codegen} We selected 3 dense operators in the BERT model and compared the performance of symbolic codegen against static codegen on ARM CPU.
-%\yida{Can we claim that similar observation can be got for other platforms? State it if yes (I know that the performance is worse than libraries, but we don't need to mention this)}.
-\autoref{fig:sym-codegen} illustrates the relative latency of kernels generated with symbolic shapes to the baseline -- kernel compiled with static shapes. The auto-tuning algorithm chooses to tile the symbolic dimension corresponding to the dynamic sequence length by a factor of 8 in all three kernels. We varied the number of generated kernels to be dispatched during the symbolic codegen from 8 (full dispatch) to 1 (no dispatch) as described in \autoref{sec:compliation:codegen}. We observe that symbolic codegen with full dispatch can achieve nearly identical performance as that for static shapes. While reducing the number of kernels, latency increases up to 42\%, 104\%, and 45\% for these 3 layers, respectively.
-We observe similar trends in dense operators with different shapes, other operators, and other platforms as well.
-
-
-
-% \subsubsection{Memory pass}
-
-% \subsubsection{Symbolic code generation}
-
-% \subsubsection{VM overhead}
-% \label{sec:eval:overhead}
-% Finally, we compared the performance of model inference for static neural networks using Relay with unmodified TVM. TVM is known to be efficient in processing CNN models on various hardware platforms~\citep{tvm_osdi18, liu2019optimizing}. Relay extended TVM to support dynamism while inheriting the optimizations original TVM has. Relay's VM-based runtime was designed to be generic enough to handle static model inference as well. Therefore, comparing between Relay and the original TVM on static model inference should indicate how much overhead Relay introduces while introducing dynamic support.
-
-% \autoref{fig:static-performance} and \autoref{fig:memory-overhead} show the latency and memory footprint comparison between Relay and original TVM on different static CNN models. The models were optimized via the TVM pipeline in both systems. The difference is that Relay uses its VM-based runtime while TVM uses its original graph runtime. From the figure we can tell that Relay's VM-based runtime adds minimal overhead compared to TVM's original runtime, by adding up to 13\% more execution time and 8\% more memory footprint. Also, \autoref{fig:memory-overhead} further testifies that our memory planning optimization reduces the memory usage on static model inference as well.
-
-% We have evidence that this overhead is due to missing micro-optimizations, and not inherent to our approach, and should be erased over time.
+% We introduce a unification based analysis for computing the correct device placement and allocation based on the previous scheduling of the compute kernels. The goal of our device analysis is to assign each IR node properly to minimize the number of cross-device copies. We introduce a concept of \texttt{DeviceDomain} to represent the domain of a device, including source and destination. Each expression in the IR defaults to the empty domain, meaning no constraint on its device placement. In addition, a new IR construct, \verb|device_copy|, is introduced to facilitate the heterogeneous execution of the Relay VM runtime. It represents a data transfer between different devices and is inserted when a cross-device data copy is mandatory.
+% %The latter\yida{what does this refer to?} is used to retrieve the shape of a tensor at runtime and is used to efficiently compute the input shapes for shape functions.
+% Our analysis is formulated as a set of device placement rules which describes how device constraints flow, and then we use unification, a technique common in type inference and compilers, to compute the precise device placement.
+% \autoref{fig:hetero} depicts some highlights of the rules to assign and propagate the device types: (a) both inputs and outputs of shape function are assigned to CPU, (b) the output of \verb|device_copy| is assigned to the device that is copied to, (c) all arguments to \verb|invoke_mut| should have the same device domain. The full set of rules can be found in the \autoref{appx:hetero-rules}.
 
 % \begin{figure}
-% \centering
-% \input{figs/static_perf}
-% \caption{Latency comparison between Relay and TVM on static model inference. The latency was tested for both systems on Intel CPUs, Nvidia GPUs and ARM CPUs by setting batch size=1. The latency of TVM on those platforms was normalized to 1, the lower the better.}
-% \label{fig:static-performance}
+%     \centering
+%     \includegraphics[width=\linewidth]{figs/hetero.pdf}
+%     \caption{Some heterogeneous device placement rules. (a) The inputs and outputs of shape functions are placed on CPU.
+%     (b) \texttt{device\_copy} changes the device of output accordingly.
+%     (c) The device of all arguments to \texttt{invoke\_mut} must be the same.
+%     }
+%     \label{fig:hetero}
+%     \vspace{-2em}
 % \end{figure}
 
-% \begin{figure}
-% \centering
-% \input{figs/memory}
-% \caption{Memory usage comparison between Relay and TVM on static models. Relay was done with and without optimization on memory planning. The results were obtained on Intel CPUs. Nvidia GPUs and ARM CPUs would lead to the identical results. The amount of memory used by TVM was normalized to 1, the lower the better.}
-% \label{fig:memory-overhead}
-% \end{figure}
+% Based on these rules, we use a union-find data structure to bidirectionally propagate and unify the device placement of each IR node. We introduce two operations, \texttt{union(s, t)} and \texttt{find(s)}, to achieve \texttt{DeviceDomain} unification throughout the entire program. \texttt{union(s,t)} unions the equivalence device domains of \texttt{s} and \texttt{t} into one equivalence domain when the device types match. \texttt{find(s)} returns the representative of the device domain that \texttt{s} belongs to. These two operations are applied until all IR nodes are annotated. The result of the heterogeneous device placement composes with memory planning and shape function insertion resulting in correctly placed allocations.
 
+% \vspace{-1em}
+% \subsection{Symbolic Codegen}
+% \label{sec:compliation:codegen}
+% %\yida{Should we mention the mechanism of invoking third-party libraries in this subsection?}
+% Deep learning compilers~\citep{tvm_osdi18, halide} have demonstrated competitive performance compared to manually tuned kernels on multiple platforms. Recent trends apply machine learning based search to further reduce or eliminate complex manual performance tuning using either template based~\citep{chen2018learning, zheng2020flextensor} or search based~\citep{adams2019learning, zheng2020ansor} approaches.
+% However, existing work which focuses on tuning in the presence of static shapes falls short with symbolic or dynamic shapes. There are two inherent challenges with regard to codegen of symbolic shapes.
+% %\begin{itemize}
+% %    \itemsep 0em
+% \squishlist
+%     \item How to achieve the same performance of kernels generated with symbolic shapes as that with static shapes when applying the same schedule?
+%     \item How to extend the machine learning based approach to tune kernels with symbolic shapes?
+% \squishend
+% \vspace{-1em}
+% %\end{itemize}
 
+% Loop parallelism and loop tiling are common optimization techniques that exploit multi-core capabilities by achieving data access patterns which are memory hierarchy aware for both CPUs and GPUs. However, the combination of these techniques lead to complex loop boundary conditions. In many static cases, it is possible to prove these conditions always hold, and thus eliminate checks which hamper further optimizations such as unrolling.
+% While straightforward to handle with static shapes, it becomes a non-trivial challenge when performing symbolic codegen. If not carefully handled, the boundary condition checks will stay, leading to poor performance.
 
+% To address this issue, we generate multiple kernels according to the residues modulo of the tiling factor and then dispatch based on the actual shape at runtime.
+% For example, suppose a symbolic dimension $x$ is tiled by a factor of 8, we then duplicate the generated kernel for 8 times, and replace the symbolic var $x$ by $8k+r$ in each copy, where $k = \lfloor x / 8 \rfloor$ and $r \in [0..7]$. By applying this technique in conjunction with an enhanced symbolic expression simplification pass, we can eliminate most boundary checks to achieve performance that is nearly identical to kernels compiled with a single static shape. Lastly, we automatically generate a dispatch function that invokes the corresponding kernel based on the residue.
+% %because this function is also generated in the IR we can compile and optimize it like other code ahead of time.
+% In addition, the dispatch function can be extended to invoke either compiler generated kernels or {\em third party library} whichever is faster from the profiling results.
+% The increased kernel size is relatively small compared to the overall deep learning models.
+% In case where resources are extremely limited, we can either generate fewer number of kernels than the tiling factor or reduce the tiling factor to find an acceptable trade-off between code size and performance.
 
-\begin{comment}
-\begin{figure*}[t]
-  \centering
-  \includegraphics[width=.8\linewidth]{figs/cv_models.pdf}
-  \caption{Benchmarking results of graph runtime vs. Relay.}
-  \label{fig:benchmark}
-\end{figure*}
+% A known issue to machine learning based tuning is that it may take a long time (usually hours) to find the best schedule for a single kernel. When it comes to symbolic shapes, the tuning time may be exponentially longer if we naively tune for every possible shape. In this paper, we extend the template based tuning approach for symbolic shapes to make tuning time tractable. The template based tuning approach takes a human-defined code template and a search space, and searches the best configuration within the search space by using machine learning algorithms.
+% %by building on the techniques explored in based~\citep{chen2018learning}.
+% We observe that a good configuration for one shape usually performs well on other shapes. Based on this observation, we devise the following mechanism to tune the kernel for symbolic shapes.
 
-\begin{table*}[t]
-\centering
-\begin{tabular}{llllrrc}
-\toprule
-\multicolumn{1}{c}{\multirow{2}{*}{input size}} & \multicolumn{1}{c}{\multirow{2}{*}{hidden size}} & \multicolumn{1}{c}{\multirow{2}{*}{\# layers}} & \multicolumn{1}{c}{\multirow{2}{*}{seq length}} & \multicolumn{2}{c}{latency (ms)}                         & \multicolumn{1}{c}{\multirow{2}{*}{speedup ($\times$)}} \\
-\multicolumn{1}{c}{}                            & \multicolumn{1}{c}{}                             & \multicolumn{1}{c}{}                          & \multicolumn{1}{c}{}                            & \multicolumn{1}{c}{MxNet} & \multicolumn{1}{c}{Relay VM} & \multicolumn{1}{c}{}                             \\
-\midrule
-100                                             & 100                                              & 1                                             & 1                                               & 0.53                      & 0.03                         & 18.4                                             \\
-100                                             & 100                                              & 1                                             & 20                                              & 4.74                      & 0.52                         & 9.2                                              \\
-100                                             & 100                                              & 1                                             & 100                                             & 21.75                     & 2.57                        & 8.5                                              \\
-100                                             & 100                                              & 2                                             & 100                                             & 30.53                     & 4.79                         & 6.4                                              \\
-100                                             & 100                                              & 3                                             & 100                                             & 55.47                     & 7.04                         & 7.9                                              \\
-200                                             & 600                                              & 3                                             & 100                                             & 67.14                     & 35.16                        & 1.9                                              \\
-400                                             & 1150                                             & 3                                             & 100                                             & 166.54                    & 123.54                       & 1.3                                              \\
-1500                                            & 1500                                             & 2                                             & 100                                             & 182.71                    & 138.78                       & 1.3
-\\\bottomrule
-\end{tabular}
-\vspace{6pt}
-\caption{Compare performance of LSTM models between MxNet and Relay VM.}
-\label{tab:lstm}
-\end{table*}
+% \vspace{-12pt}
+% \begin{enumerate}[leftmargin=*]
+%     \itemsep 0em
+%     \item First replace the symbolic dimensions by a large enough value (e.g., 64) so that the search space can cover most possibilities, and run the tuning algorithm on the static shape for a sufficient number of iterations.
+%     %\vspace{-8pt}
+%     \item Pick top $k$ configurations, apply them to a selection of other shapes, and evaluate their performance.
+%     %\vspace{-8pt}
+%     \item Pick the configuration that performs best on average among shapes previously evaluated.
+% \end{enumerate}
+% \vspace{-12pt}
 
-We evaluated the model inference with the VM against the TVM graph runtime on a number of popular vision models, including AlexNet, ResNet, MobileNet, VGG, DenseNet, SqueezeNet and Inception. Models are from GluonCV model zoo.  We repeated the inference 100 times for each model, obtained the performance result by averaging the execution times. All experiments were performed on Amazon EC2 C5.9xlarge instance (Intel Skylake-SP, 72 GiB memory, 18 physical cores, featured with AVX-512). In general, VM reached comparable inference performance even some optimizations were not plugged. As shown in \autoref{fig:benchmark}, we observed VM provided 2.59\% performance improvement on DenseNet169. On the rest of models, VM introduced some performance regression. We saw 11.3\% performance drop on SqueezeNet1.0.
+% Empirically, we found that $k=100$ covers most of the best configurations for other shapes. Current popular dynamic models usually only require kernels with one symbolic variable. As a result, we choose the values of power of two up to 256 in the cross evaluation of other shapes. If there is more than one symbolic variable, a more sophisticated selection approach might be required to limit the evaluation time of step 2. We leave this to the future work. Further, if the workload distribution is known, we can adjust the weighting of known shapes in step 3.
 
-We also evaluated the inference performance of recurrent models, which requires control flow support. We choose LSTM model \citep{hochreiter1997long} and vary the input size, hidden size, number of layers, and sequence length. We measured the execution time of LSTM models for both MxNet MKL 1.4.1 and Relay VM on Amazon EC2 C5.9xlarge instance. \autoref{tab:lstm} shows that Relay VM can achieve 6.4-18.4$\times$ speedup on small LSTM models and 1.3-1.9$\times$ speedup on larger models.
-\end{comment}
+% %Though we address both challenges, we admit that our approach has limitations when all dimensions are unknown. In these cases symbolic codegen cannot completely replace manually tuned 3rd party libraries yet, but is complimentary when partial shapes are known.\yida{Can we remove this paragraph?}
+
+% % Our codegen approach for dynamic shapes is designed to integrate well with TVM's codegen. We implement a bucketing
+% % based codegen strategy, which generates a set of shape-specialized variants and code which selects between them. One
+% % attractive consequence of this design is that it allows us to integrates with the current version of AutoTVM~\citep{chen2018learning}, TVM's auto-tuning framework
+% % to further optimize kernels.
+
+% % When an operator appears with dynamic shape it often will only vary along a single dimension. We are able to handle cases that
+% % deal with imperfect tiling strategies but the critical performance piece is choosing a tuned operator with the appropriate tile size.
+% % We reuse the machinery of the VM to support invoking a bucketed operator. For each operator with a dynamic shape we will
+% % generate tile sizes for powers of two, and then for a given input size round to the nearest power of two tile size and select that operation.
+% % The code for selecting between buckets is also realized as TVM expression allowing further optimization of the combined kernel.
+% % This strategy can be viewed as a form of polymorphic inline caching~\citep{inline_caches}, where the cache is not keyed by type, but shape.
+
+% % The bucketing strategy we employ obtains
+% % For this paper we explored one possible strategy for generating code but using the infrastructure of this paper
+% % it is relatively low cost to explore new strategies by reusing the machinery.
+
 
 \subsection{Ahead-of-time}
-% We are able to target CPU, GPU,
-%   iOS and Android mobile devices,
-%   custom accelerators, and FPGAs.
-
-% % EVAL
-
-% We evaluate Relay on several systems and over a diverse set of vision and NLP workloads to
-%   demonstrate that (1) Relay enables \emph{expressive} programs via a large breadth
-%   of models, (2) Relay supports \emph{composition} of program-level optimizations
-%   such as quantization and fusion, and (3) Relay provides
-%   \emph{portability} by targeting a number of hardware backends.
-% Not only does Relay provide these three properties, we do so while also demonstrating
-%   competitive performance.
-% Relay is an open-source academic project.\footnote{Relay is publicly available at [redacted for review].}
-%   It has been deployed at a popular web service provider,
-%     a telecommunications and consumer electronics manufacturer,
-%     and a social media company, among others.
-%     Our evaluation demonstrates Relay's competitive performance for a
-%     broad class of models and devices
-%     (CPUs, GPUs, and emerging accelerators).
-%   Relay's design demonstrates how a unified IR can provide
-%     expressivity, composability, and portability
-%     without compromising performance.
 
 
-%   We evaluate Relay on several systems and over a diverse set of vision and NLP workloads to
-%   demonstrate that (1) Relay enables \emph{expressive} programs via a large breadth
-%   of models, (2) Relay supports \emph{composition} of program-level optimizations
-%   such as quantization and fusion, and (3) Relay provides
-%   \emph{portability} by targeting a number of hardware backends.
-% Not only does Relay provide these three properties, we do so while also demonstrating
-%   competitive performance.
-% Relay is an open-source academic project.\footnote{Relay is publicly available at [redacted for review].}
-%   It has been deployed at a popular web service provider,
-%     a telecommunications and consumer electronics manufacturer,
-%     and a social media company, among others.
-
-
-\subsection{Supporting Hardware Accelerators}
+\section{Supporting Hardware Accelerators}
 \label{sec:accel}
 
-BYOC
+\subsection{Bring Your Own Code Generation}
+
+In conjunction with my collaborators at AWS we implemented an
+  extensible framework for hooking hardware accelerators into
+  TVM.
+Bring Your Own Code Generation (BYOC) is a mechanism introduced
+  into Relay for offloading specific sub-programs to hardware
+  accelerators which operate outside of the traditional TVM
+  programming model.
+
 
 \subsection{VTA}
 
@@ -733,9 +704,10 @@ In order to tackle this problem I have collaborated on the design for \vta (Vers
     \item \emph{A schedule auto-tuning platform} that optimizes data access and reuse in order to rapidly adapt to changes to the underlying hardware and to workload diversity.
 \end{itemize}
 
-We recently published a paper on VTA in IEEE Micro Journal Special Issue
-  on Deep Learning Acceleration.
-\vta is a powerful part of doing research, and Relay is a critical part of the research agenda
-  being pursued in the SAMPL lab, with recent funding to explore directly mapping Relay programs
-  on to \vta as well as a diverse set of accelerators, and is related to the final topic of my
-  thesis automatic tensorization.
+My collaborators and I published a paper on VTA in
+  the IEEE Micro Journal Special Issue on Deep Learning Acceleration.
+\vta and its children projects are a critical part of the research
+  agenda at UW SAMPL lab, and we won a multi-million dollar grant to
+  pursue automatically mapping Relay programs to hardware designs.
+This work is being continued at UW and its one exciting future
+  direction we discuss in Chapter~\ref{ch:future}.
