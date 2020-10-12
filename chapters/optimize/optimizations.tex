@@ -716,39 +716,6 @@ case on dynamic programs, for example we have implemented a storage coalescing p
 into a larger region which allows the multiplexing of multiple tensor allocations to a single piece of storage.
 Further optimization like liveness analysis and graph coloring algorithm can be applied to the program to reuse  the storages
 
-%%%%
-
-
-% ------------------------------------------
-
-
-% \subsubsection{Memory pass}
-
-% \subsubsection{Symbolic code generation}
-
-% \subsubsection{VM overhead}
-% \label{sec:eval:overhead}
-% Finally, we compared the performance of model inference for static neural networks using Relay with unmodified TVM. TVM is known to be efficient in processing CNN models on various hardware platforms~\citep{tvm_osdi18, liu2019optimizing}. Relay extended TVM to support dynamism while inheriting the optimizations original TVM has. Relay's VM-based runtime was designed to be generic enough to handle static model inference as well. Therefore, comparing between Relay and the original TVM on static model inference should indicate how much overhead Relay introduces while introducing dynamic support.
-
-% \autoref{fig:static-performance} and \autoref{fig:memory-overhead} show the latency and memory footprint comparison between Relay and original TVM on different static CNN models. The models were optimized via the TVM pipeline in both systems. The difference is that Relay uses its VM-based runtime while TVM uses its original graph runtime. From the figure we can tell that Relay's VM-based runtime adds minimal overhead compared to TVM's original runtime, by adding up to 13\% more execution time and 8\% more memory footprint. Also, \autoref{fig:memory-overhead} further testifies that our memory planning optimization reduces the memory usage on static model inference as well.
-
-% We have evidence that this overhead is due to missing micro-optimizations, and not inherent to our approach, and should be erased over time.
-
-% \begin{figure}
-% \centering
-% \input{figs/static_perf}
-% \caption{Latency comparison between Relay and TVM on static model inference. The latency was tested for both systems on Intel CPUs, Nvidia GPUs and ARM CPUs by setting batch size=1. The latency of TVM on those platforms was normalized to 1, the lower the better.}
-% \label{fig:static-performance}
-% \end{figure}
-
-% \begin{figure}
-% \centering
-% \input{figs/memory}
-% \caption{Memory usage comparison between Relay and TVM on static models. Relay was done with and without optimization on memory planning. The results were obtained on Intel CPUs. Nvidia GPUs and ARM CPUs would lead to the identical results. The amount of memory used by TVM was normalized to 1, the lower the better.}
-% \label{fig:memory-overhead}
-% \end{figure}
-
-%%%%%%
 \section{Heterogeneous Device Placement}
 \label{sec:compliation:hetero}
 As discussed in Section \autoref{sec:compilation:shape-func}, shape functions are executed at runtime to calculate the output shape of an operator. These functions must execute on the CPU due to the host-interaction model of GPU like devices. In the case of heterogeneous execution (i.e., CPU and GPU) it is essential to carefully schedule the execution of shape functions and kernels as improper scheduling can be disastrous for performance. For instance, considerable overhead will occur if inputs to shape functions must be copied from GPU due to the cost of data transfers and synchronization. To minimize the performance penalty, we analyze the program allocations to place sub-expressions on the most suitable devices.
@@ -911,4 +878,9 @@ The entire parallel convolution combination pass,
   in their first contribution to our codebase.
 
 \section{Dataflow Rewriting using Patterns}
+TODO
+
+\subsection{Dataflow Patterns}
+TODO
+\subsection{EggBeater: Egg + TVM}
 TODO

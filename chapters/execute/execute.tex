@@ -386,57 +386,7 @@ In sum, the interpreter handles instructions in the following categories.
     \item Control Flow Operations. Unconditional jump instructions, e.g. \texttt{ret}, are used by both static and dynamic models to jump to a specific program point. Only dynamic models need conditional control operations to determine the direction of branching. The interpreter updates the PC using the offset from either the true branch or false branch based on the conditional value.
 \end{itemize}
 
-\begin{comment}
-\lstset { %
-    language=C++,
-    basicstyle=\ttfamily\footnotesize,% basic font setting
-    keywordstyle=\bfseries\color{green!40!black},
-    commentstyle=\itshape\color{purple!40!black},
-    stringstyle=\color{orange},
-}
-\begin{figure}[htbp]
-\centering
-\begin{lstlisting}
-void RunLoop() {
-  this->pc = 0;
-  Index frame_start = frames.size();
-  while (true) {
-  main_loop:
-    auto const& instr = this->code[this->pc];
-    switch (instr.op) {
-      case Opcode::LoadConst: {
-        auto constant_obj = constants[instr.kidx];
-        // ...
-        RegWrite(instr.dst, const_pool_[instr.kidx]);
-        pc++;
-        goto main_loop;
-      }
-      case Opcode::Invoke: {
-        // Prepare args and then invoke.
-        InvokeGlobal(functions[instr.func_idx], args);
-        frames.back().caller_ret_reg = instr.dst;
-        goto main_loop;
-      }
-      case Opcode::InvokePacked: {
-        // Invoke primitive functions
-        const auto& func = packed_funcs[instr.pidx];
-        const auto& arity = instr.arity;
-        // Read args from the register file.
-        InvokePacked(instr.pidx, func, arity,
-                     instr.osize, args);
-        // Write outputs to the register file.
-        pc++;
-        goto main_loop;
-      }
-      // Other opcodes are omitted
-    }
-  }
-}
-\end{lstlisting}
-\caption{Relay bytecode interpreter.}
-\label{fig:interpreter}
-\end{figure}
-\end{comment}
+% TODO interpreter figure
 
 \subsection{Discussion}
 
