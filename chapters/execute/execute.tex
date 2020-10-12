@@ -197,6 +197,18 @@ In summary, the Relay VM is build around three core design contributions:
 
 \subsection{A Tensor Virtual Machine}
 
+
+The VM can be seen as the realization of a tensor abstraction machine, which corresponds to high-level tensor operations such as allocating a tensor, invoking an operation like conv2d, or performing a device copy.
+An alternative solution to the VM could be ahead of time compilation from our abstract machine into machine code.
+But due to the granularity of the operations, dispatch time makes up a very small portion of the execution time.
+More importantly, the VM provides flexibility traditionally attributed to virtual machines and a clear compiler/runtime split.
+We see the potential of VM to be integrated as a runtime module into a larger system.
+For example, VM can provide resource isolation where multiple inference instances share the same hardware in the cloud.
+Furthermore, a Quality of Service (QoS)-aware system, e.g., \citep{kang2018hotmobile, Yachir2009rsj}, could leverage VM to pause the
+current model execution for a higher priority or time-critical model. Last, because of the simplicity of the VM design, one can verify the implementation of VM for security and privacy purposes.
+
+Our VM is designed to execute the dynamic models by removing the limitations of the existing runtimes which only support statically shaped programs.
+
 The first iteration of Relay defined an IR with formal semantics
   but did not provide a state-of-the-art execution mechanism (see above more discussion on this point).
 For completely static models we relied on the graph runtime,
@@ -326,6 +338,13 @@ The compiler performs a set of transformations on the high-level
 
 \subsection{VM ISA}
 
+\begin{table*}[th]
+\centering
+\small
+\input{chapters/execute/isa_table}
+\caption{The opcode and the description of the Relay instruction set \label{tab:isa}}
+\end{table*}
+
 % \begin{itemize}
 %     \item \verb|ret| Returns a value.
 %     \item \verb|invoke_packed| Invoke a packed function with the specified arguments.
@@ -352,14 +371,7 @@ We naturally select a register-based virtual machine design~\citep{davis2003case
 
 Instructions are represented using a traditional tagged union containing the op-code and the data payload. This representation enables both efficient serialization and instruction decoding and dispatch. Relay uses variable-length instruction format due to the inclusion of variable sized operands such as data shapes in the instructions.
 
-\begin{comment}
-\begin{table*}[t]
-\centering
-\small
-\input{chapters/execute/isa_table}
-\caption{The opcode and the description of the Relay instruction set \label{tab:isa}}
-\end{table*}
-\end{comment}
+
 
 % This design has the following benefits. First, both CISC instructions and variable length encoding contribute to better code density. This is a significant advantage for edge devices that only have limited resources. Second, allowing multiple addressing modes to execute a single instruction can reduce the amount of data fetched from cache hierarchy and main memory. It may also lead to better spatial locality as the data (e.g. the tensor value) may remain in the cache. Third, a variable-length instruction encoding paves the way for extending extra information to instructions, e.g. debugging and even branch prediction. Last but not least, the instruction designed in Relay effectively separates hardware-dependent kernels from model control logic. The Relay bytecode is hardware-independent which eases bytecode serialization, and can be paired with hardware-dependent kernels being invoked by the \texttt{InvokePacked} instruction.
 
@@ -388,19 +400,6 @@ In sum, the interpreter handles instructions in the following categories.
 
 % TODO interpreter figure
 
-\subsection{Discussion}
-
-
-The VM can be seen as the realization of a tensor abstraction machine, which corresponds to high-level tensor operations such as allocating a tensor, invoking an operation like conv2d, or performing a device copy.
-An alternative solution to the VM could be ahead of time compilation from our abstract machine into machine code.
-But due to the granularity of the operations, dispatch time makes up a very small portion of the execution time.
-More importantly, the VM provides flexibility traditionally attributed to virtual machines and a clear compiler/runtime split.
-We see the potential of VM to be integrated as a runtime module into a larger system.
-For example, VM can provide resource isolation where multiple inference instances share the same hardware in the cloud.
-Furthermore, a Quality of Service (QoS)-aware system, e.g., \citep{kang2018hotmobile, Yachir2009rsj}, could leverage VM to pause the
-current model execution for a higher priority or time-critical model. Last, because of the simplicity of the VM design, one can verify the implementation of VM for security and privacy purposes.
-
-Our VM is designed to execute the dynamic models by removing the limitations of the existing runtimes which only support statically shaped programs.
 
 \section{Compiler Support for Dynamism}
 \label{sec:compliation}
@@ -418,74 +417,6 @@ This section describes how we transform standard TVM programs into our dynamic d
     \item A series of optimization passes that make dynamic output shapes, allocation, and device placement explicit.
     \item A set of codegen techniques for producing code of kernels with dynamic input and output shapes.
 \end{itemize}
-
-% \vspace{-1.5em}
-% \subsection{Typing}
-% \label{sec:compliation:typing}
-% Deep learning compilers use type systems to represent, check and infer the data types and shapes of tensors. In some frameworks and compilers this is separated into two steps, shape inference and data type inference. TVM performs both simultaneously and refers to them as type inference~\citep{roesch2019relay}, a terminology we will use throughout the section.
-
-% A {\em Tensor Type} is designated by an $n$-dimensional shape (defined as a tuple of integers describing the tensor's dimensions) and a data type (e.g. \texttt{float32} or \texttt{int64}).
-% Current deep learning IRs only support codegen when all dimensions of a tensor's shape are known at compile-time, i.e., static shapes are mandatory for type inference and checking.
-
-% In the context of dynamic models, many data shapes can only be determined at runtime. Therefore, the previous assumption of static data shapes does not hold.
-% In order to support dynamic data shapes, Relay VM introduces a special dimension called \any~to represent statically unknown dimensions.
-% For example, we can represent a tensor type as \texttt{Tensor[(1, 10, Any), float32]},
-% where the size of the third dimension in this tensor is unknown while the other
-% two dimensions have concrete values.
-% This concept has been introduced in other frameworks.
-% Janus \citep{jeong2019janus} uses similar denotation to represent a dynamic dimension but only for type unification, while Relay VM extends type inference to handle \any~as described next. %We do not support tensor types with dynamic ranks given the relatively limited use cases and optimization opportunities.
-% %\yida{Do we need the following sentence?}The challenge of introducing a dynamic shape extension is adapting each layer of the system to handle it in a way that does not greatly degrade performance.
-
-% \noindent
-% {\bf Operator Type Relation} A type relation describes the relationship between types of operator inputs and outputs. The type system of TVM relies on these type relations to infer and bidirectionally propagate type and shape relationships between inputs and outputs of operators across the whole network.
-% %For example, the type relation for broadcasting operators (e.g. \texttt{broadcast\_add}) performs the shape calculation following the NumPy broadcasting rules.
-
-% The type relation must be generalized to properly handle dynamic shapes. For example, a program which grows a tensor on each loop iteration (a case existing in the decoder of many NLP models) is both impossible to type and compile without proper type system support. With the introduction of \any, we are able to improve the existing type relations to support dynamic models.
-
-% There are two dynamic type relation cases in particular.
-% First, operators with dynamic output shapes depending on the input data, such as {\tt arange}\footnote{{\tt arange} generates a range of values in a (start, stop, step) interval the arrays output size is a function of input arguments.} and {\tt unique}\footnote{{\tt unique} selects the unique elements of a tensor.}, will use \any~to describe those shapes.
-% % We can now describe the type relation using the enhanced type relation functions with \any but not before.
-% % For example, type relation of {\tt arange} can be expressed as follows
-% % \[
-% % arange: fn(start: fp32, stop: fp32, step: fp32) \rightarrow \langle [\any], fp32 \rangle
-% % \]
-% Second, when input shapes contain \any~dimension, the type relation needs to propagate \any~correctly to the output types and relax typing constraints that hold in the static cases when necessary.
-% %For example, type relation for {\tt broadcasting} operators determines the compatibility between corresponding dimensions from both inputs if they are equal or one of them is 1 according to the Numpy broadcasting rule.
-% For example, the rules
-% for broadcast\footnote{\url{https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html}} type relation with \any~are defined as follows:
-% %\vspace{-1em}
-% \begin{align*}
-%   \textrm{broadcast\_rel}(\any, 1) &\rightarrow \any \\
-%   \textrm{broadcast\_rel}(\any, d) &\rightarrow d ~~~~~~(d > 1) \\
-%   \textrm{broadcast\_rel}(\any, \any) &\rightarrow \any
-%   \vspace{-1em}
-% \end{align*}
-% %\vspace{-1em}
-% Note that due to the presence of dynamic shapes, these type relation rules can no longer rule out all type errors at compile-time.
-% For example, for the second rule shown above, when \any~is neither 1 nor $d$ at runtime, it then violates the broadcast type constraints.
-% To address this, we take the gradual typing~\citep{gradualtyping} approach and leave certain type checking at runtime after \any~is instantiated by a
-% concrete value (see \autoref{sec:compilation:shape-func} for more details).
-% One could eliminate these errors using a more advanced type system, but at increased complexity.
-
-% \noindent
-% {\bf Type Inference} One caveat of the \any~dimension is that unknown dimensions will propagate during type inference, reducing chances for shape specialization.
-% For example, if we use an operator such as {\tt arange} to produce a tensor with dynamic shape (i.e., \texttt{Tensor[(\any,), float32]}) and later {\tt broadcast\_add} to a tensor with static shape (i.e., \texttt{Tensor[(5, 1), float32]}), the output shape will also contain an \any~dimension (i.e., \texttt{Tensor[(5, \any), float32])}.
-
-% To limit the contamination of \any, we further introduce {\em sub-shaping} to improve the precision of types computed by type-inference.
-% Much like sub-typing used in popular programming languages \citep{LiskovTPLS1994,AmadioAmadioTPLS1993}, our extension enables values with more specific shape information to be passed in contexts which require less specific shapes.
-% Further, we perform extra analysis that repeatedly replace one \any~dimension by a symbolic variable followed by a type inference pass to identify if other \any~dimensions share the same symbolic expression.
-% %on each \any~dimension to detect if two \any~dimensions point to an identically sized dimension.
-% This information is passed to downstream compilation and can reduce the search space during the symbolic codegen.
-% %We can use this analysis in the downstream compilation to generate shape-specialized code during codegen.
-
-% % We treat concrete dimension and symbolic dimension as a sub-shape of \any.
-% % \yida{The following sentence is problematic with grammatical error. We need to explicitly define what is an argument.}Rules for invoking a function, suppose fn type is $fn\langle T_1, \dots, T_n\rangle$,
-% % and arguments are $T'_1, \dots, T'_n$, the rules are defined as follows
-% % \begin{align*}
-% %   \textrm{union}(T_i, T'_i) &\rightarrow T_i \\
-% %   \textrm{join}(T_i, T'_i) &\rightarrow T'_i
-% % \end{align*}
-% %\vspace{-1em}
 
 % %\vspace{-1em}
 % \subsection{Shape Function}
@@ -518,92 +449,6 @@ This section describes how we transform standard TVM programs into our dynamic d
 % %Because the intermediate result in a composite op is inaccessible from outside, the data dependent shape function cannot collect all arguments it required. Thus, we revise the operator fusion policy correspondingly to make sure composite ops generated by the operator fusion pass will be valid.
 
 % %Due to our definition of shape functions we are able to perform fusion using a generalized version of the algorithm used for standard operator fusion which handles passing the appropriate input shape or input depending on the shape function. For example imagine that the fuse operator has a single input that was originally used an operator that requires the input, and the second fused operator requires the input shape. Depending on the type of the shape function defined above, we handle operator fusion in the following manner. Any data independent shape functions could be fused with other operators. Any fused group can only have at most one shape function and it should be fused together with the operator that needs shape function.
-
-% \input{mlsys/memory}
-
-% \vspace{-1em}
-% \subsection{Heterogeneous Device Placement}
-% \label{sec:compliation:hetero}
-% As discussed in \autoref{sec:compilation:shape-func}, shape functions are executed at runtime to calculate the output shape of an operator. These functions should execute on the CPU as their outputs are used to compute the size of allocated memory. In the case of heterogeneous execution (i.e., CPU and GPU), it is essential to carefully place the execution of IR nodes to proper devices. Otherwise, considerable overhead from data transfers and device synchronization will occur if the inputs to shape functions and kernels need to be copied from or to GPU. To minimize the performance penalty, we analyze the program to place sub-expressions on the most suitable devices.
-
-% We introduce a unification based analysis for computing the correct device placement and allocation based on the previous scheduling of the compute kernels. The goal of our device analysis is to assign each IR node properly to minimize the number of cross-device copies. We introduce a concept of \texttt{DeviceDomain} to represent the domain of a device, including source and destination. Each expression in the IR defaults to the empty domain, meaning no constraint on its device placement. In addition, a new IR construct, \verb|device_copy|, is introduced to facilitate the heterogeneous execution of the Relay VM runtime. It represents a data transfer between different devices and is inserted when a cross-device data copy is mandatory.
-% %The latter\yida{what does this refer to?} is used to retrieve the shape of a tensor at runtime and is used to efficiently compute the input shapes for shape functions.
-% Our analysis is formulated as a set of device placement rules which describes how device constraints flow, and then we use unification, a technique common in type inference and compilers, to compute the precise device placement.
-% \autoref{fig:hetero} depicts some highlights of the rules to assign and propagate the device types: (a) both inputs and outputs of shape function are assigned to CPU, (b) the output of \verb|device_copy| is assigned to the device that is copied to, (c) all arguments to \verb|invoke_mut| should have the same device domain. The full set of rules can be found in the \autoref{appx:hetero-rules}.
-
-% \begin{figure}
-%     \centering
-%     \includegraphics[width=\linewidth]{figs/hetero.pdf}
-%     \caption{Some heterogeneous device placement rules. (a) The inputs and outputs of shape functions are placed on CPU.
-%     (b) \texttt{device\_copy} changes the device of output accordingly.
-%     (c) The device of all arguments to \texttt{invoke\_mut} must be the same.
-%     }
-%     \label{fig:hetero}
-%     \vspace{-2em}
-% \end{figure}
-
-% Based on these rules, we use a union-find data structure to bidirectionally propagate and unify the device placement of each IR node. We introduce two operations, \texttt{union(s, t)} and \texttt{find(s)}, to achieve \texttt{DeviceDomain} unification throughout the entire program. \texttt{union(s,t)} unions the equivalence device domains of \texttt{s} and \texttt{t} into one equivalence domain when the device types match. \texttt{find(s)} returns the representative of the device domain that \texttt{s} belongs to. These two operations are applied until all IR nodes are annotated. The result of the heterogeneous device placement composes with memory planning and shape function insertion resulting in correctly placed allocations.
-
-% \vspace{-1em}
-% \subsection{Symbolic Codegen}
-% \label{sec:compliation:codegen}
-% %\yida{Should we mention the mechanism of invoking third-party libraries in this subsection?}
-% Deep learning compilers~\citep{tvm_osdi18, halide} have demonstrated competitive performance compared to manually tuned kernels on multiple platforms. Recent trends apply machine learning based search to further reduce or eliminate complex manual performance tuning using either template based~\citep{chen2018learning, zheng2020flextensor} or search based~\citep{adams2019learning, zheng2020ansor} approaches.
-% However, existing work which focuses on tuning in the presence of static shapes falls short with symbolic or dynamic shapes. There are two inherent challenges with regard to codegen of symbolic shapes.
-% %\begin{itemize}
-% %    \itemsep 0em
-% \squishlist
-%     \item How to achieve the same performance of kernels generated with symbolic shapes as that with static shapes when applying the same schedule?
-%     \item How to extend the machine learning based approach to tune kernels with symbolic shapes?
-% \squishend
-% \vspace{-1em}
-% %\end{itemize}
-
-% Loop parallelism and loop tiling are common optimization techniques that exploit multi-core capabilities by achieving data access patterns which are memory hierarchy aware for both CPUs and GPUs. However, the combination of these techniques lead to complex loop boundary conditions. In many static cases, it is possible to prove these conditions always hold, and thus eliminate checks which hamper further optimizations such as unrolling.
-% While straightforward to handle with static shapes, it becomes a non-trivial challenge when performing symbolic codegen. If not carefully handled, the boundary condition checks will stay, leading to poor performance.
-
-% To address this issue, we generate multiple kernels according to the residues modulo of the tiling factor and then dispatch based on the actual shape at runtime.
-% For example, suppose a symbolic dimension $x$ is tiled by a factor of 8, we then duplicate the generated kernel for 8 times, and replace the symbolic var $x$ by $8k+r$ in each copy, where $k = \lfloor x / 8 \rfloor$ and $r \in [0..7]$. By applying this technique in conjunction with an enhanced symbolic expression simplification pass, we can eliminate most boundary checks to achieve performance that is nearly identical to kernels compiled with a single static shape. Lastly, we automatically generate a dispatch function that invokes the corresponding kernel based on the residue.
-% %because this function is also generated in the IR we can compile and optimize it like other code ahead of time.
-% In addition, the dispatch function can be extended to invoke either compiler generated kernels or {\em third party library} whichever is faster from the profiling results.
-% The increased kernel size is relatively small compared to the overall deep learning models.
-% In case where resources are extremely limited, we can either generate fewer number of kernels than the tiling factor or reduce the tiling factor to find an acceptable trade-off between code size and performance.
-
-% A known issue to machine learning based tuning is that it may take a long time (usually hours) to find the best schedule for a single kernel. When it comes to symbolic shapes, the tuning time may be exponentially longer if we naively tune for every possible shape. In this paper, we extend the template based tuning approach for symbolic shapes to make tuning time tractable. The template based tuning approach takes a human-defined code template and a search space, and searches the best configuration within the search space by using machine learning algorithms.
-% %by building on the techniques explored in based~\citep{chen2018learning}.
-% We observe that a good configuration for one shape usually performs well on other shapes. Based on this observation, we devise the following mechanism to tune the kernel for symbolic shapes.
-
-% \vspace{-12pt}
-% \begin{enumerate}[leftmargin=*]
-%     \itemsep 0em
-%     \item First replace the symbolic dimensions by a large enough value (e.g., 64) so that the search space can cover most possibilities, and run the tuning algorithm on the static shape for a sufficient number of iterations.
-%     %\vspace{-8pt}
-%     \item Pick top $k$ configurations, apply them to a selection of other shapes, and evaluate their performance.
-%     %\vspace{-8pt}
-%     \item Pick the configuration that performs best on average among shapes previously evaluated.
-% \end{enumerate}
-% \vspace{-12pt}
-
-% Empirically, we found that $k=100$ covers most of the best configurations for other shapes. Current popular dynamic models usually only require kernels with one symbolic variable. As a result, we choose the values of power of two up to 256 in the cross evaluation of other shapes. If there is more than one symbolic variable, a more sophisticated selection approach might be required to limit the evaluation time of step 2. We leave this to the future work. Further, if the workload distribution is known, we can adjust the weighting of known shapes in step 3.
-
-% %Though we address both challenges, we admit that our approach has limitations when all dimensions are unknown. In these cases symbolic codegen cannot completely replace manually tuned 3rd party libraries yet, but is complimentary when partial shapes are known.\yida{Can we remove this paragraph?}
-
-% % Our codegen approach for dynamic shapes is designed to integrate well with TVM's codegen. We implement a bucketing
-% % based codegen strategy, which generates a set of shape-specialized variants and code which selects between them. One
-% % attractive consequence of this design is that it allows us to integrates with the current version of AutoTVM~\citep{chen2018learning}, TVM's auto-tuning framework
-% % to further optimize kernels.
-
-% % When an operator appears with dynamic shape it often will only vary along a single dimension. We are able to handle cases that
-% % deal with imperfect tiling strategies but the critical performance piece is choosing a tuned operator with the appropriate tile size.
-% % We reuse the machinery of the VM to support invoking a bucketed operator. For each operator with a dynamic shape we will
-% % generate tile sizes for powers of two, and then for a given input size round to the nearest power of two tile size and select that operation.
-% % The code for selecting between buckets is also realized as TVM expression allowing further optimization of the combined kernel.
-% % This strategy can be viewed as a form of polymorphic inline caching~\citep{inline_caches}, where the cache is not keyed by type, but shape.
-
-% % The bucketing strategy we employ obtains
-% % For this paper we explored one possible strategy for generating code but using the infrastructure of this paper
-% % it is relatively low cost to explore new strategies by reusing the machinery.
-
 
 \subsection{Ahead-of-time}
 
