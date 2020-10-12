@@ -112,28 +112,16 @@ Due to the Relay compiler's integration with AutoTVM, we can further
 \section{Generic Quantization Framework}
 \label{sec:quant}
 
-% Deep learning is constrained by memory, compute, and accuracy.
-
-% Accuracy is often the only metric optimized by machine learning
-%   researchers, leading to compute- and memory-hungry models.
-% The sheer number of parameters and the requisite compute
-%   makes deploying models to resource-limited devices,
-%   such as in mobile or IoT, challenging.
-% Even in non-edge devices, the compute cost of using
-%   datatypes like FP32 is large and computing with mixed precision
-%   or reduced precision can aid performance.
-% Unfortunately, reducing bit-width is not a silver bullet and
-%   can dramatically harm model accuracy.
-% The tradeoffs between these quantities has lead to the study of quantized neural networks,
-%   the process by which NNs are modified to use a smaller precision
-%   or non-standard datatypes to improve throughput and memory usage.
-% Quantization is particularly essential for supporting many accelerators due to
-%   their restricted set of datatypes.
-
-The memory and data types required by deep learning introduce
-difficulties when deploying neural networks to resource-limited devices,
-such as mobile, IoT, and other edge devices.
-An emerging area in deep learning is performing training and inference on
+Deep learning is constrained by memory, compute, and accuracy.
+Accuracy is often the only metric optimized by machine learning
+  researchers, leading to compute- and memory-hungry models.
+The sheer number of parameters and the requisite compute
+  makes deploying models to resource-limited devices,
+  such as in mobile or IoT, challenging.
+Even in non-edge devices, the compute cost of using
+  datatypes like FP32 is large and computing with mixed precision
+  or reduced precision can aid performance.
+ An emerging area in deep learning is performing training and inference on
   non-standard numeric types to improve throughput and memory usage.
 For example, a single neural network may have more than one million floating-point values
   as its parameters.
@@ -142,6 +130,13 @@ The sheer quantity of parameters and their datatypes may limit the ability
 Accelerators often support fixed point or other non-standard datatypes, at lower precision.
 In order to target these devices, Relay must map the computation
   to the appropriate domain.
+Unfortunately, reducing bit-width is not a silver bullet and
+  can dramatically harm model accuracy.
+The tradeoffs between these quantities has lead to the study of quantized neural networks,
+  the process by which NNs are modified to use a smaller precision
+  or non-standard datatypes to improve throughput and memory usage.
+Quantization is particularly essential for supporting many accelerators due to
+  their restricted set of datatypes.
 
 State-of-the-art work on quantization suggests that there exist a number of tradeoffs
   between different quantization techniques,
@@ -160,18 +155,10 @@ Relay's generalizable and flexible quantization workflow
   and address various constraints across different hardware platforms.
 The pipeline that we designed can compress and accelerate neural networks with
   low-precision quantization to enable running the deep learning models on edge devices.
-
-% TODO(talk about how we provide building blocks to build new quantization framework)
-%
-% Instead, Relay includes a generic, compiler-based quantization flow that supports a diverse set
-%   of quantization schemes and can automatically generate code for each one.
-% Relay provides a general-purpose program-rewriting framework that can be extended
-%   with per-operator rules, which can annotate inputs and outputs with a datatype
-%   and precision to quantize to.
-% Users can overload Relay's existing quantization rewriting rules or add new ones
-%   to implement different quantization strategies, enabling users to choose between
-%   signed or unsigned integers or different rounding strategies, such as
-%   floor, ceiling, or stochastic rounding.
+Users can overload Relay's existing quantization rewriting rules or add new ones
+  to implement different quantization strategies, enabling users to choose between
+  signed or unsigned integers or different rounding strategies, such as
+  floor, ceiling, or stochastic rounding.
 
 \begin{figure}[h]
   \includegraphics[height=5cm]{fig_splash19/quantization/quant_pdf.pdf}
@@ -324,8 +311,6 @@ For certain network architectures such as MobileNet and ResNet, 16-bit to 32-bit
   assuming the input does not overflow.
 The current framework demonstrates the importance of applying
   various quantization schemes based on networks and hardware platforms.
-
-
 
 % \section{Realize}
 
@@ -905,8 +890,7 @@ both static and dynamic allocations in the presence of control and dynamic shape
 Now that all allocations are explicit in the IR, we can provide analogous optimizations in the static
 case on dynamic programs, for example we have implemented a storage coalescing pass to group storage
 into a larger region which allows the multiplexing of multiple tensor allocations to a single piece of storage.
-Futher optimization like liveness analysis and graph coloring algorithm can be applied to the program to reuse  the storages.
-
+Further optimization like liveness analysis and graph coloring algorithm can be applied to the program to reuse  the storages.
 
 % ----------------------------------------------------------------------------------------------------------------------
 \section{Accelerator-Specific Optimizations}
