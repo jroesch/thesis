@@ -5,15 +5,16 @@ The final piece of the puzzle is taking a sufficiently
     lowered Relay program and executing it.
 In theory a naive interpretation strategy could be applied
     to the entire Relay program.
-In fact Relay definitional interpreter
-  implements exactly this strategy,
-  it just performs a straightforward recursive AST traversal.
-A definitional interpreter is sufficient to
-  specify the behavior of program, but not
-  to efficiently execute one.
- Most compilers have a final code generation
-  pipeline which transforms a generic optimized
-  program to a specific backend.
+In fact the Relay definitional interpreter
+  implements a naive recursive AST traversal
+  and applies JIT compilation to kernels.
+A definitional interpreter is sufficient
+  for specifying the behavior of a language,
+  but not for efficiently executing one.
+After applying generic optimizations,
+  most compilers have per target compilation
+  pipelines which lower programs to a specific
+  backend.
 Finally dynamic behaviors require
   runtime support, such as memory allocation,
   device selection, or scheduling.
@@ -31,9 +32,9 @@ In this chapter we evaluate Relay's performance specifically
 \section{Compiler Framework}
 
 To begin we first refresh the reader on the end-to-end
-  of the Relay compiler.
+  dataflow of the Relay compiler.
 
-First, the frontend converts input formats into the Relay IR.
+First, a frontend converts its input format into the Relay IR.
 Next, the Relay compiler typechecks and optimizes the program.
 Processes such as automatic differentiation can be performed
   during this step.
@@ -44,8 +45,8 @@ Next we extract primitive functions
 We then perform scheduling and lowering on these
   expressions to produce low-level target-specific versions
   of these functions.
-Relay then further transforms the code which can not be lowered
-  into TIR in a sequence of passes depending on which backend
+We then further transform the code which can not be lowered
+  into TIR via a sequence of passes depending on which backend
   we are targeting.
 Finally we execute the remaining Relay code via a TVM runtime
   either the interpreter, which directly interprets the AST,
@@ -79,7 +80,8 @@ Once new deep learning languages and IRs under development
     Section~\ref{sec:pl_techniques_in_dl}).
 PyTorch provides an expressive programming model, and is a good fit
     for Relay, which has been previously integrated into PyTorch's
-    % TODO CITE
+    \footnote{\url{https://github.com/pytorch/tvm}}
+    \footnote{PyTorch engineers built an integration which connects PyTorch's backend to TVM.}
     JIT infrastructure, enabling users to transparently use Relay for improved performance.
 
 \subsection{Compiler}
@@ -154,13 +156,14 @@ Existing approaches to dynamic model optimization apply or extend existing
 As discussed in Section~\ref{sec:dl_frameworks} frameworks are large monolithic pieces
   of software that still has serve portability and performance challenges.
 Existing work which builds on frameworks extends the programming model either
-`via sophisticated additions~\citep{yu2018dynamic} or significant runtime overhead~\citep{tf_fold, jeong2019janus}.
+  via sophisticated additions~\citep{yu2018dynamic} or significant runtime overhead~\citep{tf_fold, jeong2019janus}.
 Other work~\citep{xu2018cavs, gao2018low, tf_fold} which is focused on optimizing specific types of models
   is often hard to generalize to new models, or generalize over all models.
 Moreover, approaches which inherit from frameworks rely on third-party kernel libraries such as
   OpenBLAS~\citep{xianyi2014openblas}, cuDNN~\citep{cudnn}, and MKL-DNN~\citep{mkldnn} to achieve competitive performance.
 These libraries expose a fixed set of operators for the corresponding hardware, compromising the portability of dynamic models
-  which require a large number of operators with varying data types and shapes. Designing a new interface independent of existing frameworks
+  which require a large number of operators with varying data types and shapes.
+Designing a new interface independent of existing frameworks
   provides a clean programming model but often at the cost of performance, due to dynamic interpretation of the model~\citep{dynet}.
 
 However, deep learning compilers have been primarily restricted
@@ -171,50 +174,25 @@ Specifically, in order to compile and execute the dynamic models,
   and a runtime to handle the dynamic execution and kernel dispatch accordingly.
 In addition, dynamic-specific optimizations, such as dynamic memory planning, the process of statically optimizing dynamic allocations,
   are necessary to achieve desirable performance.
-None of these features exist in the current deep learning compilers.
+None of these features existed in deep learning compilers.
 
-To this end, we present Relay VM, a high-performance and portable system for compiling, optimizing,
+To this end, we designed Relay VM, a high-performance and portable system for compiling, optimizing,
   and executing dynamic neural networks on multiple platforms.
-To the best of our knowledge, this is the first attempt to systematically handle dynamic models from a compiler perspective.
-First, we introduce type system extensions to handle data with unknown dimension,
-  which is common in dynamic models,
-  by performing type checking and inference for shapes with {\em Any}.
-Second, we devise several optimizations specific to dynamic models,
-  including dynamic shape-aware code generation,
-  memory planning, and device placement.
-Third, we propose a virtual machine (VM)-based runtime,
-  which decouples the platform-independent controlling logic and platform-dependent kernel implementation,
-  to be portable, light-weight, and most importantly, able to execute dynamic models.
-Experimental results on LSTM~\citep{lstm}, Tree-LSTM~\citep{tree_lstm} and BERT~\citep{devlin2018bert}
-  show that Relay VM~lowers the latency by 1.05$\times$ to 19.9$\times$ compared to the best solution whichever
-  on mainstream hardware platforms both in the cloud (Intel CPUs and Nvidia GPUs) and at the edge (ARM CPUs).
+To the best of our knowledge, Relay VM is the first attempt to
+  systematically handle dynamic models from a compiler perspective.
 
-In summary, the Relay VM is build around three core design contributions:
+In summary, the Relay VM is built around three core design contributions:
 \begin{itemize}
-  \item IR extensions for dynamical shaped tensors
-  \item Optimization for internalizing Tensor memory management
-  \item Designs and implements tensor based abstract machine with a platform-independent instruction set to efficiently and flexibly execute dynamic models across platforms.
+  \item Leverage Relay IR extensions for dynamically shaped tensors
+  \item Dynamic Memory, Device Placement, and Code Generation optimizations
+  \item A tensor based abstract machine, and virtual machine implementation which
+        supports platform-independent dynamic execution.
 \end{itemize}
 
 \subsection{A Tensor Virtual Machine}
 
-
-The VM can be seen as the realization of a tensor abstraction machine, which corresponds to high-level tensor operations such as allocating a tensor, invoking an operation like conv2d, or performing a device copy.
-An alternative solution to the VM could be ahead of time compilation from our abstract machine into machine code.
-But due to the granularity of the operations, dispatch time makes up a very small portion of the execution time.
-More importantly, the VM provides flexibility traditionally attributed to virtual machines and a clear compiler/runtime split.
-We see the potential of VM to be integrated as a runtime module into a larger system.
-For example, VM can provide resource isolation where multiple inference instances share the same hardware in the cloud.
-Furthermore, a Quality of Service (QoS)-aware system, e.g., \citep{kang2018hotmobile, Yachir2009rsj}, could leverage VM to pause the
-current model execution for a higher priority or time-critical model. Last, because of the simplicity of the VM design, one can verify the implementation of VM for security and privacy purposes.
-
-Our VM is designed to execute the dynamic models by removing the limitations of the existing runtimes which only support statically shaped programs.
-
-The first iteration of Relay defined an IR with formal semantics
-  but did not provide a state-of-the-art execution mechanism (see above more discussion on this point).
-For completely static models we relied on the graph runtime,
-  but did not provide an efficient solution for executing
-  programs beyond the reference interpreter.
+TVM although named Tensor Virtual Machine, follows in the lineage of LLVM
+  where its name is technically inaccurate.
 
 Conventional deep learning runtimes, those which apply interpretation of the
   computation graph by walking each node in topological order, are non-optimal
@@ -222,25 +200,33 @@ Conventional deep learning runtimes, those which apply interpretation of the
 These interpreters are reminiscent of the earliest
   languages interpreters where the input language is directly
   processed to execute the program.
-
-By introducing models which make use of new features such
-  as control flow, recursion, dynamic shapes, and dynamic allocation,
+Due to the introduction of Relay programs containing
+  control flow, recursion, dynamic shapes, and dynamic allocation,
   we must change how execution works.
-There are further challenges in compiling dynamic code, such as dynamic scheduling and allocation,
-  fully dynamic tensor shapes, and control flow.
-The interpreter offers simple solutions for these, but none is sufficiently compelling or optimized.
+The interpreter offers simple solutions for these,
+  but none is sufficiently compelling or optimized.
 The simplicity of the graph runtime provides attractive
   properties such as simple serialization, straightforward
   optimal memory layout, and ease of deployment.
 
-To address these challenges we designed a new Relay
-  virtual machine.
-The Relay virtual machine balances the competing approaches to execution,
-  providing a dynamic execution environment which can be extended, instrumented,
-  and integrated with other approaches
-  like ahead-of-time compilation via flexible extension mechanisms.
-The virtual machine strikes balance between performance and flexibility
-  when deploying and executing Relay programs, without giving up the benefits of TVM.
+In fact this is the first abstract or virtual machine introduced to the
+  TVM compiler stack.
+The Relay VM is a realization a tensor abstraction machine,
+  where each operation corresponds to high-level tensor operations such
+  as allocating a tensor, invoking an operation like conv2d, or performing a device copy.
+An alternative solution to the VM could be ahead of time
+  compilation from our abstract machine into machine code.
+But due to the granularity of the operations, dispatch time makes
+  up a very small portion of the execution time.
+More importantly, the VM provides flexibility traditionally attributed
+  to virtual machines and a clear compiler/runtime split.
+We see the potential of VM to be integrated as a runtime module into a larger system.
+For example, VM can provide resource isolation where multiple inference
+  instances share the same hardware in the cloud.
+Furthermore, a Quality of Service (QoS)-aware system, e.g., \citep{kang2018hotmobile, Yachir2009rsj},
+  could leverage VM to pause the current model execution for a higher priority or time-critical model.
+Last, because of the simplicity of the VM design, one can verify the implementation of VM for security and privacy purposes.
+
 
 Virtual machine (VM) design is a well-studied area in programming languages and systems,
   and there have been various virtual machine designs for both full-fledged and embedded programing languages.
