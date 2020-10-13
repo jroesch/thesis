@@ -4,9 +4,9 @@
 Traditionally machine learning algorithms were carefully engineered by humans
   in order to leverage limited data to obtain sufficient task performance.
 During the Big Data era, these hand engineered algorithms were displaced by
-  simpler algorithms applied to the abundantly available data
+  simpler algorithms applied to the abundantly available data\citep{unreasonable}
   \footnote{"We don’t have better algorithms. We just have more data.” From "The Unreasonable Effectiveness of Data"}.
-  % https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/35179.pdf
+
 In order to scale these algorithms a number of systems were
   designed most notably streaming and graph processing systems such as MapReduce, and Spark.
 In the early 2010s the emergence of deep learning changed the paradigm again
@@ -25,7 +25,7 @@ These monolithic systems can execute a subset of deep learning models
 These rigid systems provide good baseline performance, but often fail
   when straying from well-used models, or limited deployment strategies.
 In particular TensorFlow's design was optimized for the distributed case
-  but provides a sub-optimal experience on a single node.
+  but provides a sub-optimal experience on a single node.~\footnote{In fact, for a while Google engineers would jokingly refer to TensorFlow as TensorSlow.}
 
 Scaling frameworks to span the scope of all models and targets is a human endeavor
   requiring deep expertise often not found in conjunction with the skills of a
@@ -43,7 +43,7 @@ Designing a deep learning compiler even for this constrained subset is challengi
 For example,
   a popular state-of-the-art DL compiler,
   Google's XLA, can famously slow down a programs on
-  CPU instead of speeding them up (cite needed).
+  CPU instead of speeding them up.
 Compilers for deep learning are a rapidly evolving area explored by a
   variety of solutions both industrial and academic.
 Part of my thesis work in graduate school
@@ -51,8 +51,8 @@ Part of my thesis work in graduate school
   production quality deep learning compilers.
 Much of this work now exists in Apache TVM, a deep learning compiler framework.
 
-In particular I have spent the last several years focused on the
-  representation,
+In particular I have spent the last several years focused on an under served problem:
+  the representation,
   optimization,
   differentiation,
   and execution of dynamic neural networks.
@@ -62,25 +62,21 @@ In this thesis I propose that we can generalize overspecialized
   to fully dynamic neural networks.
 These generalizations are powered by a simple insight:
   dynamic neural networks are just programs which manipulate tensors.
-The challenge is how to build a representation that captures this generality
+The challenge is constructing a representation that captures this generality
   in a principled manner, enabling state-of-the-art performance without limiting the programming model.
-% When I began working on deep learning compilers, input models were high-level
-%   declarative programs composed of linear algebra and statistics primitives.
-% These straight forward representations often appeared in the form of
-%   a directed acyclic dataflow graph.
-
 We realize a unified interface in the form of Relay a set of systems and APIs designed
   to compose together techniques across the stack to achieve state of the art performance.
 
-Instead of building a single IR and compiler to rule them all we carefully split
-  the program optimization problem into a series of phases each focused on a specific
-  optimization task.
+Instead of building a single IR and compiler to rule them all\footenote{and in the darkness bind them}
+  we carefully split the program optimization problem into a series of
+  phases each focused on a specific optimization task.
 By doing this we are able to balance the tension between expressivity, composition
   and performance portability.
-Relay is a part of the TVM open source project, and catalystized a major redesign of
+Relay is a part of the TVM open source project, and has catalyzed a major redesign of
   TVM, in order to embrace and extend the ideas of this thesis.
 Relay is deployed in production at multiple large companies including
-  OctoML, Amazon, Facebook, and Microsoft.
+  Amazon, Facebook, and Microsoft and is a critical piece of our technology stack
+  at OctoML a company founded around the TVM project.
 One notable impact is its use in
   optimizing Alexa’s wake word model, executed each time a user interacts with
   Alexa.
@@ -129,8 +125,7 @@ Unfortunately, frameworks only provide support for a small number
 Each combination of operator, datatype, bit-width, and
   platform requires unique operator implementations.
 Optimizations like operator fusion exacerbate this combinatorial explosion,
-  further increasing
-  the number of unique implementations required.
+  further increasing the number of unique implementations required.
 Furthermore, if a framework doesn't have specific support for
   the target phone model she cannot take advantage of specialized deep learning
   instructions or coprocessors~\citep{apple_neural_engine}.
@@ -140,13 +135,20 @@ The state of the art when I began my thesis work were
 Each technology stack had deep learning frameworks at the top,
   layered all the way down to the high-performance,
   device specific kernel libraries provided by hardware manufacturers.
+As deep learning frameworks began to adopt compilation
+  the resulting compiler designs were heavily constraint by the
+  design of layered abstractions and existing programming model.
+A good analog is the traditional and popular monolithic kernel design
+  in operating systems which provides rigid abstractions over
+  hardware devices.
+Just as modern operating systems are embracing new abstractions
+  such as kernel bypass in order to enable more flexible and
+  performant approaches, deep learning compilers needed more
+  flexible designs.
 
-As deep learning frameworks began to adopt compilers
-  the resulting designs were heavily constraint by the layered abstractions
-  and existing programming model.
-An example constraining abstraction is the reliance on individual
-  kernels which can be invoked at the bottom most layer.
-By allowing the lowest level of abstraction to only receive a single
+An example of a constraining abstraction is the reliance
+  device specific kernels libraries as the bottom most layer.
+By allowing the lowest level of abstraction to only view a single
   kernel invocation you limit the ability to optimize as the final
   program must map directly to existing kernels which when possible
   may be sub-optimal.
@@ -175,6 +177,9 @@ When I began this work if a user wanted to write a complex program involving dyn
   dynamic control, and complex data structures which is jointly optimized there are few
   solutions which solve the above use case.
 
+Our hypothesis for building Relay is that in order to provide good general
+  purpose performance while also supporting new emerging model features
+  we would require a brand new design for the compiler.
 For example users would often write a brand new kernel to back operations such
   as an LSTM.
 As we will see in Chapter~\ref{ch:execute} it is possible to write an LSTM in pure Relay
@@ -183,68 +188,33 @@ Many engineers in this domain believe that building state-of-the-art kernels req
   human effort to obtain bleeding-edge performance, the rest of this thesis demonstrates
   this is not the case.
 
-% Compiler design using the first strategy are limited by each layer only having an opaque
-%   view of the layers above and below, each layer uses a single semantics with well-defined
-%    mappings between layers but limited communication between,
-%  or in the case of a single monolithic IR, which chooses a functional semantics the inability to use semantics which provide
-%  hardware specificity or hardware aware semantics.
-
-% Imagine a not-so-hypothetical end-user’s desire to support a new Transformer
-%   based model on a previously unsupported device such as a microcontroller.
-% In order to obtain best in class performance this task will be split across an engineering team.
-% For example one user with the correct expertise may contribute code for importing this model into,
-%   another with kernel expertise separately implements a kernel such as batched matrix multiplication
-%   and then optimizes it, and another user contributes the code generation, and another the runtime support.
-
-% To accomplish this task in today’s ML frameworks a user must first design and train a model
-%   which accomplishes the task, k
-% now how to use framework tools such as XLA, or TorchScript, be able to modify their complex source bases, and write a complex code generator
-% or LLVM backend and finally modify the runtime to execute on the device, if even possible.
-
 \section{Dynamic Neural Networks}
 
 In particular previous solutions have limited potential optimizations
   and transformations in the presence of dynamic features.
 In particular these existing systems all employed ways to remove
   dynamism from the program *before* compilation.
-To the end user it seems that they are able to write any dynamic
-  program they limitations can mostly be ignored by appear in
-  the form of strange inconsistencies, limitations, or lost performance.
+The end user perceives frameworks as being able to
+  fully execute dynamic programs as framework limitations can mostly be ignored by end
+  users.
+Unfortunately the lack of deep support for dynamic neural networks,
+  as with many things, the devil is in the details, which this lack
+  of support manifesting as strange inconsistencies, limitations, or lost performance.
 
-In this thesis we explore new designs for representing,
-  optimizing, differentiating, and executing dynamic neural networks.
-Existing systems for compiling neural networks do not provide robust
-   solutions that achieve state of the art performance on dynamic models.
-Most solutions for dynamic models either
-  a) use non-shape specialized kernels b) trace based JIT compilation.
-
-Relay addresses the challenges laid out in the previous section by using
-  a whole program representation which composes multiple distinct IR dialects,
-  notably an ML-style high-level dialect,
-  and the use of TVM’s compute language as a low-level dialect,
-  in conjunction with carefully designed runtime and system APIs.
-
+In this thesis we explore the four key aspects of compiling dynamic
+  neural networks their representation, optimization, differentiation,
+  and execution.
 The hypothetical story of the user needing to extend the entire stack is derived
   from a true sequence of events that occurred in the development of Relay.
-A process like this requires diverse expertise that is often non-compositional. It is nearly impossible to find a single individual who has the ability
+A process like this requires diverse expertise that is often non-compositional.
+It is nearly impossible to find a single individual who has the ability
   to do all these tasks at a state-of-the-art level.
-One user introduced framework support, another added a kernel, another optimized it, and another added compiler and runtime support for a new target.
-
-We were able to do this in a way where each user was able to make these changes independently and then compose them.
-
-Relay is able to provide this by introducing a set of key interfaces, a high-level extensible IR which can be used to encode various IR dialects,
-  for example we can leverage Relay’s type system to provide the illusion of functional operators until a later dialect in which we change
-  to a destination passing stye.
-
-Although this work began in 2017, the introduction of MLIR project (2018), a framework for composing layered dialects with different semantics,
-is one validation point of Relay’s design.
-
-If we attempt to use existing end-to-end tools such as Lift, they provide a single functional unified-semantics.
-
-By embracing a split semantics, with the ability to introduce new dialects we provide different views of the program at different points in order to solve each optimization task independently.
-
-This work is focused on helping a user wishing to utilize machine learning specify and optimize
-  the neural networks they wish too with minimal fuss and maximal performance.
+One user introduced framework support, another added a kernel, another optimized it,
+  and another added compiler and runtime support for a new target.
+We were able to do this in a way where each user was able to make these
+  changes independently and then compose them.
+We further extend this compositional framework for compilation to handle dynamism
+  and are able to show state-of-the-art performance across a variety of devices.
 
 \section{Thesis Organization}
 
@@ -257,31 +227,6 @@ We then discuss how to optimize the compiler in \ref{ch:optimizations} and \ref{
 We then discuss how to lower, execute, and compile these programs in
 \ref{ch:compiler}, \ref{ch:dynamic}.
 Finally we look to \ref{ch:future} to discuss future work and extensions to this work.
-
-% % MOVE ME
-% As deep learning-based applications have become ubiquitous,
-%   so have systems for optimizing, executing, and deploying such applications.
-% A number of systems research projects focus on enhancing the performance of a
-%   subset of pre-trained models produced by deep learning (DL)
-%   researchers~\citep{Dahl2011taslp, han2016isca, NIPS2016johnson, liu2019optimizing}.
-% Specifically, these models are represented as static data flow graphs where the sizes
-%   of each input and output (i.e. tensors or $n$-dimensional arrays) are known a priori,
-%   ensuring the execution path remains unchanged on every invocation.
-% We refer to models with this static nature as \emph{static models}.
-%   Continued advances in neural networks, especially those in natural language processing, have introduced new dynamism in models, such as control flow
-%   \citep{lstm, language_model}, dynamic data structures \citep{tree_lstm, graph_lstm}, and dynamic shapes \citep{devlin2018bert}.
-% We refer to models exhibiting these behaviors as {\em dynamic models}.
-
-
-% An alternative approach which has generated significant interest
-%   in both academia and industry is the end-to-end optimization of
-%   neural networks using deep learning compilers,
-%   such as XLA \citep{xla}, Glow \citep{glow}, TVM \citep{tvm_osdi18}, and MLIR \citep{lattner2020mlir}.
-% Deep learning compilers differ from traditional deep learning frameworks
-%   by separating execution into a compilation, and a runtime phase.
-% The compilation phase enables whole-model optimization at the graph level,
-%   and workload specific kernel code-generation for multiple hardware platforms,
-%   while the runtime phase executes the compiled module.
 
 % Bibliography
 
