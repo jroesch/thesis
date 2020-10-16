@@ -195,7 +195,7 @@ TVM although named Tensor Virtual Machine, follows in the lineage of LLVM
   where its name is technically inaccurate.
 In fact this is the first abstract or virtual machine introduced to the
   TVM compiler stack.
-The Relay VM is a realization a tensor abstraction machine,
+The Relay VM is a realization a tensor abstract machine,
   where each operation corresponds to high-level tensor operations such
   as allocating a tensor, invoking an operation like conv2d, or performing a device copy.
 Conventional deep learning runtimes, those which apply interpretation of the
@@ -227,8 +227,8 @@ The key advantage of VMs is the flexibility provided
 For example dynamic scheduling or customized observability
   is much easier in the virtual machine setting vs. ahead of time compilation.
 
-The Relay VM's design differs from traditional language VMs though.
-Previous language VM designs have been heavily
+The Relay VM's design differs from traditional language VMs.
+Traditional language VM designs have been heavily
   tailored to the execution profile of traditional programs.
 Traditional programs manipulate small scalar values
   and consist of a large number of low-level instructions.
@@ -242,40 +242,6 @@ Due to the execution profile exhibited by ML programs,
   micro-optimizations present in scalar VMs are dramatically less important,
   and thus the removal of dispatch overhead from ahead of time compilation
   is also less important.
-
-% In Relay, we compile a dynamic model into a {\em VM executable} which contains
-%   platform-independent bytecode and platform-dependent kernel code, which can be later loaded and executed.
-% The bytecode consists of a series of instructions that predicate the order of kernel invocation and control flow execution logic.
-% This design compliments conventional runtime's capability for executing highly optimized kernels but not directly handling orchestration between kernels.
-% Relay's instruction set is designed as an abstract machine for executing tensor valued
-% computations. We can realize this abstract machine by either interpreting it or generating
-% machine code. This is a tried and true approach utilized by existing languages and languages
-% runtime such as Java, or C\#.
-
-% By lowering the full language to an abstract machine we can reduce it to its core operations,
-% resulting in a small set of operations we can implement. Our implementation uses a virtual
-% machine design over an ahead of time compiler. In traditional virtual machines the key
-% reason to perform ahead of time compilation is to reduce dispatch time, and specialize
-% away dynamic features such as virtual dispatch.
-
-% Due to the design of the Relay instruction set, instruction dispatch is a very minimal
-% part of the total runtime, the runtime is defined by kernel execution time.
-% A virtual machine allows easier experimentation and modification at the cost of dynamically
-% dispatching instructions, though nothing in our design prevents ahead of time compilation
-% of the instruction set, but it provides little value for this reason.
-
-% For example if we need to produce ahead of time
-% compiled code, we either must generate calls into a runtime system (which is dynamic),
-% only removing instruction dispatch, or statically schedule limiting flexibility and
-% extensibility.
-
-% Furthermore our use of TVM means all kernels are ahead of time compiled meaning the
-% code which dominates execution time, remember most kernels are quadratic or cubic in
-% complexity, have efficient implementations.
-
-% Our extensions for dynamically sized kernels also utilize TVM code generation, enabling
-% ahead compilation of kernels which perform a form of polymorphic inline caching for shapes,
-% playing a similar role to what an ahead of time compiler does in traditional JITs.
 
 \subsection{VM Compiler}
 
@@ -338,15 +304,22 @@ We provide the abstraction of an infinite set of virtual registers as it signifi
 
 Instructions are represented using a traditional tagged union containing the op-code and the data payload.
 This representation enables both efficient serialization and instruction decoding and dispatch.
-Relay uses variable-length instruction format due to the inclusion of variable sized operands such as data shapes in the instructions.
-This design has the following benefits. First, both CISC instructions and variable length encoding contribute to better code density.
+Relay uses variable-length instruction format due to the inclusion of variable sized operands such
+  as data shapes in the instructions.
+This design has the following benefits.
+First, both CISC instructions and variable length encoding contribute to better code density.
 This is a significant advantage for edge devices that only have limited resources.
-Second, allowing multiple addressing modes to execute a single instruction can reduce the amount of data fetched from cache hierarchy and main memory.
-It may also lead to better spatial locality as the data (e.g. the tensor value) may remain in the cache.
-Third, a variable-length instruction encoding paves the way for extending extra information to instructions, e.g. debugging and even branch prediction.
-Last but not least, the instruction designed in Relay effectively separates hardware-dependent kernels from model control logic.
-
-The Relay bytecode is hardware-independent which eases bytecode serialization, and can be paired with hardware-dependent kernels being invoked by the \texttt{InvokePacked} instruction.
+Second, allowing multiple addressing modes to execute a single instruction can reduce the amount
+  of data fetched from cache hierarchy and main memory.
+It may also lead to better spatial locality as
+  the data (e.g. the tensor value) may remain in the cache.
+Third, a variable-length instruction encoding paves the way
+  for extending extra information to instructions,
+  e.g. debugging and even branch prediction.
+Last but not least, the instruction designed in Relay effectively separates
+  hardware-dependent kernels from model control logic.
+The Relay bytecode is hardware-independent which eases bytecode serialization,
+  and can be paired with hardware-dependent kernels being invoked by the \texttt{InvokePacked} instruction.
 
 \subsection{VM Interpreter}
 
@@ -362,53 +335,90 @@ The VM compiler generates a VM executable,
 We can load a VM interpreter (which interprets the bytecode, not the program) from the executable.
 A VM interpreter can then be used to invoke any compiled VM
   functions directly.
-When a VM function is invoked, execution begins, and enters the dispatch loop.
-The dispatch loop checks the op-code and executes the appropriate logic, then repeats.
+When a VM function is invoked,
+  execution begins, and enters the dispatch loop.
+The dispatch loop checks the op-code and executes
+  the appropriate logic, then repeats.
 As our instructions are coarse-grained (i.e. they can be viewed as super-instructions),
-the number of branches generated by the dispatch-loop is lower than traditional programming language VMs,
-adding negligible overhead compared to ahead of time compilation.
+  the number of branches generated by the dispatch-loop is lower than traditional programming language VMs,
+  adding negligible overhead compared to ahead of time compilation.
 
-VM uses a tagged object representation reminiscent of those used by programming languages such as Haskell, and OCaml.
-The tagged object representation smoothly integrates with various data structures, including tensors,
-algebraic data types, and closures. Due to the specialized object representation,
-VM instructions only need to interact with the coarse-grained data (i.e. tensors) requiring infrequent memory allocation in chunks.
+VM uses a tagged object representation reminiscent of those
+  used by programming languages such as Haskell, and OCaml.
+The tagged object representation smoothly integrates
+  with various data structures, including tensors,
+  algebraic data types, and closures.
+Due to the specialized object representation,
+  VM instructions only need to interact with the
+  coarse-grained data (i.e. tensors)
+  requiring infrequent memory allocation in chunks.
 
 In sum, the interpreter handles instructions in the following categories.
 
 \begin{itemize}
-    \item Register-to-Register Operations. Register-to-Register operations, e.g. \texttt{Move}, transfers data between different offset of the register file. Objects are reference counted, make use of copy-on-write and passed by reference ensuring register operations are cheap even if the size of underlying container is large.
-    \item Memory Operations. Memory operations can allocate space for tensors, load constant tensors, and so on. Due the design of our constant pool, weights (which are constant during inference) can remain in-memory with no specialized support they can be referenced by the\texttt{LoadConst} instruction.
-    \item Call Operations. Call operations are the most frequently executed instructions. The ISA
-    has specialized call instructions for invoking a global function, a kernel primitive, closure, copying data across devices, reshaping runtime tensors, and calculating the shape of tensors. Kernel primitives are ahead-of-time compiled through and can leverage both compiler-generated kernels and the third-party libraries.
-    \item Control Flow Operations. Unconditional jump instructions, e.g. \texttt{ret}, are used by both static and dynamic models to jump to a specific program point. Only dynamic models need conditional control operations to determine the direction of branching. The interpreter updates the PC using the offset from either the true branch or false branch based on the conditional value.
+    \item Register-to-Register Operations. Register-to-Register operations, e.g. \texttt{Move}, i
+          transfers data between different offset of the register file.
+          Objects are reference counted, make use of copy-on-write and passed by reference ensuring register
+          operations are cheap even if the size of underlying container is large.
+    \item Memory Operations. Memory operations can allocate space for tensors, load constant tensors, and so on.
+          Due the design of our constant pool, weights (which are constant during inference) can remain in-memory
+          with no specialized support they can be referenced by the\texttt{LoadConst} instruction.
+    \item Call Operations. Call operations are the most frequently executed instructions.
+          The ISA has specialized call instructions for invoking a global function, a kernel
+          primitive, closure, copying data across devices, reshaping runtime tensors,
+          and calculating the shape of tensors.
+          Kernel primitives are ahead-of-time compiled through and can leverage both compiler-generated
+          kernels and the third-party libraries.
+    \item Control Flow Operations.
+          Unconditional jump instructions, e.g. \texttt{ret}, are used by both static and dynamic models
+          to jump to a specific program point.
+          Only dynamic models need conditional control operations to determine the direction of branching.
+          The interpreter updates the PC using the offset from either the true branch or false branch based
+          on the conditional value.
 \end{itemize}
 
 \subsection{Shape Function}
 \label{sec:compilation:shape-func}
 
-%Existing deep learning compilers only deal with static shapes, enabling all shape computation to occur at compile-time.
-%Therefore, it is easy to allocate memory for the tensors using static shape information to compute the precise amount of storage needed for each tensor.
-%However, introducing Any~invalidates this pre-allocation mechanism as the tensors may now contain dynamic dimensions.
-The introduction of Any~dimension invalidates the pre-allocation mechanism adopted in the existing deep learning compiler.
-Instead, we now have to track the amount of memory required to be allocated in parallel to computing.
-Furthermore, static type checking cannot eliminate all type errors at compile-time due to dynamic tensor shapes.
-Consequently, we define a {\em shape function} to compute the output shape for storage allocation and verify the type relation in accord with the semantics of every operator.
-The shape function is similar in structure to the type relations described in \autoref{sec:compliation:typing} but are present at runtime instead of compile-time.
+The introduction of Any~dimension invalidates the pre-allocation mechanism
+  adopted in the existing deep learning compiler.
+Instead, we now have to track the amount of memory
+  required to be allocated in parallel to computing.
+Furthermore, static type checking cannot eliminate all
+  type errors at compile-time due to dynamic tensor shapes.
+Consequently, we define a {\em shape function} to compute
+  the output shape for storage allocation and
+  verify the type relation in accord with the semantics of every operator.
+The shape function is similar in structure to the type relations
+  described in \autoref{sec:type_system} but are present at runtime instead of compile-time.
 It enables compiling and embedding the computation of output shapes into the program.
 
-According to the characteristics of the operator, we divide the shape functions in three different modes: data independent, data dependent, and upper bound.
-{\em Data independent} shape functions are used for operators in which the output shape only depends on the shapes of inputs such as normal 2-D convolution.
-{\em Data dependent} shape functions require the concrete input values to compute the output shapes. For example, the output shape of \texttt{arange} depends on the value of start, stop, and step.
-In addition, there are certain operators such as Non Maximum Suppression (\texttt{nms}) where the complexity of computing the output shapes is on par with the complexity of executing the operator itself.
-In order to avoid the redundant computation, we use an {\em upper bound} shape function to quickly estimate an upper bound shape for the output.
+According to the characteristics of the operator, we divide the shape functions in three
+  different modes: data independent, data dependent, and upper bound.
+{\em Data independent} shape functions are used for operators in which the output shape
+  only depends on the shapes of inputs such as normal 2-D convolution.
+{\em Data dependent} shape functions require the concrete input values to compute
+  the output shapes. For example, the output shape of \texttt{arange} depends on the value of start, stop, and step.
+In addition, there are certain operators such as Non Maximum Suppression (\texttt{nms})
+  where the complexity of computing the output shapes is on par with the complexity of executing the operator itself.
+In order to avoid the redundant computation, we use an {\em upper bound} shape function to
+  quickly estimate an upper bound shape for the output.
 We also require such operators to return the output shape along with output value, so as to use the real shape to slice the output tensors into precise output shape and layout.
 %\yida{use a diagram to summarize three modes and remove the text}
 
-It is worth noting that in the presence of dynamic shape functions, operator fusion needs to be specially taken care of.
-Operator fusion, which combines {\em basic operators} into a {\em composite operator}, is a critical technique for performance optimization as it reduces unnecessary memory copies and improves the cache locality.
-%However, we only define the shape function at elementary operator level. As a result, we also must fuse shape functions in parallel with the operator fusion.
-The compiler can easily connect the shape functions of basic operators to form the shape function for a composite operator when all shape functions are data independent.
-However, a basic operator with a data dependent or upper bound shape function cannot be fused to other operators, i.e., taking the outputs of other operators as its inputs to fuse together, as the shape function requires to access to the intermediate result within a composite operator.
+It is worth noting that in the presence of dynamic shape functions, operator fusion
+  needs to be specially taken care of.
+Operator fusion, which combines {\em basic operators} into a {\em composite operator},
+  is a critical technique for performance optimization as it reduces unnecessary memory copies
+  and improves the cache locality.
+However, we only define the shape function at elementary operator level.
+As a result, we also must fuse shape functions in parallel with the operator fusion.
+The compiler can easily connect the shape functions of basic operators to form the shape
+  function for a composite operator when all shape functions are data independent.
+However, a basic operator with a data dependent or upper bound shape function
+  cannot be fused to other operators,
+  i.e., taking the outputs of other operators as its inputs to fuse together,
+  as the shape function requires to access to the intermediate result within a composite operator.
 As a result, we explicitly define the fusion policy to prevent this from happening.
 %If all basic ops in a composite op have data independent shape functions, it is straightforward to generate shape function for this composite op as we can just connect the shape functions of basic ops together. However, a composite op is invalid if a basic op that has a data dependent or upper bound shape function takes the intermediate output of another basic op as input.
 %Because the intermediate result in a composite op is inaccessible from outside, the data dependent shape function cannot collect all arguments it required. Thus, we revise the operator fusion policy correspondingly to make sure composite ops generated by the operator fusion pass will be valid.
@@ -443,6 +453,7 @@ Bring Your Own Code Generation (BYOC) is a mechanism introduced
   accelerators which operate outside of the traditional TVM
   programming model.
 
+TODO
 
 \subsection{VTA}
 
