@@ -65,18 +65,55 @@ Compilers for deep learning~\citep{xla,jax,glow,tvm_osdi18,myia,fluxjl,lattner20
 
 A particular way in which deep learning frameworks have been narrowly focused
   is on the handling of static, feed-forward neural networks.
+  Specifically, these models represented as static data flow graphs where the
+  sizes of each input and output (i.e. tensors or $n$-dimensional arrays) are known a priori,
+  ensuring the execution path remains unchanged on every invocation.
+  We refer to models with this static nature as \emph{static models}.
+  Continued advances in neural networks, especially those in natural language processing,
+  have introduced new dynamism in models, such as control flow \citep{lstm, language_model},
+  dynamic data structures \citep{tree_lstm, graph_lstm}, and dynamic shapes \citep{devlin2018bert}.
+  We refer to models exhibiting these behaviors as {\em dynamic models}.
 At the time of their design the deep learning revolution was occurring mostly
   in computer vision but had not fully taken over areas such as natural language processing (NLP).
-Frameworks have enough general mechanisms that writing these models was mostly possibly
+Frameworks have enough general mechanisms that writing dynamic = models was mostly possibly
   a few years after their introduction.
 Unfortunately the design of frameworks have severely limited the performance
   of programs that fall outside of the well-optimized footprint.
+
 Furthermore the first-generation of compilers have been overfit
   for static compilation, they assume static control-flow, static tensor
   dimensions and no complex data structures.
+This poses new challenges for deep learning practitioners, as dynamic models introduce
+  input-dependent graph topology, breaking existing system and invalidating optimizations
+  designed for purely static data flow graphs.
+However, no existing solutions fulfill these requirements.
 
-This lack of support has manifested as a serious of ad-hoc extensions to
-  both frameworks, deep learning runtimes, and
+This lack of support has manifested as series of ad-hoc extensions to
+  both frameworks, deep learning runtimes, and compilers.
+Many existing approaches to dynamic model optimization apply or
+  extend existing deep learning frameworks~\citep{xu2018cavs, gao2018low, yu2018dynamic, jeong2018improving, jeong2019janus, dynet, tf_fold}.
+In order to realize these features frameworks are often monolithic, large, and non-portable.
+Existing work which builds on frameworks extends the programming model either via
+  sophisticated additions~\citep{yu2018dynamic} or significant runtime overhead~\citep{tf_fold, jeong2019janus}.
+Other work~\citep{xu2018cavs, gao2018low, tf_fold} which is focused on optimizing specific types
+  of models is often hard to generalize to new models, or generalize over all models.
+Moreover, approaches which inherit from frameworks rely on third-party kernel libraries
+  such as OpenBLAS~\citep{xianyi2014openblas}, cuDNN~\citep{cudnn}, and MKL-DNN~\citep{mkldnn} to achieve competitive performance.
+ These libraries expose a fixed set of operators for the corresponding hardware,
+  compromising the portability of dynamic models which require a large number of operators with varying data types and shapes.
+Designing a new interface independent of existing frameworks provides a clean programming model
+  but often at the cost of performance, due to dynamic interpretation of the model~\citep{dynet}.
+
+Deep learning compilers differ from traditional deep learning frameworks by separating execution into a compilation,
+  and runtime phase.
+The compilation phase enables whole-model optimization at the graph level,
+  and workload specific kernel code-generation for multiple hardware platforms.
+
+However, deep learning compilers have been primarily restricted to static models due to lack of support for dynamism.
+Specifically, in order to compile and execute the dynamic models, a system requires an intermediate representation (IR) which can statically represent dynamic constructs, a code generator
+which can generate kernels for dynamically varying data shapes, and a runtime to handle the dynamic execution and kernel dispatch accordingly.
+In addition, dynamic-specific optimizations, such as dynamic memory planning, the process of statically optimizing dynamic allocations, are necessary to achieve desirable performance.
+None of these features exist in the current deep learning compilers.
 
 In particular I have spent the last several years focused on an under served problem:
   the representation,
