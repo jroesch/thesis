@@ -1,54 +1,67 @@
 \chapter{Introduction}
 \label{ch:intro}
 
-Traditionally machine learning algorithms were carefully engineered by humans
+Traditionally, machine learning algorithms were carefully engineered by humans
   in order to leverage limited data to obtain sufficient task performance.
 During the Big Data era, these hand engineered algorithms were displaced by
   simpler algorithms applied to the abundantly available data~\citep{unreasonable}\footnote{"We don’t have better algorithms. We just have more data.” From "The Unreasonable Effectiveness of Data"}.
-
-In order to scale these algorithms a number of systems were
-  designed most notably streaming and graph processing systems such as MapReduce, and Spark.
+In order to scale these algorithms a number of frameworks were
+  developed, most notably streaming and graph processing systems such as MapReduce and Spark.
 In the early 2010s the emergence of deep learning changed the paradigm again
-  replacing simple regular computation over streams of data with large batched-models
+  replacing simple regular computation over streams with large batched-models
   composed of compute-hungry tensor computations.
-This trend towards models which are applied to more complex data (i.e., full text documents, images, videos, audio)
-  process a greater quantity of data (millions of data points), and are more computationally and memory expensive
-  to evaluate on a single datum (i.e., terra-flops of compute per sample).
+The paradigm shift towards deep learning has started a trend of deploying models
+  which are applied to more complex data (i.e., full text documents, images, videos, audio)
+  process a greater quantity of data (millions of data points),
+  and are more computationally and memory expensive to evaluate on a single datum (i.e., terra-flops of compute per sample).
 
 This new generation of machine learning applications demanded a corresponding era of
   innovation in systems.
-The first innovation in deep learning systems were so called
-  ‘deep learning frameworks’ such as TensorFlow and PyTorch.
+The first innovation in deep learning systems were
+  ``deep learning frameworks"" such as TensorFlow and PyTorch.
 These monolithic systems can execute a subset of deep learning models
-  efficiently on a subset of the available hardware devices.
-These rigid systems provide good baseline performance, but often fail
-  when straying from well-used models, or limited deployment strategies.
-In particular TensorFlow's design was optimized for the distributed case
-  but provides a sub-optimal experience on a single node.~\footnote{In fact, for a while Google engineers would jokingly refer to TensorFlow as TensorSlow.}
+  efficiently on a subset of the most popular hardware devices.
+These systems provide good baseline performance, but often fail
+  when straying from well-used models, and only support limited deployment strategies.
+In particular TensorFlow's design was optimized for the distributed setting
+  but provides a sub-optimal experience on a single node\footnote{In fact, I have been told by Google engineers they would jokingly refer to TensorFlow as TensorSlow in the early days.}.
 
-Scaling frameworks to span the scope of all models and targets is a human endeavor
+Scaling frameworks to span the scope of all models and targets is a monumental endeavor
   requiring deep expertise often not found in conjunction with the skills of a
   machine learning engineer.
-A single machine learning engineer cannot write code that scales across the growing
-  sea of models, operators, optimizations, and devices while maintaining state-of-the-art
-  performance.
+Even with the aid of a machine learning framework a machine learning engineer
+  cannot write code that scales across the growing sea of
+  models, operators, optimizations, and devices while maintaining state-of-the-art performance.
+Frameworks only support a subset of programs, optimizations, and devices
+  requiring large teams to extend frameworks for even relatively simple deviations
+  from standard models.
+Even when a team is able to get a model running observed performance often
+  is lacking behind the performance of well trod workloads.
+Large companies are able to mitigate this cost with raw capital expenditure
+  but this puts smaller organizations and researchers on an unequal footing.
+In the years after the introduction of frameworks it has become clear
+  that automation is needed to both help smaller groups of engineers
+  more effectively develop and deploy deep learning, and allow larger
+  organizations to work effectively and efficiently.
+
 From the early days of deep learning framework development researchers realized the
   potential for apply compilation to accelerate neural networks.~\footnote{Theano was applying
   compilation to deep learning as early as 2007.}
+Modern frameworks borrowing ideas from the research community and previous
+  experiences applying compilation began to introduce compilers into frameworks.
 
 Deep learning compilers, systems for accelerating the execution deep learning via compilation,
- have made similar tradeoffs as frameworks focusing on executing a subset of models on a subset of devices.
+ have made similar tradeoffs as frameworks by narrowly focusing on executing a subset
+ currently popular of models on a subset of devices.
 Designing a deep learning compiler even for this constrained subset is challenging.
 For example,
   a popular state-of-the-art DL compiler,
-  Google's XLA, can famously slow down a programs on
+  Google's XLA, can famously slow down programs on
   CPU instead of speeding them up.
-Compilers for deep learning are a rapidly evolving area explored by a
-  variety of solutions both industrial and academic.
-Part of my thesis work in graduate school
-  was meaningful contributions to the design of and implementation of
-  production quality deep learning compilers.
-Much of this work now exists in Apache TVM, a deep learning compiler framework.
+Although non-intuitive this is a general challenge of applying compilation,
+  it is not a silver bullet and may not provide uniform speedups across all input programs.
+Compilers for deep learning~\citep{xla,jax,glow,tvm_osdi18,myia,fluxjl,lattner2020mlir} are
+  a rapidly evolving area explored by both industrial and academic researchers.
 
 In particular I have spent the last several years focused on an under served problem:
   the representation,
@@ -65,6 +78,11 @@ The challenge is constructing a representation that captures this generality
   in a principled manner, enabling state-of-the-art performance without limiting the programming model.
 We realize a unified interface in the form of Relay a set of systems and APIs designed
   to compose together techniques across the stack to achieve state of the art performance.
+
+  Part of my thesis work in graduate school
+  was meaningful contributions to the design of and implementation of
+  production quality deep learning compilers.
+Much of this work now exists in Apache TVM, a deep learning compiler framework.
 
 Instead of building a single IR and compiler to rule them all\footnote{and in the darkness bind them}
   we carefully split the program optimization problem into a series of
