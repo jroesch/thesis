@@ -21,9 +21,10 @@ Given that our goal is state-of-the-art performance in competitive
     area, it is critical we get our optimizations right.
 Over the course of my PhD thesis we have designed more than 50 passes
     for Relay, enabling TVM to reach state-of-the-art performance
-    on numerous real world models. TODOHUGGINGFACEETC
+    on numerous real world models~\citep{huggingface_octoml}.
 This chapter focuses on the design and implementation of selected passes.
-The remainder of which exist in Apache TVM's source tree and are open to all to read and inspect.
+The remainder of which exist in Apache TVM's source tree
+  and are open to all to read and inspect.
 
 \section{Operator Fusion}
 \label{sec:fusion}
@@ -272,30 +273,21 @@ The realization pass transforms the simulated quantized graph
   into a real low-precision computation graph.
 The simulated quantized operator is transformed
   into several fine-grained operations like multiplication and addition.
+This transforms the \texttt{sim$Q$} operator into the below quantization operator.
+\[
+  Q\left(x, \rho, \beta, \sigma\right) = \texttt{cast}\left(\texttt{clip}\left(\texttt{round}\left(x / \rho \cdot 2^{\beta-\sigma}\right), \texttt{qtype}\right)\right)
+\]
+Due to Relay's handling of fusion
+  we are able fuse these scaling operations directly into
+  to the original operator, transforming a convolution
+  from \verb|fp32| to a type such as \verb|int4|.
 
-  % Finally, after the algorithm has set the parameters appropriately,
-%   it applies realization,
-%   which transforms the \texttt{sim$Q$} operator into the below
-%   quantization operator.
-% \[
-%   Q\left(x, \rho, \beta, \sigma\right) = \texttt{cast}\left(\texttt{clip}\left(\texttt{round}\left(x / \rho \cdot 2^{\beta-\sigma}\right), \texttt{qtype}\right)\right)
-% \]
-% The produced operator performs the necessary scaling
-%   by realizing the operation as a sequence of finer-grained
-%   operators such as multiplication and rounding.
-% The output of original operator is now immediately scaled
-%   by this new operation.
-% Due to Relay's handling of fusion
-%   we are able fuse these scaling operations directly into
-%   to the original operator, transforming a convolution
-%   from \verb|fp32| to a type such as \verb|int4|.
-
-%To avoid the overflow, it also would be better to use larger global scale.
-%  With flexible configure, our workflow can be customized as best strategy for
-%  different networks and hardwares.
-%Quantized models require low-precision operators for efficiency. Due to our operator representation,
-%and the ability to leverage AutoTVM, TVM's auto tuner, we can automatic generate kernels for arbitrary
-%types without effort.
+To avoid the overflow, it also would be better to use larger global scale.
+ With flexible configure, our workflow can be customized as best strategy for
+ different networks and hardwares.
+Quantized models require low-precision operators for efficiency. Due to our operator representation,
+and the ability to leverage AutoTVM, TVM's auto tuner, we can automatic generate kernels for arbitrary
+types without effort.
 
 \begin{figure}[t]
   \begin{minted}[fontsize=\footnotesize]{python}
@@ -317,7 +309,6 @@ Developers can customize quantization with very little code.
 For example, the quantization annotation function may be overloaded for any operation,
   making use of signed or unsigned integers, or different rounding strategies, such as
   floor, ceiling, or even stochastic rounding (Figure~\ref{fig:annotate_conv}).
-
 
 To demonstrate the effectiveness of our generic quantization,
   we use Relay to explore
@@ -411,112 +402,9 @@ Partial evaluation, when composed with other
 For example, the partial evaluator can be used to perform
   loop unrolling, which then enables further fusion,
   without any additional compiler passes.
-
-Relay's partial evaluator works by defining a interpreter
-  where the value domain is partially static values.
-The partially static domain represents simple values,
-  such as constant tensors, as themselves.
-The representations
-  of aggregate values mirror their structure; for example,
-  tuples become a tuple of partially static values.
-The partially static domain represents dynamic values,
-  which may not be known until execution time,
-  alongside the static values traditionally supported by
-  constant evaluators.
-Our partial evaluator must solve two important problems:
-  managing effectful computations and handling references.
-In order to handle effects, the evaluator keeps the generated
-  program in A-normal form to ensure effects are properly ordered
-  and restrict duplication of effectful computations.
-The partial evaluator supports references by
-  simulating the store at partial evaluation time.
-The explicit store is threaded throughout execution
-  and provides a flow-sensitive PE.
-Finally, the evaluator constructs a new program with
-  the static subcomputations evaluated away.
-The reconstructed program contains all original
-  expressions, as well as evaluated expressions,
-  because interleaving dead-code elimination (DCE) is
-  non-trivial.
-Afterwards, we separately apply DCE.
-The partial evaluator has use cases beyond inference
-  optimizations, separately it enabled the design of an automatic
-  differentiation algorithm that makes use of hard to optimize
-  features such as references of closures, as the partial evaluator
-  can remove unneeded abstraction.
-
-  Existing deep learning IRs have relied on
-  a mixture of staging and constant evaluation
-  in order to optimize user programs.
-Partial evaluation is a generalized form of constant
-  evaluation that can reduce partially constant
-  programs.
-A partial evaluator (PE) allows the use of high-level abstractions
-  without limiting code that \textit{could} in practice be
-  compiled to a particular target.
-Relay is the first compiler to apply partial evaluation
-  techniques to deep learning, the
-  core approach of which is based on \citep{pe_ref}.
-Partial evaluation, when composed with other
-  optimizations like fusion, yields a variety
-  of useful optimizations without requiring
-  a separate implementation of each.
-For example, the partial evaluator can be used to perform
-  loop unrolling, which then enables further fusion,
-  without any additional compiler passes.
-
-Relay's partial evaluator works by defining a interpreter
-  where the value domain is partially static values.
-The partially static domain represents simple values,
-  such as constant tensors, as themselves.
-The representations
-  of aggregate values mirror their structure; for example,
-  tuples become a tuple of partially static values.
-The partially static domain represents dynamic values,
-  which may not be known until execution time,
-  alongside the static values traditionally supported by
-  constant evaluators.
-Our partial evaluator must solve two important problems:
-  managing effectful computations and handling references.
-In order to handle effects, the evaluator keeps the generated
-  program in A-normal form to ensure effects are properly ordered
-  and restrict duplication of effectful computations.
-The partial evaluator supports references by
-  simulating the store at partial evaluation time.
-The explicit store is threaded throughout execution
-  and provides a flow-sensitive PE.
-Finally, the evaluator constructs a new program with
-  the static subcomputations evaluated away.
-% The reconstructed program contains all original
-%   expressions, as well as evaluated expressions,
-%   because interleaving dead-code elimination (DCE) is
-%   non-trivial.
-% Afterwards, we separately apply DCE.
-% The partial evaluator has use cases beyond inference
-%   optimizations, separately it enabled the design of an automatic
-%   differentiation algorithm that makes use of hard to optimize
-%   features such as references of closures, as the partial evaluator
-%   can remove unneeded abstraction.
-
-% Existing deep learning IRs have relied on
-%   a mixture of staging and constant evaluation
-%   in order to optimize user programs.
-% Partial evaluation is a generalized form of constant
-%   evaluation that can reduce partially constant
-%   programs.
-% A partial evaluator (PE) allows the use of high-level abstractions
-%   without limiting code that \textit{could} in practice be
-%   compiled to a particular target.
-% Relay is the first compiler to apply partial evaluation
-%   techniques to deep learning, the
-%   core approach of which is based on \citep{pe_ref}.
-% Partial evaluation, when composed with other
-%   optimizations like fusion, yields a variety
-%   of useful optimizations without requiring
-%   a separate implementation of each.
-% For example, the partial evaluator can be used to perform
-%   loop unrolling, which then enables further fusion,
-%   without any additional compiler passes.
+We describe the implementation and some
+  concrete applications of partial evaluation
+  in Chapter~\ref{ch:ad}.
 
 \section{Dynamic Memory Allocation, Device Placement, and Code Generation}
 

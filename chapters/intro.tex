@@ -163,12 +163,18 @@ Furthermore, if a framework doesn't have specific support for
   instructions or coprocessors~\citep{apple_neural_engine}.
 
 The state of the art when I began my thesis work were
-  deep learning frameworks mostly had a single "lego" style design.
-Each technology stack had deep learning frameworks at the top,
+  deep learning frameworks that mostly had a single "lego" style design.
+I refer to the ``a lego design'' in deep learning frameworks
+  as the developing layers which clear boundaries which
+  allow mixing and match layers of the stack from different vendors.
+For example deep learning frameworks at the top,
   layered all the way down to the high-performance,
   device specific kernel libraries provided by hardware manufacturers.
+When I began work on TVM this looked like MxNet as the framework,
+  NNVM as the graph compiler, and the use of TVM or CuDNN as the
+  kernel library.
 As deep learning frameworks began to adopt compilation
-  the resulting compiler designs were heavily constraint by the
+  the resulting compiler designs were heavily constrained by the
   design of layered abstractions and existing programming model.
 A good analog is the traditional and popular monolithic kernel design
   in operating systems which provides rigid abstractions over
