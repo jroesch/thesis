@@ -63,12 +63,27 @@ Although non-intuitive this is a general challenge of applying compilation,
 Compilers for deep learning~\citep{xla,jax,glow,tvm_osdi18,myia,fluxjl,lattner2020mlir} are
   a rapidly evolving area explored by both industrial and academic researchers.
 
+A particular way in which deep learning frameworks have been narrowly focused
+  is on the handling of static, feed-forward neural networks.
+At the time of their design the deep learning revolution was occurring mostly
+  in computer vision but had not fully taken over areas such as natural language processing (NLP).
+Frameworks have enough general mechanisms that writing these models was mostly possibly
+  a few years after their introduction.
+Unfortunately the design of frameworks have severely limited the performance
+  of programs that fall outside of the well-optimized footprint.
+Furthermore the first-generation of compilers have been overfit
+  for static compilation, they assume static control-flow, static tensor
+  dimensions and no complex data structures.
+
+This lack of support has manifested as a serious of ad-hoc extensions to
+  both frameworks, deep learning runtimes, and
+
 In particular I have spent the last several years focused on an under served problem:
   the representation,
   optimization,
   differentiation,
-  and execution of dynamic neural networks.
-In this thesis I propose that we can generalize overspecialized
+  and execution of \emph{dynamic neural networks}.
+In this thesis I propose generalizing overspecialized
   compilation techniques applied to static dataflow graphs,
   the predominant programming model of deep learning,
   to fully dynamic neural networks.
@@ -76,26 +91,26 @@ These generalizations are powered by a simple insight:
   dynamic neural networks are just programs which manipulate tensors.
 The challenge is constructing a representation that captures this generality
   in a principled manner, enabling state-of-the-art performance without limiting the programming model.
-We realize a unified interface in the form of Relay a set of systems and APIs designed
-  to compose together techniques across the stack to achieve state of the art performance.
-
-  Part of my thesis work in graduate school
-  was meaningful contributions to the design of and implementation of
-  production quality deep learning compilers.
-Much of this work now exists in Apache TVM, a deep learning compiler framework.
+We realize a unified interface in the form of Relay: a set of systems and APIs designed
+  to compose techniques across the stack to achieve state of the art performance.
 
 Instead of building a single IR and compiler to rule them all\footnote{and in the darkness bind them}
   we carefully split the program optimization problem into a series of
   phases each focused on a specific optimization task.
-By doing this we are able to balance the tension between expressivity, composition
+This approach balances the tension between expressivity, composition
   and performance portability.
-Relay is a part of the TVM open source project, and has catalyzed a major redesign of
-  TVM, in order to embrace and extend the ideas of this thesis.
-Relay is deployed in production at multiple large companies including
-  Amazon, Facebook, and Microsoft and is a critical piece of our technology stack
-  at OctoML a company founded around the TVM project.
-One notable impact is its use in
-  optimizing Alexa’s wake word model, executed each time a user interacts with
+Part of my thesis work in graduate school
+  was meaningful contributions to the general design and implementation of
+  production quality deep learning compilers.
+Much of this work now exists in Apache TVM, a deep learning compiler framework.
+Relay and our work on dynamic neural networks was merged into Apache TVM and
+  has catalyzed a major redesign of TVM, in order to embrace and extend the ideas of this thesis.
+Relay is deployed in production at multiple leading companies including
+  Amazon, Facebook, and Microsoft and is a critical piece of the technology stack
+  at OctoML a company I co-founded around the TVM project.
+One notable impact is its use in Amazon Alexa, Amazon's AI assistant
+  which executes on a variety of devices most notably ``smart speakers''.
+Amazon engineers applied it Alexa’s wake word model, executed each time a user interacts with
   Alexa.
 
 \section{State of the Art}
