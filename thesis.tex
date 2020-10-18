@@ -123,6 +123,16 @@
 \newcommand{\BE}{\textit{Beautiful Evidence}\xspace}
 \newcommand{\TL}{Tufte-\LaTeX\xspace}
 
+% Hack to fix chapter numbering.
+% https://tex.stackexchange.com/questions/522494/all-of-my-figures-equations-are-0-x-how-to-increment-properly-between-chapter
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd{\Hy@org@chapter}% <cmd>
+  {\ifnum}% <search>
+  {\refstepcounter{chapter}\ifnum}% <replace>
+  {}{}% <success><failure>
+\makeatother
+
 %----------------------------------------------------------------------------------------
 %	BOOK META-INFORMATION
 %----------------------------------------------------------------------------------------
@@ -146,6 +156,8 @@
 %----------------------------------------------------------------------------------------
 
 \input{macros}
+
+\setcounter{secnumdepth}{5}
 
 \begin{document}
 
