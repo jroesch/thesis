@@ -556,17 +556,14 @@ Previous work on the \tvm focused on producing efficient operators
   (dense linear algebra kernels), such as generalized matrix multiplication (GEMM) and convolutions.
 In theory Relay could use other high performance DSLs such as Halide~\citep{halide},
     which \tvm derived its IR, and its split computation and schedule model.
-\todo{HALIDE EXPAND HERE}
 Tensor Comprehensions (TC) shares common goals with the \tvm framework, but achieves its goal
 through different techniques, such as polyhedral compilation rather than algorithmic
 schedules. TC could replace \tvm in Relay{}'s compilation.
-\todo{TC EXPAND HERE}
 
 \subsection{Programming Language based Deep Learning}
 
 My work is not the first attempt to apply programming language
     techniques to machine learning or problems such automatic differentiation.
-\todo{LANTERN EXPAND}
 Lantern \citep{lantern} is a deep learning DSL in Scala
     that uses lightweight modular staging (LMS) to lower code into C++.
 LMS takes a graph as input from the user and converts it to an AST

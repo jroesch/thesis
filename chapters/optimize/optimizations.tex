@@ -525,33 +525,77 @@ fn (x: Tensor<?,2>, y: Tensor<1,2>)->Tensor<?,2> {
 }
 \end{minted}
 
-After the transformation you may notice we have introduced calls to \verb|shape_func| which invokes a shape function for a kernel. The shape function requires input shapes as arguments which further require us to invoke \verb|shape_of| for both \verb|%x| and \verb|%y|. \verb|shape_of| will be directly mapped to a VM instruction to retrieve the shape of a tensor at runtime. More description of it will be provided in \autoref{sec:compliation:hetero}.
+After the transformation you may notice we have introduced calls to \verb|shape_func| which
+  invokes a shape function for a kernel.
+The shape function requires input shapes as arguments which further require us to invoke \verb|shape_of|
+  for both \verb|%x| and \verb|%y|.
+\verb|shape_of| will be directly mapped to a VM instruction to retrieve the shape of a tensor at runtime.
+More description of it will be provided in \autoref{sec:compliation:hetero}.
 
 Now that the all allocations are explicit in the IR we can provide analogous optimizations in the static
 case on dynamic programs, for example we have implemented a storage coalescing pass which groups storage
 into a larger region which we can then multiplex tensor allocations on to.
 
-For the sake of space, we present a more complex example in the \autoref{appx:mem-plan-example}, which illustrates how to handle memory allocation when operators have dynamic shaped inputs.
-The key insight is to internalize a notion of memory allocation into the IR, enabling static optimization of
-both static and dynamic allocations in the presence of control and dynamic shapes.
-Now that all allocations are explicit in the IR, we can provide analogous optimizations in the static
-case on dynamic programs, for example we have implemented a storage coalescing pass to group storage
-into a larger region which allows the multiplexing of multiple tensor allocations to a single piece of storage.
-Further optimization like liveness analysis and graph coloring algorithm can be applied to the program to reuse  the storages
+For the sake of space, we present a more complex example in the \autoref{appx:mem-plan-example},
+  which illustrates how to handle memory allocation when operators have dynamic shaped inputs.
+The key insight is to internalize a notion of memory allocation into the IR,
+  enabling static optimization of both static and dynamic allocations in the presence of control and dynamic shapes.
+Now that all allocations are explicit in the IR, we can provide analogous optimizations in the static case on dynamic programs,
+  for example we have implemented a storage coalescing pass to group storage
+  into a larger region which allows the multiplexing of multiple tensor allocations to a single piece of storage.
+Further optimization like liveness analysis and graph coloring algorithm can be applied to the program to reuse the storages.
 
 \subsection{Heterogeneous Device Placement}
 \label{sec:optimizations:hetero}
 
-As discussed in Section \autoref{sec:compilation:shape-func}, shape functions are executed at runtime to calculate the output shape of an operator. These functions must execute on the CPU due to the host-interaction model of GPU like devices. In the case of heterogeneous execution (i.e., CPU and GPU) it is essential to carefully schedule the execution of shape functions and kernels as improper scheduling can be disastrous for performance. For instance, considerable overhead will occur if inputs to shape functions must be copied from GPU due to the cost of data transfers and synchronization. To minimize the performance penalty, we analyze the program allocations to place sub-expressions on the most suitable devices.
+As discussed in Section \autoref{sec:compilation:shape-func}, shape functions are executed at runtime to
+  calculate the output shape of an operator.
+These functions must execute on the CPU due to the host-interaction model of GPU like devices.
+In the case of heterogeneous execution (i.e., CPU and GPU) it is essential to carefully schedule
+  the execution of shape functions and kernels as improper scheduling can be disastrous for performance.
+For instance, considerable overhead will occur if inputs to shape functions must be copied from
+  GPU due to the cost of data transfers and synchronization.
+To minimize the performance penalty, we analyze the program allocations to place sub-expressions on the most suitable devices.
 
-We introduce a unification based analysis for computing the correct device placement and allocation based on the previous scheduling of the compute kernels. The goal of our device analysis is assigning each IR node in a way that minimizes the number of cross-device copies. We introduce a concept of \texttt{DeviceDomain} to represent the domain of a device, including source and destination. Each expression in the IR defaults to the empty domain, meaning there are no constraints on its device placement. In addition, two new IR constructs are introduced to facilitate the heterogeneous execution of VM, namely \verb|device_copy| and \verb|shape_of|. The former performs a data transfer between different devices and is inserted when a cross-device data copy is mandatory. The latter is used to retrieve the shape of a tensor at runtime and is used to efficiently compute the input shapes for shape functions. Our analysis is formulated as a set of device placement rules which describe how device constraints flow, and then we use unification, a technique common in type inference and compilers in order to compute precise device placement.
+We introduce a unification based analysis for computing the correct device placement and
+  allocation based on the previous scheduling of the compute kernels.
+The goal of our device analysis is assigning each IR node in a way that minimizes
+  the number of cross-device copies. We introduce a concept of \texttt{DeviceDomain}
+  to represent the domain of a device, including source and destination.
+Each expression in the IR defaults to the empty domain, meaning there
+  are no constraints on its device placement.
+In addition, two new IR constructs are introduced to facilitate the heterogeneous execution of VM,
+  namely \verb|device_copy| and \verb|shape_of|.
+The former performs a data transfer between different devices and is
+  inserted when a cross-device data copy is mandatory.
+The latter is used to retrieve the shape of a tensor at runtime and is
+  used to efficiently compute the input shapes for shape functions.
+Our analysis is formulated as a set of device placement rules which describe how device constraints
+  flow, and then we use unification, a technique common in type inference and compilers
+  in order to compute precise device placement.
 
-% As discussed in \autoref{sec:compilation:shape-func}, shape functions are executed at runtime to calculate the output shape of an operator. These functions should execute on the CPU as their outputs are used to compute the size of allocated memory. In the case of heterogeneous execution (i.e., CPU and GPU), it is essential to carefully place the execution of IR nodes to proper devices. Otherwise, considerable overhead from data transfers and device synchronization will occur if the inputs to shape functions and kernels need to be copied from or to GPU. To minimize the performance penalty, we analyze the program to place sub-expressions on the most suitable devices.
+As discussed in \autoref{sec:compilation:shape-func},
+  shape functions are executed at runtime to calculate the output shape of an operator.
+These functions should execute on the CPU as their outputs are used to compute the size of allocated memory.
+In the case of heterogeneous execution (i.e., CPU and GPU),
+  it is essential to carefully place the execution of IR nodes to proper devices.
+Otherwise, considerable overhead from data transfers and device synchronization will
+  occur if the inputs to shape functions and kernels need to be copied from or to GPU.
+To minimize the performance penalty, we analyze the program to place sub-expressions on the most suitable devices.
 
-% We introduce a unification based analysis for computing the correct device placement and allocation based on the previous scheduling of the compute kernels. The goal of our device analysis is to assign each IR node properly to minimize the number of cross-device copies. We introduce a concept of \texttt{DeviceDomain} to represent the domain of a device, including source and destination. Each expression in the IR defaults to the empty domain, meaning no constraint on its device placement. In addition, a new IR construct, \verb|device_copy|, is introduced to facilitate the heterogeneous execution of the Relay VM runtime. It represents a data transfer between different devices and is inserted when a cross-device data copy is mandatory.
-% %The latter\yida{what does this refer to?} is used to retrieve the shape of a tensor at runtime and is used to efficiently compute the input shapes for shape functions.
-% Our analysis is formulated as a set of device placement rules which describes how device constraints flow, and then we use unification, a technique common in type inference and compilers, to compute the precise device placement.
-% \autoref{fig:hetero} depicts some highlights of the rules to assign and propagate the device types: (a) both inputs and outputs of shape function are assigned to CPU, (b) the output of \verb|device_copy| is assigned to the device that is copied to, (c) all arguments to \verb|invoke_mut| should have the same device domain. The full set of rules can be found in the \autoref{appx:hetero-rules}.
+We introduce a unification based analysis for computing the correct device placement
+  and allocation based on the previous scheduling of the compute kernels.
+The goal of our device analysis is to assign each IR node properly to minimize
+  the number of cross-device copies.
+We introduce a concept of \texttt{DeviceDomain} to represent the domain of a device,
+  including source and destination.
+Each expression in the IR defaults to the empty domain, meaning no constraint on its device placement.
+In addition, a new IR construct, \verb|device_copy|, is introduced to facilitate the heterogeneous execution
+  of the Relay VM runtime.
+It represents a data transfer between different devices and is inserted when a cross-device data copy is mandatory.
+%The latter\yida{what does this refer to?} is used to retrieve the shape of a tensor at runtime and is used to efficiently compute the input shapes for shape functions.
+Our analysis is formulated as a set of device placement rules which describes how device constraints flow, and then we use unification, a technique common in type inference and compilers, to compute the precise device placement.
+\autoref{fig:hetero} depicts some highlights of the rules to assign and propagate the device types: (a) both inputs and outputs of shape function are assigned to CPU, (b) the output of \verb|device_copy| is assigned to the device that is copied to, (c) all arguments to \verb|invoke_mut| should have the same device domain. The full set of rules can be found in the \autoref{appx:hetero-rules}.
 
 \begin{itemize}
     \item \verb|shape_of|. Defaults to the CPU domain because we can access a Tensor's shape regardless of which device it is placed on.
@@ -575,10 +619,23 @@ We introduce a unification based analysis for computing the correct device place
 %
 % \end{figure}
 
-Based on the rules defined above, we use a union-find data structure to bidirectionally propagate and unify the device placement of each IR node. We introduce two operations, \texttt{union(s, t)} and \texttt{find(s)}, to achieve \texttt{DeviceDomain} unification throughout the entire program. \texttt{union(s,t)} unions the equivalence device domains of \texttt{s} and \texttt{t} into one equivalence domain when the device types match. \texttt{find(s)} returns the representative of the device domain that \texttt{s} belongs to. These two operations are applied until all IR nodes are annotated. The result of the heterogeneous device placement composes with memory planning and shape function insertion resulting in correctly placed allocations.
-% Based on these rules, we use a union-find data structure to bidirectionally propagate and unify the device placement of each IR node.
-We introduce two operations, \texttt{union(s, t)} and \texttt{find(s)}, to achieve \texttt{DeviceDomain} unification throughout the entire program.
-\texttt{union(s,t)} unions the equivalence device domains of \texttt{s} and \texttt{t} into one equivalence domain when the device types match.
+Based on the rules defined above, we use a union-find data structure to bidirectionally
+  propagate and unify the device placement of each IR node.
+We introduce two operations, \texttt{union(s, t)} and \texttt{find(s)},
+  to achieve \texttt{DeviceDomain} unification throughout the entire program.
+\texttt{union(s,t)} unions the equivalence device domains of \texttt{s} and \texttt{t}
+  into one equivalence domain when the device types match.
+\texttt{find(s)} returns the representative of the device domain
+  that \texttt{s} belongs to.
+These two operations are applied until all IR nodes are annotated.
+The result of the heterogeneous device placement composes with memory planning
+  and shape function insertion resulting in correctly placed allocations.
+Based on these rules, we use a union-find data structure to
+  bidirectionally propagate and unify the device placement of each IR node.
+We introduce two operations, \texttt{union(s, t)} and \texttt{find(s)},
+  to achieve \texttt{DeviceDomain} unification throughout the entire program.
+\texttt{union(s,t)} unions the equivalence device domains of \texttt{s}
+  and \texttt{t} into one equivalence domain when the device types match.
 \texttt{find(s)} returns the representative of the device domain that \texttt{s} belongs to.
 These two operations are applied until all IR nodes are annotated.
 The result of the heterogeneous device placement composes with memory planning and shape function insertion resulting in
@@ -718,14 +775,6 @@ In these cases symbolic codegen cannot completely replace manually tuned 3rd par
 % % generate tile sizes for powers of two, and then for a given input size round to the nearest power of two tile size and select that operation.
 % % The code for selecting between buckets is also realized as TVM expression allowing further optimization of the combined kernel.
 % % This strategy can be viewed as a form of polymorphic inline caching~\citep{inline_caches}, where the cache is not keyed by type, but shape.
-
-% The bucketing strategy we employ obtains
-% For this paper we explored one possible strategy for generating code but using the infrastructure of this paper
-% it is relatively low cost to explore new strategies by reusing the machinery.
-
-% % The bucketing strategy we employ obtains
-% % For this paper we explored one possible strategy for generating code but using the infrastructure of this paper
-% % it is relatively low cost to explore new strategies by reusing the machinery.
 
 \section{Accelerator-Specific Optimizations}
 \label{sec:accel-opts}
