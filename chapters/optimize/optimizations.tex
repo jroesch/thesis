@@ -405,12 +405,9 @@ We describe the implementation and some
 
 A key challenge preventing existing deep learning compilers from handling dynamism
   is the lack of a uniform and dynamic representation.
-For example, optimizations and runtime of existing IR,
-  e.g., TVM \citep{tvm_osdi18}, always assume the presence of static shape information.
-These assumptions introduce quite a few challenges for optimization to dynamism.
-
-In order to handle dynamism, we design a set of IR extensions which expose the essential semantics
-  required to optimize dynamic programs.
+For example, optimizations and runtime of existing IRs,
+  e.g., TVM's NNVM~\citep{tvm_osdi18}, always assume the presence of static shape information.
+These assumptions introduce quite a few challenges for optimizing dynamic behaviors.
 This section describes how we transform standard TVM programs into our dynamic dialect
   which enables us to easily apply static optimizations to dynamic programs, much as we
   do in traditional compiler optimization.
@@ -435,9 +432,46 @@ Existing deep learning compiler IRs hide memory allocation behind a functional i
   where each operator implicitly allocates their output storage.
 Then before execution, the system performs static-memory planning on the data-flow graph enabling efficient pre-allocation of the required memory. Due to this ``out-of-band'' nature of memory allocation, it is challenging to customize, modify or compose memory optimizations with other passes. For example, if one needs to adjust memory allocation for heterogeneous execution, modifications to the runtime are required.
 
-Alternatively, some systems lower the entire program to low-level IRs such as LLVM~\citep{llvm} in order to perform optimizations. Due to the coarse-grained memory semantics of deep learning models, it is essential that memory optimizations occur at a suitably high-level of abstraction before essential program facts are lost. Moreover, as discussed in~\autoref{sec:compilation:shape-func}, we have introduced new ways to account for the handling of dynamic allocations, which further complicate memory analysis.
-In order to perform dynamic memory planning we have extended TVM's Relay IR, using these extensions we translate a IR dialect where all memory allocations are implicit to one where buffers are allocated and passed around explicitly. The key to this transformation is an inter-procedural change of calling convention, with each operator now taking its outputs explicitly it is possible to track and transform allocations.
-In particular, we have introduced four new IR constructs, (a) \verb|invoke_mut(op, inputs, outputs)| which takes outputs as mutable in-out arguments, (b) \texttt{alloc\_storage(size, alignment, device)} which allocates a region of memory of a particular size, (c) \texttt{alloc\_tensor(storage, offset, shape, dtype, attrs)} which allocates a tensor at a particular strorage offset with a shape and data type, and (d) \verb|kill(tensor)| which frees a tensor before its reference count becomes zero due to exiting the frame. Note that in the below code examples \texttt{Tensor<d1, ..., dn>} is shorthand for a tensor of shape \texttt{(d1, ..., dn)} containing floating point values.
+Deep learning workloads are dominated by two key components,
+    compute-intensive kernels and memory allocation.
+Many deep learning compilers use a form of static memory planning
+    coalesces memory into contiguous chunks and minimize allocations.
+For devices such as GPUs these optimizations are essential for
+    reducing memory fragmentation and ensuring allocation does not hamper kernel performance.
+Existing deep learning compiler IRs hide memory allocation behind a
+    functional interface, where each operator implicitly allocates their output storage.
+Then before execution, the system performs static-memory planning on the data
+    flow graph enabling efficient pre-allocation of the required output buffers.
+Due to this ``out-of-band'' nature of memory allocation,
+    it is challenging to customize, modify, or compose memory optimizations with other passes.
+For example, if one needs to adjust memory allocation for heterogeneous execution,
+    modifications to the runtime system are required.
+TVM's graph runtime is one such example of static memory planning.
+Due to the coarse-grained memory semantics of deep learning models,
+    it is essential that memory optimizations occur at a suitably high-level of abstraction,
+    unlike traditional compilers.
+Existing work provides no clear path to performing static optimization on dynamic memory
+    allocation.
+
+Alternatively, some systems lower the entire program to low-level IRs such as
+  LLVM~\citep{llvm} in order to perform optimizations.
+Due to the coarse-grained memory semantics of deep learning models,
+  it is essential that memory optimizations occur at a suitably high-level of abstraction before essential program facts are lost.
+Moreover, as discussed in~\autoref{sec:compilation:shape-func}, we have introduced new ways to account for the handling of dynamic allocations,
+  which further complicate memory analysis.
+In order to perform dynamic memory planning we have extended TVM's Relay IR,
+  using these extensions we translate a IR dialect where all memory allocations are
+  implicit to one where buffers are allocated and passed around explicitly.
+  The key to this transformation is an inter-procedural change of calling convention,
+  with each operator now taking its outputs explicitly it is possible to track and transform allocations.
+In particular, we have introduced four new IR constructs,
+  (a) \verb|invoke_mut(op, inputs, outputs)| which takes outputs as mutable in-out arguments,
+  (b) \texttt{alloc\_storage(size, alignment, device)} which allocates a region of memory of a particular size,
+  (c) \texttt{alloc\_tensor(storage, offset, shape, dtype, attrs)} which allocates a tensor at a particular storage offset
+    with a shape and data type, and
+  (d) \verb|kill(tensor)| which frees a tensor before its reference count becomes zero due to exiting the frame.
+Note that in the below code examples \texttt{Tensor<d1, ..., dn>}
+is shorthand for a tensor of shape \texttt{(d1, ..., dn)} containing floating point values.
 
 We can demonstrate how to transform a single statically shaped operation such as broadcasting addition.
 
@@ -497,66 +531,6 @@ Now that the all allocations are explicit in the IR we can provide analogous opt
 case on dynamic programs, for example we have implemented a storage coalescing pass which groups storage
 into a larger region which we can then multiplex tensor allocations on to.
 
-% ---------------------------------------------------------------------------------------------------------------------
-Deep learning workloads are dominated by two key components,
-    compute-intensive kernels and memory allocation.
-Many deep learning compilers use a form of static memory planning
-    coalesces memory into contiguous chunks and minimize allocations.
-For devices such as GPUs these optimizations are essential for
-    reducing memory fragmentation and ensuring allocation does not hamper kernel performance.
-Existing deep learning compiler IRs hide memory allocation behind a
-    functional interface, where each operator implicitly allocates their output storage.
-Then before execution, the system performs static-memory planning on the data
-    flow graph enabling efficient pre-allocation of the required output buffers.
-Due to this ``out-of-band'' nature of memory allocation,
-    it is challenging to customize, modify, or compose memory optimizations with other passes.
-For example, if one needs to adjust memory allocation for heterogeneous execution,
-    modifications to the runtime system are required.
-TVM's graph runtime is one such example of static memory planning.
-Due to the coarse-grained memory semantics of deep learning models,
-    it is essential that memory optimizations occur at a suitably high-level of abstraction,
-    unlike traditional compilers.
-Existing work provides no clear path to performing static optimization on dynamic memory
-    allocation.
-
-In order to perform what we refer to as ```dynamic memory planning'' we have extended
-    TVM to transform its IR with implicit memory allocations to one with explicit
-    buffer allocation and manipulation.
-The key to this transformation is an inter-procedural change of calling convention,
-    with each operator now taking its outputs explicitly.
-The transformation makes it possible to track and optimize dynamic memory allocations in the IR.
-In order to perform this optimization we have introduced four new IR constructs,
-    (a) \verb|invoke_mut(op, inputs, outputs)| which takes outputs as mutable in-out arguments,
-    (b) \texttt{alloc\_storage(size, alignment, device)} which allocates a region of memory of a particular size,
-    (c) \texttt{alloc\_tensor(storage, offset, shape, dtype, attrs)} which allocates a tensor at a particular storage offset with a shape and data type, and
-    (d) \verb|kill(tensor)| which frees a tensor before its reference count becomes zero due to exiting the frame.
-
-We illustrate how this works with an example of transforming a single statically shaped operation such as broadcasting addition.
-Note that in the below code examples \texttt{Tensor<d1, ..., dn>} is shorthand for a tensor of shape \texttt{(d1, ..., dn)} containing floating point values.
-
-\begin{minted}{rust}
-fn main() -> Tensor<10> {
-  let t1, t2 : Tensor<10> = ...;
-  add(t1, t2)
-}
-\end{minted}
-
-Here we only must allocate a single buffer, that is, the return buffer for the addition operation.
-
-\begin{minted}{rust}
-fn main() -> Tensor<10> {
-  let t1 = ...; let t2 = ...;
-  let buf1 = alloc_storage(40,64,cpu);
-  let out1 = alloc_tensor(buf1,0,(10),f32);
-  invoke_mut(add, (t1, t2), (out1));
-  out1
-}
-\end{minted}
-
-The above transformation replaces the operator invocation \verb|add| to code which
-first allocates an output tensor from backing storage at offset zero, and call to
-\verb|invoke_mut|.
-
 For the sake of space, we present a more complex example in the \autoref{appx:mem-plan-example}, which illustrates how to handle memory allocation when operators have dynamic shaped inputs.
 The key insight is to internalize a notion of memory allocation into the IR, enabling static optimization of
 both static and dynamic allocations in the presence of control and dynamic shapes.
@@ -572,6 +546,13 @@ As discussed in Section \autoref{sec:compilation:shape-func}, shape functions ar
 
 We introduce a unification based analysis for computing the correct device placement and allocation based on the previous scheduling of the compute kernels. The goal of our device analysis is assigning each IR node in a way that minimizes the number of cross-device copies. We introduce a concept of \texttt{DeviceDomain} to represent the domain of a device, including source and destination. Each expression in the IR defaults to the empty domain, meaning there are no constraints on its device placement. In addition, two new IR constructs are introduced to facilitate the heterogeneous execution of VM, namely \verb|device_copy| and \verb|shape_of|. The former performs a data transfer between different devices and is inserted when a cross-device data copy is mandatory. The latter is used to retrieve the shape of a tensor at runtime and is used to efficiently compute the input shapes for shape functions. Our analysis is formulated as a set of device placement rules which describe how device constraints flow, and then we use unification, a technique common in type inference and compilers in order to compute precise device placement.
 
+% As discussed in \autoref{sec:compilation:shape-func}, shape functions are executed at runtime to calculate the output shape of an operator. These functions should execute on the CPU as their outputs are used to compute the size of allocated memory. In the case of heterogeneous execution (i.e., CPU and GPU), it is essential to carefully place the execution of IR nodes to proper devices. Otherwise, considerable overhead from data transfers and device synchronization will occur if the inputs to shape functions and kernels need to be copied from or to GPU. To minimize the performance penalty, we analyze the program to place sub-expressions on the most suitable devices.
+
+% We introduce a unification based analysis for computing the correct device placement and allocation based on the previous scheduling of the compute kernels. The goal of our device analysis is to assign each IR node properly to minimize the number of cross-device copies. We introduce a concept of \texttt{DeviceDomain} to represent the domain of a device, including source and destination. Each expression in the IR defaults to the empty domain, meaning no constraint on its device placement. In addition, a new IR construct, \verb|device_copy|, is introduced to facilitate the heterogeneous execution of the Relay VM runtime. It represents a data transfer between different devices and is inserted when a cross-device data copy is mandatory.
+% %The latter\yida{what does this refer to?} is used to retrieve the shape of a tensor at runtime and is used to efficiently compute the input shapes for shape functions.
+% Our analysis is formulated as a set of device placement rules which describes how device constraints flow, and then we use unification, a technique common in type inference and compilers, to compute the precise device placement.
+% \autoref{fig:hetero} depicts some highlights of the rules to assign and propagate the device types: (a) both inputs and outputs of shape function are assigned to CPU, (b) the output of \verb|device_copy| is assigned to the device that is copied to, (c) all arguments to \verb|invoke_mut| should have the same device domain. The full set of rules can be found in the \autoref{appx:hetero-rules}.
+
 \begin{itemize}
     \item \verb|shape_of|. Defaults to the CPU domain because we can access a Tensor's shape regardless of which device it is placed on.
     \item Shape functions. These IRs take the output of one or multiple \verb|shape_of| and then derive the shape of an operation according to predefined type inference rules. The output of a shape function is used to compute the amount of memory that this operator requires at runtime, which only needs a few cheap scalar arithmetic computation. Therefore, the inputs and outputs would be better on a CPU domain as well.
@@ -582,19 +563,6 @@ We introduce a unification based analysis for computing the correct device place
     \item Other common IR nodes. The device domain of other common IR nodes, e.g. variables, constants, operators, etc., can be directly propagated from the above nodes.
 \end{itemize}
 
-Based on the rules defined above, we use a union-find data structure to bidirectionally propagate and unify the device placement of each IR node. We introduce two operations, \texttt{union(s, t)} and \texttt{find(s)}, to achieve \texttt{DeviceDomain} unification throughout the entire program. \texttt{union(s,t)} unions the equivalence device domains of \texttt{s} and \texttt{t} into one equivalence domain when the device types match. \texttt{find(s)} returns the representative of the device domain that \texttt{s} belongs to. These two operations are applied until all IR nodes are annotated. The result of the heterogeneous device placement composes with memory planning and shape function insertion resulting in correctly placed allocations.
-
-%%%%
-
-%
-% \subsection{Heterogeneous Device Placement}
-% \label{sec:compliation:hetero}
-% As discussed in \autoref{sec:compilation:shape-func}, shape functions are executed at runtime to calculate the output shape of an operator. These functions should execute on the CPU as their outputs are used to compute the size of allocated memory. In the case of heterogeneous execution (i.e., CPU and GPU), it is essential to carefully place the execution of IR nodes to proper devices. Otherwise, considerable overhead from data transfers and device synchronization will occur if the inputs to shape functions and kernels need to be copied from or to GPU. To minimize the performance penalty, we analyze the program to place sub-expressions on the most suitable devices.
-
-% We introduce a unification based analysis for computing the correct device placement and allocation based on the previous scheduling of the compute kernels. The goal of our device analysis is to assign each IR node properly to minimize the number of cross-device copies. We introduce a concept of \texttt{DeviceDomain} to represent the domain of a device, including source and destination. Each expression in the IR defaults to the empty domain, meaning no constraint on its device placement. In addition, a new IR construct, \verb|device_copy|, is introduced to facilitate the heterogeneous execution of the Relay VM runtime. It represents a data transfer between different devices and is inserted when a cross-device data copy is mandatory.
-% %The latter\yida{what does this refer to?} is used to retrieve the shape of a tensor at runtime and is used to efficiently compute the input shapes for shape functions.
-% Our analysis is formulated as a set of device placement rules which describes how device constraints flow, and then we use unification, a technique common in type inference and compilers, to compute the precise device placement.
-% \autoref{fig:hetero} depicts some highlights of the rules to assign and propagate the device types: (a) both inputs and outputs of shape function are assigned to CPU, (b) the output of \verb|device_copy| is assigned to the device that is copied to, (c) all arguments to \verb|invoke_mut| should have the same device domain. The full set of rules can be found in the \autoref{appx:hetero-rules}.
 
 % \begin{figure}
 %     \centering
@@ -607,10 +575,15 @@ Based on the rules defined above, we use a union-find data structure to bidirect
 %
 % \end{figure}
 
-% Based on these rules, we use a union-find data structure to bidirectionally propagate and unify the device placement of each IR node. We introduce two operations, \texttt{union(s, t)} and \texttt{find(s)}, to achieve \texttt{DeviceDomain} unification throughout the entire program. \texttt{union(s,t)} unions the equivalence device domains of \texttt{s} and \texttt{t} into one equivalence domain when the device types match. \texttt{find(s)} returns the representative of the device domain that \texttt{s} belongs to. These two operations are applied until all IR nodes are annotated. The result of the heterogeneous device placement composes with memory planning and shape function insertion resulting in correctly placed allocations.
+Based on the rules defined above, we use a union-find data structure to bidirectionally propagate and unify the device placement of each IR node. We introduce two operations, \texttt{union(s, t)} and \texttt{find(s)}, to achieve \texttt{DeviceDomain} unification throughout the entire program. \texttt{union(s,t)} unions the equivalence device domains of \texttt{s} and \texttt{t} into one equivalence domain when the device types match. \texttt{find(s)} returns the representative of the device domain that \texttt{s} belongs to. These two operations are applied until all IR nodes are annotated. The result of the heterogeneous device placement composes with memory planning and shape function insertion resulting in correctly placed allocations.
+% Based on these rules, we use a union-find data structure to bidirectionally propagate and unify the device placement of each IR node.
+We introduce two operations, \texttt{union(s, t)} and \texttt{find(s)}, to achieve \texttt{DeviceDomain} unification throughout the entire program.
+\texttt{union(s,t)} unions the equivalence device domains of \texttt{s} and \texttt{t} into one equivalence domain when the device types match.
+\texttt{find(s)} returns the representative of the device domain that \texttt{s} belongs to.
+These two operations are applied until all IR nodes are annotated.
+The result of the heterogeneous device placement composes with memory planning and shape function insertion resulting in
+correctly placed allocations.
 
-%
-%%%%
 \subsection{Dynamic Kernel Code Generation}
 \label{sec:compliation:codegen}
 Deep learning compilers~\citep{tvm_osdi18, halide} have demonstrated competitive performance compared to manually

@@ -64,25 +64,23 @@ Compilers for deep learning~\citep{xla,jax,glow,tvm_osdi18,myia,fluxjl,lattner20
   a rapidly evolving area explored by both industrial and academic researchers.
 
 A particular way in which deep learning frameworks have been narrowly focused
-  is on the handling of static, feed-forward neural networks.
-  Specifically, these models represented as static data flow graphs where the
-  sizes of each input and output (i.e. tensors or $n$-dimensional arrays) are known a priori,
+  is their focus on the handling of static, feed-forward neural networks.
+Specifically, these models are represented as static data flow graphs where the
+  size of each input and output (i.e. tensors or $n$-dimensional arrays) are known a priori,
   ensuring the execution path remains unchanged on every invocation.
-  We refer to models with this static nature as \emph{static models}.
-  Continued advances in neural networks, especially those in natural language processing,
+We refer to models with this static nature as \emph{static models}.
+Continued advances in neural networks, especially those in natural language processing,
   have introduced new dynamism in models, such as control flow \citep{lstm, language_model},
   dynamic data structures \citep{tree_lstm, graph_lstm}, and dynamic shapes \citep{devlin2018bert}.
   We refer to models exhibiting these behaviors as {\em dynamic models}.
-At the time of their design the deep learning revolution was occurring mostly
-  in computer vision but had not fully taken over areas such as natural language processing (NLP).
-Frameworks have enough general mechanisms that writing dynamic = models was mostly possibly
-  a few years after their introduction.
+At the time of their design the deep learning was revolutionizing
+  computer vision but had not yet changed areas such as natural language processing (NLP).
 Unfortunately the design of frameworks have severely limited the performance
-  of programs that fall outside of the well-optimized footprint.
+  of programs that fall outside of the well-optimized static footprint.
 
-Furthermore the first-generation of compilers have been overfit
-  for static compilation, they assume static control-flow, static tensor
-  dimensions and no complex data structures.
+Due to this design first-generation compilers have also been overfit
+  for static model compilation, with strong assumptions of static control-flow,
+  static tensor dimensions and no complex data structures.
 This poses new challenges for deep learning practitioners, as dynamic models introduce
   input-dependent graph topology, breaking existing system and invalidating optimizations
   designed for purely static data flow graphs.
