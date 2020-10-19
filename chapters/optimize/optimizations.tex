@@ -422,47 +422,35 @@ Particularly, we detail three key components required to compile dynamic models.
 \subsection{Dynamic Memory Planning}
 \label{subsec:optimizations:memory}
 
-Deep learning workloads are dominated by two key aspects,
-  compute-intensive kernels and memory allocation.
-Many deep learning compilers use a form of static memory planning which tries to
-  coalesce memory and minimize allocations.
-For devices such as GPUs these optimizations are essential for reducing memory fragmentation and ensuring allocation
-  does not hamper kernel performance. E
+Deep learning workloads are dominated by two key factors
+  (1) compute-intensive kernels and (2) memory consumption and allocation.
+Many deep learning compilers employ a form of static memory planning which
+  tries to coalesce memory allocations and minimize memory consumption.
+For devices such as GPUs these optimizations are essential for reducing
+  memory fragmentation and ensuring allocation does not hamper kernel performance.
 Existing deep learning compiler IRs hide memory allocation behind a functional interface,
   where each operator implicitly allocates their output storage.
-Then before execution, the system performs static-memory planning on the data-flow graph enabling efficient pre-allocation of the required memory. Due to this ``out-of-band'' nature of memory allocation, it is challenging to customize, modify or compose memory optimizations with other passes. For example, if one needs to adjust memory allocation for heterogeneous execution, modifications to the runtime are required.
-
-Deep learning workloads are dominated by two key components,
-    compute-intensive kernels and memory allocation.
-Many deep learning compilers use a form of static memory planning
-    coalesces memory into contiguous chunks and minimize allocations.
-For devices such as GPUs these optimizations are essential for
-    reducing memory fragmentation and ensuring allocation does not hamper kernel performance.
-Existing deep learning compiler IRs hide memory allocation behind a
-    functional interface, where each operator implicitly allocates their output storage.
-Then before execution, the system performs static-memory planning on the data
-    flow graph enabling efficient pre-allocation of the required output buffers.
+Then before execution, the system performs static-memory planning on the
+  data-flow graph enabling efficient pre-allocation of the required memory.
 Due to this ``out-of-band'' nature of memory allocation,
-    it is challenging to customize, modify, or compose memory optimizations with other passes.
+  it is challenging to customize, modify or compose memory optimizations with other passes.
 For example, if one needs to adjust memory allocation for heterogeneous execution,
-    modifications to the runtime system are required.
+  modifications to the runtime are required.
 TVM's graph runtime is one such example of static memory planning.
-Due to the coarse-grained memory semantics of deep learning models,
-    it is essential that memory optimizations occur at a suitably high-level of abstraction,
-    unlike traditional compilers.
-Existing work provides no clear path to performing static optimization on dynamic memory
-    allocation.
 
 Alternatively, some systems lower the entire program to low-level IRs such as
   LLVM~\citep{llvm} in order to perform optimizations.
 Due to the coarse-grained memory semantics of deep learning models,
-  it is essential that memory optimizations occur at a suitably high-level of abstraction before essential program facts are lost.
-Moreover, as discussed in~\autoref{sec:compilation:shape-func}, we have introduced new ways to account for the handling of dynamic allocations,
+  it is essential that memory optimizations occur at a suitably
+  high-level of abstraction before essential program facts are lost.
+Moreover, as discussed in~\autoref{sec:compilation:shape-func},
+  we have introduced new ways to account for the handling of dynamic allocations,
   which further complicate memory analysis.
-In order to perform dynamic memory planning we have extended TVM's Relay IR,
-  using these extensions we translate a IR dialect where all memory allocations are
-  implicit to one where buffers are allocated and passed around explicitly.
-  The key to this transformation is an inter-procedural change of calling convention,
+In order to perform dynamic memory planning we have extended Relay's IR,a
+  with a memory dialect.
+The memory dialect is a subset of Relay programs where all memory allocations are
+  explicit.
+The key to this transformation is an inter-procedural change of calling convention,
   with each operator now taking its outputs explicitly it is possible to track and transform allocations.
 In particular, we have introduced four new IR constructs,
   (a) \verb|invoke_mut(op, inputs, outputs)| which takes outputs as mutable in-out arguments,
@@ -494,11 +482,18 @@ fn main() -> Tensor<10> {
 }
 \end{minted}
 
-The above transformation replaces all operator invocations with a call to \verb|invoke_mut| allocating storage
-for backing a single tensor from allocated at offset zero.
-The key insight is to internalize a notion of memory allocation into the IR, enabling static optimization of
-both static and dynamic allocations presence of control and dynamic shapes. We realize our shape functions as fragments of TVM's tensor expression language which computes the output shape for a particular operator. As detailed in~\autoref{sec:compilation:shape-func} our shape functions may require the input, the input \textit{shape}, or both.
-Our uniform treatment of shape functions as standard tensor expressions enables them to be fused and optimized like normal, but one challenge is that we must now manifest allocations in a fixed point until we allocate for both the compute and necessary shape functions. We illustrate this below with a single dynamic concatenation.
+The above transformation replaces all operator invocations with a call to
+  \verb|invoke_mut|, a corresponding allocation of backing storage, and a single tensor placed at offset zero.
+The key insight is to internalize a notion of memory allocation into the IR,
+  enabling static optimization of both static and dynamic allocations presence of control and dynamic shapes.
+We realize our shape functions as fragments of TVM's tensor expression language
+  which computes the output shape for a particular operator.
+As detailed in~\autoref{sec:compilation:shape-func} our shape functions
+  may require the input, the input \textit{shape}, or both.
+Our uniform treatment of shape functions as standard tensor expressions enables them
+  to be fused and optimized like normal, but one challenge is that we must now manifest allocations
+  in a fixed point until we allocate for both the compute and necessary shape functions.
+We illustrate this below with a single dynamic concatenation.
 
 \begin{minted}{rust}
 fn (x: Tensor<?,2>, y: Tensor<1,2>)->Tensor<?,2> {
@@ -526,7 +521,7 @@ fn (x: Tensor<?,2>, y: Tensor<1,2>)->Tensor<?,2> {
 \end{minted}
 
 After the transformation you may notice we have introduced calls to \verb|shape_func| which
-  invokes a shape function for a kernel.
+  invokes a shape function corresponding to the kernel.
 The shape function requires input shapes as arguments which further require us to invoke \verb|shape_of|
   for both \verb|%x| and \verb|%y|.
 \verb|shape_of| will be directly mapped to a VM instruction to retrieve the shape of a tensor at runtime.
