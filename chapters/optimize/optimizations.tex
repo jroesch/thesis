@@ -588,9 +588,15 @@ Each expression in the IR defaults to the empty domain, meaning no constraint on
 In addition, a new IR construct, \verb|device_copy|, is introduced to facilitate the heterogeneous execution
   of the Relay VM runtime.
 It represents a data transfer between different devices and is inserted when a cross-device data copy is mandatory.
-%The latter\yida{what does this refer to?} is used to retrieve the shape of a tensor at runtime and is used to efficiently compute the input shapes for shape functions.
-Our analysis is formulated as a set of device placement rules which describes how device constraints flow, and then we use unification, a technique common in type inference and compilers, to compute the precise device placement.
-\autoref{fig:hetero} depicts some highlights of the rules to assign and propagate the device types: (a) both inputs and outputs of shape function are assigned to CPU, (b) the output of \verb|device_copy| is assigned to the device that is copied to, (c) all arguments to \verb|invoke_mut| should have the same device domain. The full set of rules can be found in the \autoref{appx:hetero-rules}.
+The latter is used to retrieve the shape of a tensor at runtime and is used to efficiently compute
+  the input shapes for shape functions.
+Our analysis is formulated as a set of device placement rules which describes how device constraints flow,
+  and then we use unification, a technique common in type inference and compilers, to compute the precise device placement.
+\autoref{fig:hetero} depicts some highlights of the rules to assign and propagate the device types:
+  (a) both inputs and outputs of shape function are assigned to CPU,
+  (b) the output of \verb|device_copy| is assigned to the device that is copied to,
+  (c) all arguments to \verb|invoke_mut| should have the same device domain.
+The full set of rules can be found in the \autoref{appx:hetero-rules}.
 
 \begin{itemize}
     \item \verb|shape_of|. Defaults to the CPU domain because we can access a Tensor's shape regardless of which device it is placed on.
@@ -603,16 +609,16 @@ Our analysis is formulated as a set of device placement rules which describes ho
 \end{itemize}
 
 
-% \begin{figure}
-%     \centering
-%     \includegraphics[width=\linewidth]{figs/hetero.pdf}
-%     \caption{Some heterogeneous device placement rules. (a) The inputs and outputs of shape functions are placed on CPU.
-%     (b) \texttt{device\_copy} changes the device of output accordingly.
-%     (c) The device of all arguments to \texttt{invoke\_mut} must be the same.
-%     }
-%     \label{fig:hetero}
-%
-% \end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{figs/hetero.pdf}
+    \caption{Some heterogeneous device placement rules. (a) The inputs and outputs of shape functions are placed on CPU.
+    (b) \texttt{device\_copy} changes the device of output accordingly.
+    (c) The device of all arguments to \texttt{invoke\_mut} must be the same.
+    }
+    \label{fig:hetero}
+
+\end{figure}
 
 Based on the rules defined above, we use a union-find data structure to bidirectionally
   propagate and unify the device placement of each IR node.
