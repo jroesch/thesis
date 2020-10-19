@@ -599,13 +599,23 @@ Our analysis is formulated as a set of device placement rules which describes ho
 The full set of rules can be found in the \autoref{appx:hetero-rules}.
 
 \begin{itemize}
-    \item \verb|shape_of|. Defaults to the CPU domain because we can access a Tensor's shape regardless of which device it is placed on.
-    \item Shape functions. These IRs take the output of one or multiple \verb|shape_of| and then derive the shape of an operation according to predefined type inference rules. The output of a shape function is used to compute the amount of memory that this operator requires at runtime, which only needs a few cheap scalar arithmetic computation. Therefore, the inputs and outputs would be better on a CPU domain as well.
-    \item \verb|device_copy|. The input and output of this IR are on different domains as it copies data from one domain to another. The device domains of the input and output are propagated in the opposite directions to other IR nodes that are reachable to/from the device copy node.
-    \item Memory operations. The device domain of storage from \verb|alloc_storage| is designated in the expression, and later is propagated to the device domain of the tensors allocated from this storage via \verb|alloc_tensor|.
-    %in the instruction computation of the allocation size and the shape for memory operations, such as \verb|alloc_storage| and \verb|alloc_tensor|, should be on CPU due to low computation intensity.
+    \item \verb|shape_of|. Defaults to the CPU domain because we can access a Tensor's shape
+                           regardless of which device it is placed on.
+    \item Shape functions. These IRs take the output of one or multiple \verb|shape_of| and then derive
+                           the shape of an operation according to predefined type inference rules.
+                           The output of a shape function is used to compute the amount of memory that this operator
+                           requires at runtime, which only needs a few cheap scalar arithmetic computation.
+                           Therefore, the inputs and outputs would be better on a CPU domain as well.
+    \item \verb|device_copy|. The input and output of this IR are on different domains as it copies data from one domain to another.
+                              The device domains of the input and output are propagated in the opposite directions
+                                to other IR nodes that are reachable to/from the device copy node.
+    \item Memory operations. The device domain of storage from \verb|alloc_storage| is designated in the expression,
+          and later is propagated to the device domain of the tensors allocated from this storage via \verb|alloc_tensor|.
+          in the instruction computation of the allocation size and the shape for memory operations,
+          such as \verb|alloc_storage| and \verb|alloc_tensor|, should be on CPU due to low computation intensity.
     \item \verb|invoke_mut|. All arguments used in the \verb|invoke_mut| must have the same device domain.
-    \item Other common IR nodes. The device domain of other common IR nodes, e.g. variables, constants, operators, etc., can be directly propagated from the above nodes.
+    \item Other common IR nodes. The device domain of other common IR nodes,
+            e.g. variables, constants, operators, etc., can be directly propagated from the above nodes.
 \end{itemize}
 
 
@@ -644,40 +654,27 @@ correctly placed allocations.
 
 \subsection{Dynamic Kernel Code Generation}
 \label{sec:compliation:codegen}
-Deep learning compilers~\citep{tvm_osdi18, halide} have demonstrated competitive performance compared to manually
-  tuned kernels on multiple platforms.
+
+Deep learning compilers~\citep{tvm_osdi18, halide} have demonstrated competitive performance
+  compared to manually tuned kernels on multiple platforms.
 Recent trends apply machine learning based search to further reduce or eliminate complex manual performance tuning,
   existing work applies both template based~\citep{chen2018learning, zheng2020flextensor} and beam search based~\citep{adams2019learning} ones.
 
-However existing work which focuses on tuning in the presence of static shapes falls short with symbolic or dynamic shapes.
+However existing work which focuses on tuning in the presence of fully static shape information falls short
+  in the presence of symbolic or dynamic shapes.
 There are two inherent challenges with regard to performing code generation for symbolic shapes.
 \begin{itemize}
-    \item How to achieve the same performance of kernels generated with symbolic shapes as that with static shapes when applying the same schedule?
+    \item How to achieve the same performance of kernels generated with symbolic shapes as
+          that with static shapes when applying the same schedule?
     \item How to extend the machine learning based approach to tune kernels with symbolic shapes?
 \end{itemize}
 
-% %\yida{Should we mention the mechanism of invoking third-party libraries in this subsection?}
-% Deep learning compilers~\citep{tvm_osdi18, halide} have demonstrated competitive performance compared to manually tuned kernels on multiple platforms. Recent trends apply machine learning based search to further reduce or eliminate complex manual performance tuning using either template based~\citep{chen2018learning, zheng2020flextensor} or search based~\citep{adams2019learning, zheng2020ansor} approaches.
-% However, existing work which focuses on tuning in the presence of static shapes falls short with symbolic or dynamic shapes. There are two inherent challenges with regard to codegen of symbolic shapes.
-% %\begin{itemize}
-% %    \itemsep 0em
-% \squishlist
-%     \item How to achieve the same performance of kernels generated with symbolic shapes as that with static shapes when applying the same schedule?
-%     \item How to extend the machine learning based approach to tune kernels with symbolic shapes?
-% \squishend
-%
-% %\end{itemize}
-
-% Our codegen approach for dynamic shapes is designed to integrate well with TVM's codegen. We implement a bucketing
-% based codegen strategy, which generates a set of shape-specialized variants and code which selects between them. One
-% attractive consequence of this design is that it allows us to integrates with the current version of AutoTVM~\citep{chen2018learning}, TVM's auto-tuning framework
-% to further optimize kernels.
-
-
-Loop parallelism and loop tiling are common optimization techniques that exploit multi-core capabilities by achieving data access patterns which
-  are memory hierarchy aware for both CPUs and GPUs. However, the combination of these techniques lead to complex loop boundary conditions.
-In many static cases, it is possible to prove these conditions always hold, and thus eliminate checks which hamper further optimizations such as unrolling.
-While straightforward to handle with static shapes, it becomes a non-trivial challenge when performing symbolic codegen.
+Loop parallelism and loop tiling are common optimization techniques that exploit multi-core capabilities
+  by achieving data access patterns which are memory hierarchy aware for both CPUs and GPUs.
+However, the combination of these techniques lead to complex loop boundary conditions.
+In many static cases, it is possible to prove these conditions always hold,
+  and thus eliminate checks which hamper further optimizations such as unrolling.
+While straightforward to handle with static shapes, it becomes a non-trivial challenge when performing symbolic code generation.
 If not carefully handled, the boundary condition checks will stay, leading to poor performance.
 
 To address this issue, we generate multiple kernels according to the residues modulo of the tiling
