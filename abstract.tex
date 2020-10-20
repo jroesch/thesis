@@ -1,0 +1,63 @@
+\begin{fullwidth}
+\begin{center}
+
+In the past decade \emph{deep learning} has revolutionized many areas of
+    computer science.
+Deep learning computations mostly consist
+    of expensive linear algebra kernels defined over a mixture
+    of large sparse and dense tensors.
+From the early days of deep learning framework development researchers realized the
+    potential for apply compilation to accelerate neural networks.
+As deep learning continues to grow in popularity the diversity
+    of models also continues to grow.
+Due to the early success of deep learning in computer
+    vision, early deep learning systems were were focused on static,
+    feed-forward networks processing finite sized images.
+First-generation deep learning compilers have also been similarly overfit
+    for static model compilation, with strong assumptions of static control-flow,
+    static tensor dimensions and no complex data structures.
+A focus on static models has created challenges for deep learning practitioners,
+    as dynamic models introduce input-dependent graph topology,
+    breaking existing system and invalidating optimizations
+    designed for purely static data flow graphs.
+This lack of support has manifested as series of ad-hoc extensions to
+  both frameworks, deep learning runtimes, and compilers.
+Choosing to ignore dynamic behaviors has allowed deep learning
+    compilers to make signifigant strides in optimizing common
+    deep learning workloads, but existing techniques leave performance
+    and generality on the table.
+
+This dissertation in particular focuses on an under served, yet important problem:
+  the representation,
+  optimization,
+  differentiation,
+  and execution of \emph{dynamic neural networks}.
+In this thesis I propose generalizing overspecialized
+  compilation techniques applied to static dataflow graphs,
+  the predominant programming model of deep learning,
+  to fully dynamic neural networks.
+These generalizations are powered by a simple insight:
+  dynamic neural networks are just programs which manipulate tensors.
+The challenge is constructing a representation that captures this generality
+  in a principled manner, while not sacrificing state-of-the-art performance or the programming model.
+In particular
+\begin{itemize}
+    \item An intermediate representation which can represent dynamic behaviors.
+    \item A new automatic differentiation technique for dynamic neural networks.
+    \item A set of both general optimizations which work on all programs, as well
+          as specialized dynamic optimizations.
+    \item An efficient runtime for dynamic neural networks.
+\end{itemize}
+
+The efforts of my thesis Relay is
+Much of this work now exists in Apache TVM, a deep learning compiler framework.
+Relay is deployed in production at multiple leading companies including
+  Amazon, Facebook, and Microsoft and is a critical piece of the technology stack
+  at OctoML a company I co-founded around the TVM project.
+One notable impact is its use in Amazon Alexa, Amazon's AI assistant
+  which executes on a variety of devices most notably ``smart speakers''.
+Amazon engineers applied it Alexa’s wake word model, executed each time a user interacts with
+  Alexa.
+
+\end{center}
+\end{fullwidth}
