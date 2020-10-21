@@ -62,13 +62,48 @@ Finally I will complete the talk with some case studies
     my thesis work.
 
 ### Representation
+- Demonstrate lack of dynamic shape, control-flow, data structures.
+- Lack of extensibility for new operations,
+    new compiler attributes,
+    new sub-dialects.
+- The representation doesn't have to be very special,
+    by using age old PL techniques we internalize a notion
+    of control, dynamic shaping, and data structures.
+- Examples from old generals decks.
 
 ### Differentiation
+- Existing AD algorithms either handle all language
+    features by using reflection (requiring in-efficient source code transformation),
+    staging,
+    or dynamic data structures, i.e Wengert list.
+- How do we perform AD on dynamic programs?
+- Take the wengert list, at runtime we kept trace of all operations
+    we performed and run chain rule over them.
+- Our approach just does the simple thing but we internalize into IR
+- Internalizing the book keeping using closures instead of data
+    allows us to perform a trick to refunctionalize
+    the program enabling optimization.
+- In order to do this we apply partial evaluation.
 
 ### Optimization
+- Optimizations must be adapted to handle dynamic case.
+- For example how do we generate dynamic kernels, and
+  optimized dynamic device placement and memory layout.
+- Again we internalize the computation into the IR and optimize it.
+- Present generic optimizations,
+    focus on buffer allocation,
+    focus on buffer coalesce,
+    device placement,
+    code generation.
 
 ### Execution
+- Show how previous runtimes work.
+- No dynamic features anywhere.
+- Discuss VM design
 
 ### Case Studies
+Show some examples of impact of this work and how people have used it.
+BRAIN STORM WITH ZACH.
 
 ### Future Work
+BRAIN STORM WITH ZACH (things at Octo)
