@@ -69,6 +69,8 @@ Finally I will complete the talk with some case studies
 - The representation doesn't have to be very special,
     by using age old PL techniques we internalize a notion
     of control, dynamic shaping, and data structures.
+- We need new spin on old ideas, new type system, new values, shape analysis.
+- signs we can continue to grow it.
 - Examples from old generals decks.
 
 ### Differentiation
@@ -85,13 +87,13 @@ Finally I will complete the talk with some case studies
     the program enabling optimization.
 - In order to do this we apply partial evaluation.
 
-### Optimization
+### Compilation
 - Optimizations must be adapted to handle dynamic case.
 - For example how do we generate dynamic kernels, and
   optimized dynamic device placement and memory layout.
 - Again we internalize the computation into the IR and optimize it.
 - Present generic optimizations,
-    focus on buffer allocation,
+    focus on buffer allocation (shape function),
     focus on buffer coalesce,
     device placement,
     code generation.
@@ -100,10 +102,16 @@ Finally I will complete the talk with some case studies
 - Show how previous runtimes work.
 - No dynamic features anywhere.
 - Discuss VM design
+    -
 
 ### Case Studies
 Show some examples of impact of this work and how people have used it.
 BRAIN STORM WITH ZACH.
 
 ### Future Work
+* Quantization 3.0
+* EggBeater
+* Training/Tsunami
+* AutoSparse (see Tristan SparseDense)
+
 BRAIN STORM WITH ZACH (things at Octo)
