@@ -172,8 +172,8 @@ We evaluated Relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx F
   We ran the vision and NLP workloads on GTX 1080 Ti and Titan-V GPUs, respectively.
 
   \paragraph{Vision Evaluation}
-  Figure~\ref{fig:vision-eval} compares Relay against state of the art frameworks
-    running vision workloads on a GTX 1080 Ti GPU.
+  % Figure~\ref{fig:vision-eval} compares Relay against state of the art frameworks
+  %   running vision workloads on a GTX 1080 Ti GPU.
   We ran each model with
     batch size 1, a common setting in inference tasks.
   Relay achieves performance on par with \nnvm,
@@ -186,8 +186,8 @@ We evaluated Relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx F
     existing frameworks that don't perform inter-operator optimizations.
 
   \paragraph{NLP Evaluation}
-  Figure~\ref{fig:vision-eval} compares Relay against state-of-the-art NLP models on a Titan-V GPU.
-  Implementations of the NLP models were not available in all frameworks;
+  % Figure~\ref{fig:vision-eval} compares Relay against state-of-the-art NLP models on a Titan-V GPU.
+  % Implementations of the NLP models were not available in all frameworks;
     we used MxNet baselines for RNN, GRU, and LSTM and PyTorch for Char-RNN and TreeLSTM.
   % We ran the models for 1000 iterations per input, except char-RNN, which we ran for 100 ???.
   % To run the RNN, GRU, and LSTM benchmarks in MxNet, and Char-RNN, and TreeLSTM
@@ -242,9 +242,9 @@ We evaluated Relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx F
   \paragraph{Quantized Inference on ARM CPUs and GPUs}
   We evaluate the effects of quantized inference applied by Relay on vision workloads running
   on the Raspberry-Pi3 and Firefly RK3399 ARM-based platforms.
-  Figure~\ref{fig:arm-eval} shows the effects of different levels
-    of quantization applied to low-power devices~\citep{roesch2019relay}.
-  The numbers show that as we opt for a more aggressive quantization scheme such as \texttt{int8/16} (i.e. 8-bit multiplication and 16-bit accumulation), we achieve much improved performance.
+  % Figure~\ref{fig:arm-eval} shows the effects of different levels
+  %   of quantization applied to low-power devices~\citep{roesch2019relay}.
+  % The numbers show that as we opt for a more aggressive quantization scheme such as \texttt{int8/16} (i.e. 8-bit multiplication and 16-bit accumulation), we achieve much improved performance.
 
   \paragraph{Targeting Deep Learning Accelerators on FPGAs}
   We evaluated inference time on five models including MobileNet-G \citep{mobilenet}, a grouped variant of the MobileNet architecture; ResNet-18, ResNet-34, and ResNet-50\citep{resnet}; and Deep Convolutional Generative Adversarial Networks \citep{dcgan}, a generative DNN used in unsupervised learning.

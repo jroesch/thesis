@@ -393,7 +393,7 @@ and arguments are $T'_1, \dots, T'_n$, the rules are defined as follows
 \end{align*}
 
 \subsection{Shape Function}
-\label{sec:compilation:shape-func}
+\label{sec:type_systemTech:shape-func}
 Existing deep learning compilers only deal with static shapes,
   enabling all shape computation to occur at compile-time.
 Therefore, it is easy to allocate memory for the tensors
@@ -408,7 +408,7 @@ Furthermore, static type checking cannot eliminate all
 Consequently, we define a {\em shape function} to compute the output shape
   for storage allocation and verify the type relation in accord with the semantics of every operators.
 The shape function is similar in structure to the type relations described in
-  \autoref{sec:compliation:typing} but are present at runtime instead of compile-time.
+  \ref{sec:type_system} but are present at runtime instead of compile-time.
 The shape function enables compiling and embedding the computation of output shapes into the program.
 
 According to the characteristics of the operator, we divide the shape functions

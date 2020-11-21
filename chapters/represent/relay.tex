@@ -160,7 +160,7 @@ We make the following core contributions:
   Using this correspondence, we adapt existing
     PL techniques to the DL domain.
   \item
-    A notable example of this approach is Relay's type system (Section \ref{subsec:type_system}).
+    A notable example of this approach is Relay's type system (Section \ref{sec:type_system}).
     Since operators have complicated semantics, shape inference is usually
       performed when shapes are fully concrete;
       however, at compile time, one does not have that luxury.
@@ -205,8 +205,6 @@ Our principled design
 In the remainder of this section,
   we describe the IR design in further detail
   and explore the ramifications of this design on the compilation stack.
-
-\input{chapters/short_grammar.tex}
 
 The Relay IR is designed
   to subsume the functionality of computation graph-based IRs
@@ -260,66 +258,6 @@ The addition of a humble \verb|let| binding, a central concept in functional lan
 
 \subsection*{Control Flow}
 
-\begin{figure*}[htb!]
-  \begin{tabular}{ccc}
-  \begin{minipage}{0.4\textwidth}
-  \begin{minted}[fontsize=\small]{python}
-i = tf.constant(1)
-j = tf.constant(1)
-k = tf.constant(5)
-
-def c(i, j, k):
-  return
-    tf.equal(
-      tf.not_equal(
-        tf.less(i + j, 10),
-        tf.less(j * k, 100)),
-        tf.greater_equal(k, i + j))
-def b(i, j, k): return [i+j, j+k, k+1]
-tf.while_loop(c, b, loop_vars=[i, j, k])
-  \end{minted}
-  \end{minipage}
-& \hspace{-2.0em}
-\begin{Huge}
-  $\Rightarrow$
-\end{Huge}
-&
-  \begin{minipage}{0.5\textwidth}
-  \begin{minted}[fontsize=\footnotesize]{python}
-  fn %while_loop(
-    %lvar0: Tensor[(1,), int32], %lvar1: Tensor[(1,), int32],
-    %lvar2: Tensor[(1,), int32]) {
-    %0 = add(%lvar0, %lvar1)
-    %1 = less(%0, meta[Constant][0])
-    %2 = multiply(%lvar1, %lvar2)
-    %3 = less(%2, meta[Constant][1])
-    %4 = not_equal(%1, %3)
-    %5 = add(%lvar0, %lvar1)
-    %6 = greater_equal(%lvar2, %5)
-    if (min(equal(%4, %6))) {
-      %9 = add(%lvar0, %lvar1)
-      %10 = add(%lvar1, %lvar2)
-      %11 = add(%lvar2, meta[Constant][2])
-      %while_loop(%9, %10, %11)
-    } else { (%lvar0, %lvar1, %lvar2)
-    }
-  }
-  %while_loop(meta[Constant][3], meta[Constant][4], meta[Constant][5])
-  \end{minted}
-  \end{minipage}
-  \end{tabular}
-  \caption{\textmd{
-    A simple TensorFlow loop in the user-facing DSL and the Relay
-      loop produced by automatically converting it.
-    Note the TensorFlow while loop corresponds neatly to a tail recursive
-      function.
-    The Relay text format supports a ``metadata'' section which functions
-      as a constant pool among other things.
-    \texttt{meta[Constant][n]} represents the \texttt{n}-th constant in the
-      pool.
-  }}
-  \label{fig:tf_to_relay_loop}
-  \end{figure*}
 
 Emerging models, particularly in the domain of natural language processing, increasingly
   rely on data-dependent control flow, forcing frameworks based on computation graph IRs
@@ -486,6 +424,68 @@ The increase in expressivity introduced by the Relay IR introduces
     }
     \label{fig:tf_to_relay_loop}
     \end{figure}
+
+
+% \begin{figure*}[htb!]
+%   \begin{tabular}{ccc}
+%   \begin{minipage}{0.4\textwidth}
+%   \begin{minted}[fontsize=\small]{python}
+% i = tf.constant(1)
+% j = tf.constant(1)
+% k = tf.constant(5)
+
+% def c(i, j, k):
+%   return
+%     tf.equal(
+%       tf.not_equal(
+%         tf.less(i + j, 10),
+%         tf.less(j * k, 100)),
+%         tf.greater_equal(k, i + j))
+% def b(i, j, k): return [i+j, j+k, k+1]
+% tf.while_loop(c, b, loop_vars=[i, j, k])
+%   \end{minted}
+%   \end{minipage}
+% & \hspace{-2.0em}
+% \begin{Huge}
+%   $\Rightarrow$
+% \end{Huge}
+% &
+%   \begin{minipage}{0.5\textwidth}
+%   \begin{minted}[fontsize=\footnotesize]{python}
+%   fn %while_loop(
+%     %lvar0: Tensor[(1,), int32], %lvar1: Tensor[(1,), int32],
+%     %lvar2: Tensor[(1,), int32]) {
+%     %0 = add(%lvar0, %lvar1)
+%     %1 = less(%0, meta[Constant][0])
+%     %2 = multiply(%lvar1, %lvar2)
+%     %3 = less(%2, meta[Constant][1])
+%     %4 = not_equal(%1, %3)
+%     %5 = add(%lvar0, %lvar1)
+%     %6 = greater_equal(%lvar2, %5)
+%     if (min(equal(%4, %6))) {
+%       %9 = add(%lvar0, %lvar1)
+%       %10 = add(%lvar1, %lvar2)
+%       %11 = add(%lvar2, meta[Constant][2])
+%       %while_loop(%9, %10, %11)
+%     } else { (%lvar0, %lvar1, %lvar2)
+%     }
+%   }
+%   %while_loop(meta[Constant][3], meta[Constant][4], meta[Constant][5])
+%   \end{minted}
+%   \end{minipage}
+%   \end{tabular}
+%   \caption{\textmd{
+%     A simple TensorFlow loop in the user-facing DSL and the Relay
+%       loop produced by automatically converting it.
+%     Note the TensorFlow while loop corresponds neatly to a tail recursive
+%       function.
+%     The Relay text format supports a ``metadata'' section which functions
+%       as a constant pool among other things.
+%     \texttt{meta[Constant][n]} represents the \texttt{n}-th constant in the
+%       pool.
+%   }}
+%   \label{fig:tf_to_relay_loop}
+%   \end{figure*}
 
   Neural networks increasingly rely on control flow, forcing frameworks based on computation graph IRs
   to support this construct; however, control flow extensions are generally \textit{ad hoc}.

@@ -377,7 +377,7 @@ The current framework demonstrates the importance of applying
 % \end{figure*}
 
 \section{Partial Evaluator}
-\label{sec:partial_eval}
+\label{sec:t formartial_eval}
 Existing deep learning IRs have relied on
   a mixture of staging and constant evaluation
   in order to optimize user programs.
@@ -531,8 +531,6 @@ Now that the all allocations are explicit in the IR we can provide analogous opt
 case on dynamic programs, for example we have implemented a storage coalescing pass which groups storage
 into a larger region which we can then multiplex tensor allocations on to.
 
-For the sake of space, we present a more complex example in the \autoref{appx:mem-plan-example},
-  which illustrates how to handle memory allocation when operators have dynamic shaped inputs.
 The key insight is to internalize a notion of memory allocation into the IR,
   enabling static optimization of both static and dynamic allocations in the presence of control and dynamic shapes.
 Now that all allocations are explicit in the IR, we can provide analogous optimizations in the static case on dynamic programs,
@@ -596,7 +594,8 @@ Our analysis is formulated as a set of device placement rules which describes ho
   (a) both inputs and outputs of shape function are assigned to CPU,
   (b) the output of \verb|device_copy| is assigned to the device that is copied to,
   (c) all arguments to \verb|invoke_mut| should have the same device domain.
-The full set of rules can be found in the \autoref{appx:hetero-rules}.
+
+% TODO import rules from appendix.
 
 \begin{itemize}
     \item \verb|shape_of|. Defaults to the CPU domain because we can access a Tensor's shape
