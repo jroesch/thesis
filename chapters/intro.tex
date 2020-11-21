@@ -164,6 +164,8 @@ Such \textit{ad hoc} extensions can improve expressivity
 However, they are difficult to design, reason about, and implement,
   often resulting in modifications that are mutually incompatible.
 
+TODO discconnect here
+
 Let us consider a hypothetical scenario that exemplifies
   IR design tensions in DL compilers.
 Suppose a machine learning engineer wants to write
@@ -198,68 +200,101 @@ Furthermore, if a framework doesn't have specific support for
   instructions or coprocessors~\citep{apple_neural_engine}.
 
 The state of the art when I began my thesis work were
-  deep learning frameworks that mostly had a single "lego" style design.
-I refer to the ``a lego design'' in deep learning frameworks
-  as the developing layers which clear boundaries which
-  allow mixing and match layers of the stack from different vendors.
-For example deep learning frameworks at the top,
-  layered all the way down to the high-performance,
-  device specific kernel libraries provided by hardware manufacturers.
-When I began work on TVM this looked like MxNet as the framework,
-  NNVM as the graph compiler, and the use of TVM or CuDNN as the
-  kernel library.
-As deep learning frameworks began to adopt compilation
-  the resulting compiler designs were heavily constrained by the
-  design of layered abstractions and existing programming model.
-A good analog is the traditional and popular monolithic kernel design
-  in operating systems which provides rigid abstractions over
-  hardware devices.
-Just as modern operating systems are embracing new abstractions
-  such as kernel bypass in order to enable more flexible and
-  performant approaches, deep learning compilers needed more
-  flexible designs.
+  deep learning frameworks and compilers that could provide
+  these experience some scenarios.
+The critical challenge inhibiting optimization via compilation
+  was an insufficiently expressive intermediate representation.
+Although many frameworks provide end-users with general, turing
+  complete programming models the IRs used to lower then to specific
+  backends were extremely limited.
+Originally these IRs were designed for lowering a directed-acyclic
+  graph of operations to high-level libraries provided by device vendors.
+Slowly and incrementally adapting these IRs to more generic programming
+  models has introduced a semantic gap between the source and target often
+  leading to complex or incomplete compilation processes.
+For example TorchScript admits arbitrary Python code into its IR, something
+  that can not be simply broken down into CUDA operations without a full Python compiler.
+TensorFlow makes use of Python to often to staged programming over graph fragments,
+  using the outer language as a staged-DSL.
+Due to this semantic gap many approahces focused on removing dynamic features in
+  order to hang on to a simple static compilation model.
 
-An example of a constraining abstraction is the reliance
-  device specific kernels libraries as the bottom most layer.
-By allowing the lowest level of abstraction to only view a single
-  kernel invocation you limit the ability to optimize as the final
-  program must map directly to existing kernels which when possible
-  may be sub-optimal.
-Practically this has introduced a strict separation between so-called
-  ‘graph-compilers’ and so called ‘kernel libraries’.
-These graph compilers implement a simple DAG of operations
-  which they then map down to kernels.
-The graph compilers are a passable solution, assuming the user can describe their program
-  in a restrictive and awkward language, and only makes use of existing kernels.
-If the user model makes use of the well-optimized subset of kernels and well-optimized devices
-  it can assume passable performance, but with many models this is not that case, with very little recourse for program authors.
+A simple way to view this work is evolving IR and runtime mechanisms to better
+  match the source language users are actually programming in.
+The challenge is that previous approaches have kept their IR simple for good
+  reason.
+There are challenges around efficient automatic differentiation, optimizations around
+  reduced or absent static information such as shape sizes, ..., and executing dynamic
+  features such as control flow, function calls, or allocating and manipulating data
+  structures.
+My thesis applies the simple observation that tensor languages can be transformed, compiled,
+  optimized and executed just as we would with traditional programming languages.
+The challenge is adapating domain specific innovations from the computation graph
+    domain to a full programming language.
 
-In the kernel domain there has been a large amount of existing work on
-  ensuring individual kernels, or pipelines of them are efficient,
-  but these DLSs are not integrated into a larger programming abstraction.
-There existing systems like TensorRT which solve this problem for a specific device,
-  with a series of caveats.
+% The state of the art when I began my thesis work were
+%   deep learning frameworks that mostly had a single "lego" style design.
+% I refer to the ``a lego design'' in deep learning frameworks
+%   as the developing layers which clear boundaries which
+%   allow mixing and match layers of the stack from different vendors.
+% For example deep learning frameworks at the top,
+%   layered all the way down to the high-performance,
+%   device specific kernel libraries provided by hardware manufacturers.
+% When I began work on TVM this looked like MxNet as the framework,
+%   NNVM as the graph compiler, and the use of TVM or CuDNN as the
+%   kernel library.
+% As deep learning frameworks began to adopt compilation
+%   the resulting compiler designs were heavily constrained by the
+%   design of layered abstractions and existing programming model.
+% A good analog is the traditional and popular monolithic kernel design
+%   in operating systems which provides rigid abstractions over
+%   hardware devices.
+% Just as modern operating systems are embracing new abstractions
+%   such as kernel bypass in order to enable more flexible and
+%   performant approaches, deep learning compilers needed more
+%   flexible designs.
 
-This state of affairs works OK as long as we remain within the footprint of static
-  models which map well to this restricted programming model.
-Even in the case of TensorFlow which has richer support for control-flow and
-  looping there are challenges optimizing for a single device scenario due
-  to the representation of these constructs.
+% An example of a constraining abstraction is the reliance
+%   device specific kernels libraries as the bottom most layer.
+% By allowing the lowest level of abstraction to only view a single
+%   kernel invocation you limit the ability to optimize as the final
+%   program must map directly to existing kernels which when possible
+%   may be sub-optimal.
+% Practically this has introduced a strict separation between so-called
+%   ‘graph-compilers’ and so called ‘kernel libraries’.
+% These graph compilers implement a simple DAG of operations
+%   which they then map down to kernels.
+% The graph compilers are a passable solution, assuming the user can describe their program
+%   in a restrictive and awkward language, and only makes use of existing kernels.
+% If the user model makes use of the well-optimized subset of kernels and well-optimized devices
+%   it can assume passable performance, but with many models this is not that case, with very little recourse for program authors.
 
-When I began this work if a user wanted to write a complex program involving dynamic shapes,
-  dynamic control, and complex data structures which is jointly optimized there are few
-  solutions which solve the above use case.
+% In the kernel domain there has been a large amount of existing work on
+%   ensuring individual kernels, or pipelines of them are efficient,
+%   but these DLSs are not integrated into a larger programming abstraction.
+% There existing systems like TensorRT which solve this problem for a specific device,
+%   with a series of caveats.
 
-Our hypothesis for building Relay is that in order to provide good general
-  purpose performance while also supporting new emerging model features
-  we would require a brand new design for the compiler.
-For example users would often write a brand new kernel to back operations such
-  as an LSTM.
-As we will see in Chapter~\ref{ch:execute} it is possible to write an LSTM in pure Relay
-  and obtain state-of-the-art performance.
-Many engineers in this domain believe that building state-of-the-art kernels requires
-  human effort to obtain bleeding-edge performance, the rest of this thesis demonstrates
-  this is not the case.
+% This state of affairs works OK as long as we remain within the footprint of static
+%   models which map well to this restricted programming model.
+% Even in the case of TensorFlow which has richer support for control-flow and
+%   looping there are challenges optimizing for a single device scenario due
+%   to the representation of these constructs.
+
+% When I began this work if a user wanted to write a complex program involving dynamic shapes,
+%   dynamic control, and complex data structures which is jointly optimized there are few
+%   solutions which solve the above use case.
+
+% Our hypothesis for building Relay is that in order to provide good general
+%   purpose performance while also supporting new emerging model features
+%   we would require a brand new design for the compiler.
+% For example users would often write a brand new kernel to back operations such
+%   as an LSTM.
+% As we will see in Chapter~\ref{ch:execute} it is possible to write an LSTM in pure Relay
+%   and obtain state-of-the-art performance.
+% Many engineers in this domain believe that building state-of-the-art kernels requires
+%   human effort to obtain bleeding-edge performance, the rest of this thesis demonstrates
+%   this is not the case.
 
 \section{Dynamic Neural Networks}
 
