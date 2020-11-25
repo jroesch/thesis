@@ -227,10 +227,15 @@ Another analogous process was adapting ideas from traditional compilation
   to dynamic languages such as Smalltalk and Self in the 80s and 90s.
 These pushes grew existing compilation techniques to support new features
   and programming paradigms.
-My thesis is that the first generation of compilers have not yet
+Ahead of time compilation based on static type information and layout
+  could not be straight forwardly applied to dynamic languages leading
+  to generation of just-in-time compilation advances.
+I believe this is strongly paralleled to the continued
+  development of deep learning compilers.
+This first generation of compilers have not yet
   captured the spectrum of user programs requiring us to build
-  a new system inspired by previous advances but requiring
-  us to solve new deep learning specific challenges.
+  new systems which grow techniques to apply to the new
+  domain specific deep learning specific challenges.
 
 The correct representation of deep learning is not clear, most
   existing representations have been organically adapted from
@@ -253,20 +258,10 @@ The lack of support for a richer programming model has lead to numerous
 
 Even having solved these problems there is still the final challenge of being
   able to optimize and execute the code on the requisite platforms.
-During optimization I need to be able to uniformly optimize at a high-level
-  of abstraction scalar code optimizers such as LLVM can't appropriate reason
+Scalar optimizers that optimize at a high-level of abstraction scalar code optimizers such as LLVM can't appropriate reason
   about programs at the tensor level requiring tensor specific reasoning.
 Once I've done that how do I execute the programs such that I can run
   on a variety of devices with acceptable performance.
-
-% In particular these existing systems all employed ways to remove
-%   dynamism from the program *before* compilation.
-% The end user perceives frameworks as being able to
-%   fully execute dynamic programs as framework limitations can mostly be ignored by end
-%   users.
-% Unfortunately the lack of deep support for dynamic neural networks,
-%   as with many things, the devil is in the details, which this lack
-%   of support manifesting as strange inconsistencies, limitations, or lost performance.
 
 In this thesis we explore the four key aspects of compiling dynamic
   neural networks their representation, optimization, differentiation,
@@ -275,7 +270,8 @@ We do this by building an enriched compiler framework based on TVM by introducin
   a new representation Relay which increases expressivity to handle the features
   we detailed in this section.
 We define a new approach to higher-order, higher-order automatic differentiation
-  which is able to handle computing derivatives of this language, and
+  which is able to handle computing derivatives of the complete IR and
+  can be uniformly optimized as a Relay program.
 We further extend this compositional framework for compilation to handle dynamism
   and are able to show state-of-the-art performance across a variety of devices.
 
@@ -289,3 +285,12 @@ We then discuss program optimization in Chapter~\ref{ch:optimizations},
   followed by how to lower, execute, and compile these programs in
   Chapter~\ref{ch:execute}.
 Finally we look to future in Chapter~\ref{ch:future}.
+
+% In particular these existing systems all employed ways to remove
+%   dynamism from the program *before* compilation.
+% The end user perceives frameworks as being able to
+%   fully execute dynamic programs as framework limitations can mostly be ignored by end
+%   users.
+% Unfortunately the lack of deep support for dynamic neural networks,
+%   as with many things, the devil is in the details, which this lack
+%   of support manifesting as strange inconsistencies, limitations, or lost performance.
