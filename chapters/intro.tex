@@ -47,9 +47,8 @@ In the years after the introduction of frameworks it has become clear
 From the early days of deep learning framework development researchers realized the
   potential for apply compilation to accelerate neural networks.~\footnote{Theano was applying
   compilation to deep learning as early as 2007.}
-Modern frameworks borrowing ideas from the research community and previous
-  experiences applying compilation began to introduce compilers into frameworks.
-
+Modern frameworks borrowing ideas from the research community
+  began to introduce compilers into frameworks.
 Deep learning compilers, systems for accelerating the execution deep learning via compilation,
  have made similar tradeoffs as frameworks by narrowly focusing on executing a subset
  currently popular of models on a subset of devices.
@@ -63,8 +62,11 @@ Although non-intuitive this is a general challenge of applying compilation,
 Compilers for deep learning~\citep{xla,jax,glow,tvm_osdi18,myia,fluxjl,lattner2020mlir} are
   a rapidly evolving area explored by both industrial and academic researchers.
 
-A particular way in which deep learning frameworks have been narrowly focused
-  is their focus on the handling of static, feed-forward neural networks.
+Deep learning compilers have been narrowly focused
+  on the handling of static, feed-forward neural networks.
+Due to this design first-generation compilers have been overfit
+  for static model compilation, with strong assumptions of static control-flow,
+  static tensor dimensions and no complex data structures.
 Specifically, these models are represented as static data flow graphs where the
   size of each input and output (i.e. tensors or $n$-dimensional arrays) are known a priori,
   ensuring the execution path remains unchanged on every invocation.
@@ -78,40 +80,26 @@ At the time of their design the deep learning was revolutionizing
 Unfortunately the design of frameworks have severely limited the performance
   of programs that fall outside of the well-optimized static footprint.
 
-Due to this design first-generation compilers have also been overfit
-  for static model compilation, with strong assumptions of static control-flow,
-  static tensor dimensions and no complex data structures.
-This poses new challenges for deep learning practitioners, as dynamic models introduce
-  input-dependent graph topology, breaking existing system and invalidating optimizations
-  designed for purely static data flow graphs.
-However, no existing solutions fulfill these requirements.
-
 This lack of support has manifested as series of ad-hoc extensions to
   both frameworks, deep learning runtimes, and compilers.
 Many existing approaches to dynamic model optimization apply or
   extend existing deep learning frameworks~\citep{xu2018cavs, gao2018low, yu2018dynamic, jeong2018improving, jeong2019janus, dynet, tf_fold}.
-In order to realize these features frameworks are often monolithic, large, and non-portable.
 Existing work which builds on frameworks extends the programming model either via
   sophisticated additions~\citep{yu2018dynamic} or significant runtime overhead~\citep{tf_fold, jeong2019janus}.
-Other work~\citep{xu2018cavs, gao2018low, tf_fold} which is focused on optimizing specific types
-  of models is often hard to generalize to new models, or generalize over all models.
-Moreover, approaches which inherit from frameworks rely on third-party kernel libraries
-  such as OpenBLAS~\citep{xianyi2014openblas}, cuDNN~\citep{cudnn}, and MKL-DNN~\citep{mkldnn} to achieve competitive performance.
- These libraries expose a fixed set of operators for the corresponding hardware,
-  compromising the portability of dynamic models which require a large number of operators with varying data types and shapes.
-Designing a new interface independent of existing frameworks provides a clean programming model
-  but often at the cost of performance, due to dynamic interpretation of the model~\citep{dynet}.
 
-Deep learning compilers differ from traditional deep learning frameworks by separating execution into a compilation,
-  and runtime phase.
-The compilation phase enables whole-model optimization at the graph level,
-  and workload specific kernel code-generation for multiple hardware platforms.
+% Other work~\citep{xu2018cavs, gao2018low, tf_fold} which is focused on optimizing specific types
+%   of models is often hard to generalize to new models, or generalize over all models.
+% Moreover, approaches which inherit from frameworks rely on third-party kernel libraries
+%   such as OpenBLAS~\citep{xianyi2014openblas}, cuDNN~\citep{cudnn}, and MKL-DNN~\citep{mkldnn} to achieve competitive performance.
+%  These libraries expose a fixed set of operators for the corresponding hardware,
+%   compromising the portability of dynamic models which require a large number of operators with varying data types and shapes.
+% Designing a new interface independent of existing frameworks provides a clean programming model
+%   but often at the cost of performance, due to dynamic interpretation of the model~\citep{dynet}.
 
-However, deep learning compilers have been primarily restricted to static models due to lack of support for dynamism.
-Specifically, in order to compile and execute the dynamic models, a system requires an intermediate representation (IR) which can statically represent dynamic constructs, a code generator
-which can generate kernels for dynamically varying data shapes, and a runtime to handle the dynamic execution and kernel dispatch accordingly.
-In addition, dynamic-specific optimizations, such as dynamic memory planning, the process of statically optimizing dynamic allocations, are necessary to achieve desirable performance.
-None of these features exist in the current deep learning compilers.
+% Deep learning compilers differ from traditional deep learning frameworks by separating execution into a compilation,
+%   and runtime phase.
+% The compilation phase enables whole-model optimization at the graph level,
+%   and workload specific kernel code-generation for multiple hardware platforms.
 
 In particular I have spent the last several years focused on an under served problem:
   the representation,
@@ -163,11 +151,13 @@ Such \textit{ad hoc} extensions can improve expressivity
   while maintaining backwards compatibility with existing execution mechanisms.
 However, they are difficult to design, reason about, and implement,
   often resulting in modifications that are mutually incompatible.
-
-TODO discconnect here
+Furthermore extensions which introduce high-level semantics
+  such as control-flow, data structures, or data dependent kernels
+  are not explicitly represented by deep learning compiler IRs
+  and are hard or impossible to effectively optimize.
 
 Let us consider a hypothetical scenario that exemplifies
-  IR design tensions in DL compilers.
+  IR design tensions in deep learning compilers.
 Suppose a machine learning engineer wants to write
   an Android app that uses sentiment analysis to
   determine the moods of its users.
@@ -199,38 +189,130 @@ Furthermore, if a framework doesn't have specific support for
   the target phone model she cannot take advantage of specialized deep learning
   instructions or coprocessors~\citep{apple_neural_engine}.
 
-The state of the art when I began my thesis work were
-  deep learning frameworks and compilers that could provide
-  these experience some scenarios.
+Deep learning frameworks only supported a limited subset of these flows
+  and compilers an even smaller subset.
 The critical challenge inhibiting optimization via compilation
   was an insufficiently expressive intermediate representation.
+We must be able to internalize the constructs we wish to optimize.
 Although many frameworks provide end-users with general, turing
   complete programming models the IRs used to lower then to specific
   backends were extremely limited.
 Originally these IRs were designed for lowering a directed-acyclic
   graph of operations to high-level libraries provided by device vendors.
-Slowly and incrementally adapting these IRs to more generic programming
-  models has introduced a semantic gap between the source and target often
+Incrementally adapting these IRs to support a richer programming
+  model has introduced a semantic gap between the source and target often
   leading to complex or incomplete compilation processes.
 For example TorchScript admits arbitrary Python code into its IR, something
-  that can not be simply broken down into CUDA operations without a full Python compiler.
+  that can be desugared to CUDA operations without employing full Python to GPU compiler.
 TensorFlow makes use of Python to often to staged programming over graph fragments,
   using the outer language as a staged-DSL.
-Due to this semantic gap many approahces focused on removing dynamic features in
+Due to this semantic gap many approaches focused on removing dynamic features in
   order to hang on to a simple static compilation model.
 
-A simple way to view this work is evolving IR and runtime mechanisms to better
-  match the source language users are actually programming in.
-The challenge is that previous approaches have kept their IR simple for good
-  reason.
+A way to view this work is evolving IR and runtime mechanisms to better
+  match the source language users are programming in.
+Existing compilers have maintained their current IRs as it is not a simple
+  task to adapt domain specific transformations to an enriched IR.
 There are challenges around efficient automatic differentiation, optimizations around
   reduced or absent static information such as shape sizes, ..., and executing dynamic
   features such as control flow, function calls, or allocating and manipulating data
   structures.
 My thesis applies the simple observation that tensor languages can be transformed, compiled,
   optimized and executed just as we would with traditional programming languages.
-The challenge is adapating domain specific innovations from the computation graph
-    domain to a full programming language.
+The central contribution is a recipe for not only growing the IR but also
+  adapting domain specific innovations from the computation graph domain to
+  a full programming language.
+We can do this by building on ideas from decades of previous work in compilation and previous
+    trends in compilers in order to solve this problem for an enriched language.
+
+\section{Dynamic Neural Networks}
+
+In particular this thesis talks about growing compiler support from
+  a limited subset of programs to a more general programming model.
+There are multiple analogies to be made to historical compilation.
+For example early Fortran compilers did not support recursion
+  as the compiler statically allocated all activation records.
+It required evolving both the compiler, IR, and runtime data structures
+  to support new features.
+Another analogous process was adapting ideas from traditional compilation
+  to dynamic languages such as Smalltalk and Self in the 80s and 90s.
+These pushes grew existing compilation techniques to support new features
+  and programming paradigms.
+My thesis is that the first generation of compilers have not yet
+  captured the spectrum of user programs requiring us to build
+  a new system inspired by previous advances but requiring
+  us to solve new deep learning specific challenges.
+
+The correct representation of deep learning is not clear, most
+  existing representations have been organically adapted from
+  computation graphs a useful if not simplistic IR that organically
+  evolved from AD and ML literature.
+A representation must capture concepts like control flow, iteration
+  or recursive operations like fold or scan, allocation,
+  device placement, scoping, effects, function calls, data structures,
+  and shape information.
+Previous IRs solve a subset of these problems and often only in partial
+  or restricted domains.
+
+Even if we have such a representation there are challenges specific to
+ machine learning, we must be able to differentiate the programs.
+Deep learning has often relied on backpropagation or simple AD algorithms
+  defined over computation graphs.
+The lack of support for a richer programming model has lead to numerous
+  attempts to define both what is differentiable and how to differentiate
+  it as we discuss in RELATED WORK.
+
+Even having solved these problems there is still the final challenge of being
+  able to optimize and execute the code on the requisite platforms.
+During optimization I need to be able to uniformly optimize at a high-level
+  of abstraction scalar code optimizers such as LLVM can't appropriate reason
+  about programs at the tensor level requiring tensor specific reasoning.
+Once I've done that how do I execute the programs such that I can run
+  on a variety of devices with acceptable performance.
+
+% In particular these existing systems all employed ways to remove
+%   dynamism from the program *before* compilation.
+% The end user perceives frameworks as being able to
+%   fully execute dynamic programs as framework limitations can mostly be ignored by end
+%   users.
+% Unfortunately the lack of deep support for dynamic neural networks,
+%   as with many things, the devil is in the details, which this lack
+%   of support manifesting as strange inconsistencies, limitations, or lost performance.
+
+In this thesis we explore the four key aspects of compiling dynamic
+  neural networks their representation, optimization, differentiation,
+  and execution.
+We do this by building an enriched compiler framework based on TVM by introducing
+  a new representation Relay which increases expressivity to handle the features
+  we detailed in this section.
+We define a new approach to higher-order, higher-order automatic differentiation
+  which is able to handle computing derivatives of this language, and
+We further extend this compositional framework for compilation to handle dynamism
+  and are able to show state-of-the-art performance across a variety of devices.
+
+\section{Thesis Organization}
+
+My thesis is organized around four pillars, representation, differentiation, optimization, execution,
+We first explore related work and background material in Chapter~\ref{ch:related},
+  we discuss the design of the Relay intermediate representation in Chapter~\ref{ch:relay}
+We then discuss how to perform automatic differentiation and training support in Chapter~\ref{ch:ad}.
+We then discuss program optimization in Chapter~\ref{ch:optimizations},
+  followed by how to lower, execute, and compile these programs in
+  Chapter~\ref{ch:execute}.
+Finally we look to future in Chapter~\ref{ch:future}.
+
+% Bibliography
+
+% [2] data and model size the amount of compute is exponentially growing, roughly doubling every 3.4 months (see https://twitter.com/OpenAI/status/1192481690741903360).
+
+% [3] https://arxiv.org/pdf/1911.05289.pdf
+
+% THESES TO LOOK AT:
+% https://people.csail.mit.edu/jrk/jrkthesis.pdf
+% https://homes.cs.washington.edu/~djg/theses/sampson_thesis.pdf
+% https://llvm.org/pubs/2005-05-04-LattnerPHDThesis.pdf
+
+
 
 % The state of the art when I began my thesis work were
 %   deep learning frameworks that mostly had a single "lego" style design.
@@ -295,53 +377,3 @@ The challenge is adapating domain specific innovations from the computation grap
 % Many engineers in this domain believe that building state-of-the-art kernels requires
 %   human effort to obtain bleeding-edge performance, the rest of this thesis demonstrates
 %   this is not the case.
-
-\section{Dynamic Neural Networks}
-
-In particular previous solutions have limited potential optimizations
-  and transformations in the presence of dynamic features.
-In particular these existing systems all employed ways to remove
-  dynamism from the program *before* compilation.
-The end user perceives frameworks as being able to
-  fully execute dynamic programs as framework limitations can mostly be ignored by end
-  users.
-Unfortunately the lack of deep support for dynamic neural networks,
-  as with many things, the devil is in the details, which this lack
-  of support manifesting as strange inconsistencies, limitations, or lost performance.
-
-In this thesis we explore the four key aspects of compiling dynamic
-  neural networks their representation, optimization, differentiation,
-  and execution.
-The hypothetical story of the user needing to extend the entire stack is derived
-  from a true sequence of events that occurred in the development of Relay.
-A process like this requires diverse expertise that is often non-compositional.
-It is nearly impossible to find a single individual who has the ability
-  to do all these tasks at a state-of-the-art level.
-One user introduced framework support, another added a kernel, another optimized it,
-  and another added compiler and runtime support for a new target.
-We were able to do this in a way where each user was able to make these
-  changes independently and then compose them.
-We further extend this compositional framework for compilation to handle dynamism
-  and are able to show state-of-the-art performance across a variety of devices.
-
-\section{Thesis Organization}
-
-My thesis is organized around four pillars, representation, differentiation, optimization, execution,
-We first explore related work and background material in Chapter~\ref{ch:related},
-  we discuss the design of the Relay intermediate representation in Chapter~\ref{ch:relay}
-We then discuss how to perform automatic differentiation and training support in Chapter~\ref{ch:ad}.
-We then discuss program optimization in Chapter~\ref{ch:optimizations},
-  followed by how to lower, execute, and compile these programs in
-  Chapter~\ref{ch:execute}.
-Finally we look to future in Chapter~\ref{ch:future}.
-
-% Bibliography
-
-% [2] data and model size the amount of compute is exponentially growing, roughly doubling every 3.4 months (see https://twitter.com/OpenAI/status/1192481690741903360).
-
-% [3] https://arxiv.org/pdf/1911.05289.pdf
-
-% THESES TO LOOK AT:
-% https://people.csail.mit.edu/jrk/jrkthesis.pdf
-% https://homes.cs.washington.edu/~djg/theses/sampson_thesis.pdf
-% https://llvm.org/pubs/2005-05-04-LattnerPHDThesis.pdf
