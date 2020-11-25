@@ -24,7 +24,7 @@ These monolithic systems can execute a subset of deep learning models
 These systems provide good baseline performance, but often fail
   when straying from well-used models, and only support limited deployment strategies.
 In particular TensorFlow's design was optimized for the distributed setting
-  but provides a sub-optimal experience on a single node\footnote{In fact, I have been told by Google engineers they would jokingly refer to TensorFlow as TensorSlow in the early days.}.
+  but provides a sub-optimal experience on a single node\footnote{In fact, Google engineers told me they would jokingly refer to TensorFlow as TensorSlow in the early days.}.
 
 Scaling frameworks to span the scope of all models and targets is a monumental endeavor
   requiring deep expertise often not found in conjunction with the skills of a
@@ -87,31 +87,17 @@ Many existing approaches to dynamic model optimization apply or
 Existing work which builds on frameworks extends the programming model either via
   sophisticated additions~\citep{yu2018dynamic} or significant runtime overhead~\citep{tf_fold, jeong2019janus}.
 
-% Other work~\citep{xu2018cavs, gao2018low, tf_fold} which is focused on optimizing specific types
-%   of models is often hard to generalize to new models, or generalize over all models.
-% Moreover, approaches which inherit from frameworks rely on third-party kernel libraries
-%   such as OpenBLAS~\citep{xianyi2014openblas}, cuDNN~\citep{cudnn}, and MKL-DNN~\citep{mkldnn} to achieve competitive performance.
-%  These libraries expose a fixed set of operators for the corresponding hardware,
-%   compromising the portability of dynamic models which require a large number of operators with varying data types and shapes.
-% Designing a new interface independent of existing frameworks provides a clean programming model
-%   but often at the cost of performance, due to dynamic interpretation of the model~\citep{dynet}.
-
-% Deep learning compilers differ from traditional deep learning frameworks by separating execution into a compilation,
-%   and runtime phase.
-% The compilation phase enables whole-model optimization at the graph level,
-%   and workload specific kernel code-generation for multiple hardware platforms.
-
+In this thesis I propose that overspecialized
+  compilation techniques applied to static dataflow graphs,
+  the predominant programming model of deep learning,
+  can be generalized to fully dynamic neural networks.
+These generalizations are powered by a simple insight:
+  dynamic neural networks are just programs which manipulate tensors.
 In particular I have spent the last several years focused on an under served problem:
   the representation,
   optimization,
   differentiation,
   and execution of \emph{dynamic neural networks}.
-In this thesis I propose generalizing overspecialized
-  compilation techniques applied to static dataflow graphs,
-  the predominant programming model of deep learning,
-  to fully dynamic neural networks.
-These generalizations are powered by a simple insight:
-  dynamic neural networks are just programs which manipulate tensors.
 The challenge is constructing a representation that captures this generality
   in a principled manner, enabling state-of-the-art performance without limiting the programming model.
 We realize a unified interface in the form of Relay: a set of systems and APIs designed
@@ -193,30 +179,33 @@ Deep learning frameworks only supported a limited subset of these flows
   and compilers an even smaller subset.
 The critical challenge inhibiting optimization via compilation
   was an insufficiently expressive intermediate representation.
-We must be able to internalize the constructs we wish to optimize.
+Compilers must be able to internalize the constructs
+  that they intended to optimize.
 Although many frameworks provide end-users with general, turing
   complete programming models the IRs used to lower then to specific
-  backends were extremely limited.
+  backends can be extremely limited.
 Originally these IRs were designed for lowering a directed-acyclic
   graph of operations to high-level libraries provided by device vendors.
 Incrementally adapting these IRs to support a richer programming
   model has introduced a semantic gap between the source and target often
   leading to complex or incomplete compilation processes.
-For example TorchScript admits arbitrary Python code into its IR, something
-  that can be desugared to CUDA operations without employing full Python to GPU compiler.
-TensorFlow makes use of Python to often to staged programming over graph fragments,
-  using the outer language as a staged-DSL.
 Due to this semantic gap many approaches focused on removing dynamic features in
   order to hang on to a simple static compilation model.
+For example TorchScript admits arbitrary Python code in the IR,
+  code which can not be desugared into CUDA operations without employing
+  a full Python to GPU compiler.
+TensorFlow makes use of Python to do meta-programming with graph fragments,
+  using the outer language as a staged-DSL.
 
 A way to view this work is evolving IR and runtime mechanisms to better
   match the source language users are programming in.
 Existing compilers have maintained their current IRs as it is not a simple
   task to adapt domain specific transformations to an enriched IR.
-There are challenges around efficient automatic differentiation, optimizations around
-  reduced or absent static information such as shape sizes, ..., and executing dynamic
-  features such as control flow, function calls, or allocating and manipulating data
-  structures.
+There are challenges around many important transformations and optimizations
+  in an richer IR such as efficient automatic differentiation, optimizations around
+  reduced or absent static information such as shape sizes, and code generation
+  and execution around dynamic features such as control flow, function calls,
+  or allocating and manipulating data structures.
 My thesis applies the simple observation that tensor languages can be transformed, compiled,
   optimized and executed just as we would with traditional programming languages.
 The central contribution is a recipe for not only growing the IR but also
