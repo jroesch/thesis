@@ -20,11 +20,11 @@ Such \textit{ad hoc} extensions can improve expressivity
 However, they are difficult to design, reason about, and implement,
   often resulting in modifications that are mutually incompatible.
 Nearly all popular deep learning representations were designed for
-  static computation graphs, leading to numerous of these types of
-  extensions to support dynamic program features.
+  static computation graphs, leading to numerous
+  extensions designed to support dynamic neural networks.
 
-We present Relay,
-  a new compiler framework for DL.
+This thesis present Relay,
+  a new compiler IR for deep learning.
 Relay's functional, statically typed intermediate representation (IR)
   unifies and generalizes existing DL IRs
   to express state-of-the-art models.
@@ -50,39 +50,6 @@ Learning from previous IRs, we have designed Relay,
   which features a principled approach to addressing extensibility
   and improves expressivity, composability, and portability
   over previous frameworks.
-
-  Previous IRs have struggled to address these challenges, treating each
-    component of the framework as a disconnected set of programming tasks.
-  Operators are defined in low-level languages like C++,
-    connected by a dataflow graph, and then scripted
-    in a host language like Python.
-  Consequently,
-    program analyses cannot cross language boundaries between components,
-    inhibiting optimization and deployment.
-  Learning from previous IRs, we have designed Relay,
-    which features a principled approach to addressing extensibility
-    and improves expressivity, composability, and portability
-    over previous frameworks.
-
-
-Previous IRs have struggled to address these challenges because they treat
-    each part of the framework as a disconnected set of libraries.
-  Operators are defined in low-level languages like C++,
-    connected with a dataflow graph, and then scripted
-    in a host language such as Python;
-    analyses cannot traverse the boundaries between these components.
-  Learning from the steps and missteps of previous IRs, we designed Relay,
-    a principled approach to addressing extensibility.
-  By treating the entire stack as a language
-    design problem, Relay enables reasoning across
-    abstraction boundaries, which
-    improves expressivity, composability, and portability over previous frameworks.
-% The principle of least semantic dictates we should make design choices which give further optimization stages
-%   the ability to perform optimizations without unnecessary detail.
-% For example enabling implicit effects and non-explicit control complicates computational graph semantics,
-%   and limits optimization.
-% TF’s DAG attempts to separate pure semantics in order to handle out of order execution, and parallel and distributed scheduling,
-%   but does so by compromising on the programming model.
 
 Instead we were able to build an IR inspired by the ML family of languages which provides pure-sub fragments which can be scheduled
   the same way without compromising on the programming model.

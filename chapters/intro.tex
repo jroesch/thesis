@@ -235,7 +235,7 @@ In particular this thesis explores growing compiler support from
 There are multiple analogies to be made to historical compilation.
 For example early Fortran compilers did not support recursion
   as the compiler statically allocated all activation records\cite{fortran_recursion}.
-It required evolving both the compiler, IR, and runtime data structures
+It required evolving the compiler, IR, runtime data structures and even hardware
   to support new features.
 Another analogous process was adapting ideas from traditional compilation
   to dynamic languages such as Smalltalk and Self in the 80s and 90s.
@@ -269,15 +269,15 @@ The lack of support for a richer programming model has lead to numerous
   attempts to define both what is differentiable and how to differentiate
   it as we discuss in Chapter~\ref{ch:related}.
 
-Even having solved these problems there is still the final challenge of being
+Even if these problems are solved there is still the final hurdle of being
   able to optimize and execute the code on target platforms.
-
-  Scalar optimizers that optimize at a high-level of abstraction scalar code optimizers such as LLVM can't appropriate reason
-  about programs at the tensor level requiring tensor specific reasoning.
-
-Once I've done that how do I execute the programs such that I can run
-  on a variety of devices with acceptable performance.
-
+Traditional compiler optimizations are focused on low-level optimizations
+  for traditional scalar, general purpose architectures.
+For example LLVM is not focused on optimizing aggregate allocations,
+  or is away of accelerate memory semantics, scratch pads, or explicit
+  cache management.
+Finally once programs are optimized we must be able to
+  provide the correct runtime support that is efficient and cross-platform.
 
 \section{Thesis Organization}
 
