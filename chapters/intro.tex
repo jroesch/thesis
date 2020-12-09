@@ -3,7 +3,8 @@
 
 Traditionally, machine learning algorithms were carefully engineered by humans
   in order to leverage limited data to obtain sufficient task performance.
-During the Big Data era, these hand engineered algorithms were displaced by
+During the Big Data era, spanning the better part of the last two decades,
+  more complex algorithms were displaced by
   simpler algorithms applied to the abundantly available data~\citep{unreasonable}\footnote{"We don’t have better algorithms. We just have more data.” From "The Unreasonable Effectiveness of Data"}.
 In order to scale these algorithms a number of frameworks were
   developed, most notably streaming and graph processing systems such as MapReduce and Spark.
@@ -11,22 +12,22 @@ In the early 2010s the emergence of deep learning changed the paradigm again
   replacing simple regular computation over streams with large batched-models
   composed of compute-hungry tensor computations.
 The paradigm shift towards deep learning has started a trend of deploying models
-  which are applied to more complex data (i.e., full text documents, images, videos, audio)
+  which are applied to more complex data (i.e., full text documents, images, videos, audio),
   process a greater quantity of data (millions of data points),
   and are more computationally and memory expensive to evaluate on a single datum (i.e., terra-flops of compute per sample).
 
 This new generation of machine learning applications demanded a corresponding era of
   innovation in systems.
 The first innovation in deep learning systems were
-  ``deep learning frameworks"" such as TensorFlow and PyTorch.
+  ``deep learning frameworks" such as TensorFlow and PyTorch.
 These monolithic systems can execute a subset of deep learning models
   efficiently on a subset of the most popular hardware devices.
 These systems provide good baseline performance, but often fail
-  when straying from well-used models, and only support limited deployment strategies.
+  when straying from popular mainstream models, and only support limited deployment strategies.
 In particular TensorFlow's design was optimized for the distributed setting
   but provides a sub-optimal experience on a single node\footnote{In fact, Google engineers told me they would jokingly refer to TensorFlow as TensorSlow in the early days.}.
 
-Scaling frameworks to span the scope of all models and targets is a monumental endeavor
+Scaling frameworks to span the scope of all models and hardware targets is a monumental endeavor
   requiring deep expertise often not found in conjunction with the skills of a
   machine learning engineer.
 Even with the aid of a machine learning framework a machine learning engineer
@@ -35,17 +36,17 @@ Even with the aid of a machine learning framework a machine learning engineer
 Frameworks only support a subset of programs, optimizations, and devices
   requiring large teams to extend frameworks for even relatively simple deviations
   from standard models.
-Even when a team is able to get a model running observed performance often
-  is lacking behind the performance of well trod workloads.
+Even when a team is able to get a model running, the resulting performance often
+  is lacking relative to the performance of more popular workloads.
 Large companies are able to mitigate this cost with raw capital expenditure
-  but this puts smaller organizations and researchers on an unequal footing.
+  but this puts smaller organizations and researchers on unequal footing.
 In the years after the introduction of frameworks it has become clear
   that automation is needed to both help smaller groups of engineers
   more effectively develop and deploy deep learning, and allow larger
   organizations to work effectively and efficiently.
 
 From the early days of deep learning framework development researchers realized the
-  potential for apply compilation to accelerate neural networks.~\footnote{Theano was applying
+  potential for apply compiler optimizations to accelerate neural networks.~\footnote{Theano was applying
   compilation to deep learning as early as 2007.}
 Modern frameworks borrowing ideas from the research community
   began to introduce compilers into frameworks.
@@ -57,7 +58,7 @@ For example,
   a popular state-of-the-art DL compiler,
   Google's XLA, can famously slow down programs on
   CPU instead of speeding them up.
-Although non-intuitive this is a general challenge of applying compilation,
+Although non-intuitive, this is a general challenge of applying compilation:
   it is not a silver bullet and may not provide uniform speedups across all input programs.
 Compilers for deep learning~\citep{xla,jax,glow,tvm_osdi18,myia,fluxjl,lattner2020mlir} are
   a rapidly evolving area explored by both industrial and academic researchers.
@@ -70,22 +71,23 @@ Due to this design first-generation compilers have been overfit
 Specifically, these models are represented as static data flow graphs where the
   size of each input and output (i.e. tensors or $n$-dimensional arrays) are known a priori,
   ensuring the execution path remains unchanged on every invocation.
-We refer to models with this static nature as \emph{static models}.
+We refer to models with such fixed runtime behavior as \emph{static models}.
 Continued advances in neural networks, especially those in natural language processing,
   have introduced new dynamism in models, such as control flow \citep{lstm, language_model},
   dynamic data structures \citep{tree_lstm, graph_lstm}, and dynamic shapes \citep{devlin2018bert}.
   We refer to models exhibiting these behaviors as {\em dynamic models}.
-At the time of their design the deep learning was revolutionizing
+At the time of their design, tdeep learning was revolutionizing
   computer vision but had not yet changed areas such as natural language processing (NLP).
 Unfortunately the design of frameworks have severely limited the performance
   of programs that fall outside of the well-optimized static footprint.
 
 This lack of support has manifested as series of ad-hoc extensions to
-  both frameworks, deep learning runtimes, and compilers.
+  both deep learning runtimes, and ML compilers.
 Many existing approaches to dynamic model optimization apply or
   extend existing deep learning frameworks~\citep{xu2018cavs, gao2018low, yu2018dynamic, jeong2018improving, jeong2019janus, dynet, tf_fold}.
 Existing work which builds on frameworks extends the programming model either via
-  sophisticated additions~\citep{yu2018dynamic} or significant runtime overhead~\citep{tf_fold, jeong2019janus}.
+  sophisticated additions~\citep{yu2018dynamic} leading to designs that only work
+  for a single framework or significant runtime overhead~\citep{tf_fold, jeong2019janus}.
 
 In this thesis I propose that overspecialized
   compilation techniques applied to static dataflow graphs,
@@ -93,7 +95,7 @@ In this thesis I propose that overspecialized
   can be generalized to fully dynamic neural networks.
 These generalizations are powered by a simple insight:
   dynamic neural networks are just programs which manipulate tensors.
-In particular I have spent the last several years focused on an under served problem:
+In particular I have spent the last several years focused on an under explored problem:
   the representation,
   optimization,
   differentiation,
@@ -109,7 +111,7 @@ Instead of building a single IR and compiler to rule them all\footnote{and in th
 This approach balances the tension between expressivity, composition
   and performance portability.
 Part of my thesis work in graduate school
-  was meaningful contributions to the general design and implementation of
+  lead to significant contributions to the general design and implementation of
   production quality deep learning compilers.
 Much of this work now exists in Apache TVM, a deep learning compiler framework.
 Relay and our work on dynamic neural networks was merged into Apache TVM and
@@ -118,9 +120,9 @@ Relay is deployed in production at multiple leading companies including
   Amazon, Facebook, and Microsoft and is a critical piece of the technology stack
   at OctoML a company I co-founded around the TVM project.
 One notable impact is its use in Amazon Alexa, Amazon's AI assistant
-  which executes on a variety of devices most notably ``smart speakers''.
-Amazon engineers applied it Alexa’s wake word model, executed each time a user interacts with
-  Alexa.
+  which executes on a variety of devices such as ``smart speakers''.
+Amazon engineers used Relay in particular to optimize Alexa’s wake word model, which
+  is executed each time a user interacts with Alexa.
 
 \section{State of the Art}
 
@@ -182,12 +184,12 @@ The critical challenge inhibiting optimization via compilation
 Compilers must be able to internalize the constructs
   that they intended to optimize.
 Although many frameworks provide end-users with general, turing
-  complete programming models the IRs used to lower then to specific
+  complete programming models the IRs used to lower them to specific
   backends can be extremely limited.
 Originally these IRs were designed for lowering a directed-acyclic
   graph of operations to high-level libraries provided by device vendors.
 Incrementally adapting these IRs to support a richer programming
-  model has introduced a semantic gap between the source and target often
+  model has introduced a semantic gap between the source and target, often
   leading to complex or incomplete compilation processes.
 Due to this semantic gap many approaches focused on removing dynamic features in
   order to hang on to a simple static compilation model.
@@ -197,18 +199,18 @@ For example TorchScript admits arbitrary Python code in the IR,
 TensorFlow makes use of Python to do meta-programming with graph fragments,
   using the outer language as a staged-DSL.
 
-A way to view this work is evolving IR and runtime mechanisms to better
+One view on the work described in this thesis is evolving IR and runtime mechanisms to better
   match the source language users are programming in.
-Existing compilers have maintained their current IRs as it is not a simple
-  task to adapt domain specific transformations to an enriched IR.
+Existing compilers have maintained their current IRs as it is difficult
+  to adapt domain specific transformations to an enriched IR.
 There are challenges around many important transformations and optimizations
-  in an richer IR such as efficient automatic differentiation, optimizations around
+  in a richer IR such as efficient automatic differentiation, optimizations around
   reduced or absent static information such as shape sizes, and code generation
   and execution around dynamic features such as control flow, function calls,
   or allocating and manipulating data structures.
 My thesis applies the simple observation that tensor languages can be transformed, compiled,
   optimized and executed just as we would with traditional programming languages.
-The central contribution is a recipe for not only growing the IR but also
+The central contribution is a methodology for not only growing the IR but also
   adapting domain specific innovations from the computation graph domain to
   a full programming language.
 We can do this by building on ideas from decades of previous work in compilation and previous
@@ -216,30 +218,41 @@ We can do this by building on ideas from decades of previous work in compilation
 
 \section{Dynamic Neural Networks}
 
-In particular this thesis talks about growing compiler support from
+In this thesis we explore the four key aspects of compiling dynamic
+  neural networks their representation, optimization, differentiation,
+  and execution.
+We do this by building an enriched compiler framework based on TVM by introducing
+  a new representation Relay which increases expressivity to handle the features
+  we introduced in this section.
+We define a new approach to higher-order, higher-order automatic differentiation
+  which is able to handle computing derivatives of the complete IR and
+  can be uniformly optimized as a Relay program.
+We further extend this compositional framework for compilation to handle dynamism
+  and are able to show state-of-the-art performance across a variety of devices.
+
+In particular this thesis explores growing compiler support from
   a limited subset of programs to a more general programming model.
 There are multiple analogies to be made to historical compilation.
 For example early Fortran compilers did not support recursion
-  as the compiler statically allocated all activation records.
+  as the compiler statically allocated all activation records\cite{fortran_recursion}.
 It required evolving both the compiler, IR, and runtime data structures
   to support new features.
 Another analogous process was adapting ideas from traditional compilation
   to dynamic languages such as Smalltalk and Self in the 80s and 90s.
 These pushes grew existing compilation techniques to support new features
   and programming paradigms.
-Ahead of time compilation based on static type information and layout
-  could not be straight forwardly applied to dynamic languages leading
+Ahead-of-time compilation based on static type information and layout
+  could not be straightforwardly applied to dynamic languages, leading
   to generation of just-in-time compilation advances.
-I believe this is strongly paralleled to the continued
+This is strongly paralleled to the continued
   development of deep learning compilers.
 This first generation of compilers have not yet
-  captured the spectrum of user programs requiring us to build
+  captured the spectrum of user programs, requiring us to build
   new systems which grow techniques to apply to the new
-  domain specific deep learning specific challenges.
+  domain-specific deep learning challenges.
 
-The correct representation of deep learning is not clear, most
-  existing representations have been organically adapted from
-  computation graphs a useful if not simplistic IR that organically
+Most existing representations have been organically adapted from
+  computation graphs a useful but simplistic IR that organically
   evolved from AD and ML literature.
 A representation must capture concepts like control flow, iteration
   or recursive operations like fold or scan, allocation,
@@ -249,39 +262,30 @@ Previous IRs solve a subset of these problems and often only in partial
   or restricted domains.
 
 Even if we have such a representation there are challenges specific to
- machine learning, we must be able to differentiate the programs.
+ machine learning: we must be able to differentiate the programs.
 Deep learning has often relied on backpropagation or simple AD algorithms
   defined over computation graphs.
 The lack of support for a richer programming model has lead to numerous
   attempts to define both what is differentiable and how to differentiate
-  it as we discuss in RELATED WORK.
+  it as we discuss in Chapter~\ref{ch:related}.
 
 Even having solved these problems there is still the final challenge of being
-  able to optimize and execute the code on the requisite platforms.
-Scalar optimizers that optimize at a high-level of abstraction scalar code optimizers such as LLVM can't appropriate reason
+  able to optimize and execute the code on target platforms.
+
+  Scalar optimizers that optimize at a high-level of abstraction scalar code optimizers such as LLVM can't appropriate reason
   about programs at the tensor level requiring tensor specific reasoning.
+
 Once I've done that how do I execute the programs such that I can run
   on a variety of devices with acceptable performance.
 
-In this thesis we explore the four key aspects of compiling dynamic
-  neural networks their representation, optimization, differentiation,
-  and execution.
-We do this by building an enriched compiler framework based on TVM by introducing
-  a new representation Relay which increases expressivity to handle the features
-  we detailed in this section.
-We define a new approach to higher-order, higher-order automatic differentiation
-  which is able to handle computing derivatives of the complete IR and
-  can be uniformly optimized as a Relay program.
-We further extend this compositional framework for compilation to handle dynamism
-  and are able to show state-of-the-art performance across a variety of devices.
 
 \section{Thesis Organization}
 
-My thesis is organized around four pillars, representation, differentiation, optimization, execution,
-We first explore related work and background material in Chapter~\ref{ch:related},
-  we discuss the design of the Relay intermediate representation in Chapter~\ref{ch:relay}
-We then discuss how to perform automatic differentiation and training support in Chapter~\ref{ch:ad}.
-We then discuss program optimization in Chapter~\ref{ch:optimizations},
+This thesis is organized around four pillars, representation, differentiation, optimization, and execution.
+We first explore related work and background material in Chapter~\ref{ch:related}.
+We discuss the design of the Relay intermediate representation in Chapter~\ref{ch:relay}
+We then demonstrate how automatic differentiation and training support can be adapted to Relay in Chapter~\ref{ch:ad}.
+We present numerous program optimization in Chapter~\ref{ch:optimizations},
   followed by how to lower, execute, and compile these programs in
   Chapter~\ref{ch:execute}.
 Finally we look to future in Chapter~\ref{ch:future}.
