@@ -131,16 +131,7 @@ We make the following contributions:
 \input{chapters/short_grammar.tex}
 
 The Relay IR is a high-level, functional, differentiable language.
-One can understand Relay by starting from a subset of Relay
-  that represents an idealized computation graph IR and
-  incrementally growing to the full Relay IR.
-A computation graph, in its simplest presentation, is a directed acyclic
-  graph with multiple inputs and a single output.
-The syntax of an equivalent computation graph is realized by
-  a language with three rules (1) \verb|variable|s, (2) function \verb|call|s,
-  and (3) \verb|operator|s, see Figure~\ref{fig:short_bnf} for the corresponding rules.
-
-Relay's expressive high-level IR is designed to support
+Relay is designed to support
   complex models while abstracting over hardware-specific
   implementation details to enable hardware agnostic program
   analysis and optimization.
@@ -152,7 +143,6 @@ These IRs are expressive enough to capture general-purpose programs
   and have clearly specified semantics (e.g., lexical scope and controlled effects).
 By borrowing from PL literature,
   we can apply program analysis and optimization techniques from decades of research~\citep{haskell_vector}.
-
 Relay's IR takes a small functional core and enriches it with domain-specific additions---namely,
   the inclusion of tensors and operators as expressions
   and a novel tensor type system design to support tensor shapes.
@@ -160,26 +150,25 @@ Our principled design
   enables the import of existing models from deep learning frameworks and exchange formats,
   the implementation of a number of domain-specific optimizations,
   and efficient deployment across a variety of targets.
-In the remainder of this section,
-  we describe the IR design in further detail
-  and explore the ramifications of this design on the compilation stack.
-
 The Relay IR is designed
   to subsume the functionality of computation graph-based IRs
   while providing greater faculties for abstraction, and dynamism.
 We present Relay's design by incrementally building up to the full IR
   starting from a subset that corresponds to a simple computation graph.
 
-Deep learning models fundamentally operate on tensors.
 Hence, Relay's primary value type is a tensor and operators are included as language primitives
   (see the \verb|tensor constant| and \verb|operator| rules in Figure \ref{fig:short_bnf}).
 Relay leaves the implementation of each operator opaque; the operators
   are represented by a lower-level IR, which is optimized independently.
-A computation graph, in its simplest form, is a directed acyclic
+
+One can understand Relay by starting from a subset of Relay
+  that represents an idealized computation graph IR and
+  incrementally growing to the full Relay IR.
+A computation graph, in its simplest presentation, is a directed acyclic
   graph with multiple inputs and a single output.
-Relay uses three constructs to support these simple graphs:
-  (1) \verb|variable|, (2) function \verb|call|,
-  and (3) \verb|operator|; see Figure~\ref{fig:short_bnf} for the corresponding rules.
+The syntax of an equivalent computation graph is realized by
+  a language with three rules (1) \verb|variable|s, (2) function \verb|call|s,
+  and (3) \verb|operator|s, see Figure~\ref{fig:short_bnf} for the corresponding rules.
 
 \subsection{Operators}
 ...
@@ -230,24 +219,16 @@ Emerging models, particularly in the domain of natural language processing, incr
 For example, TensorFlow Fold~\citep{tf_fold} extends TF with special combinators that
   dynamically compute a graph for each shape permutation;
   these high-level constructs are opaque to further optimizations.
-The functional programming community has demonstrated that recursion and pattern matching are sufficient
+Even in the presence of control flow-free models, looping
+  constructs are necessary to implement optimization algorithms
+  such as SGD
+The central challenge is a flexible and extensible encoding of
+  control flow operations.
+It is well known in functional programming literature that recursion and pattern matching are sufficient
   to implement arbitrary combinators for control flow and iteration (e.g., maps, folds, and scans).
 To support the definition of functional combinators
   we enrich Relay with two more language
   features to implement arbitrary combinators: \verb|if| and first-class recursive functions.
-
-\subsection{Control Flow}
-
-Neural networks increasingly rely on control flow, forcing frameworks based on computation graph IRs
-to support this construct; however, control flow extensions are generally \textit{ad hoc}.
-Even in the presence of control flow-free models, looping
-  constructs are necessary to implement optimization algorithms
-  such as SGD.
-Furthermore emerging architectures are beginning to make greater use of
-    control flow, with many architectures exposing custom control
-    combinators such as loops, maps, folds, and scans.
-The central challenge is a flexible and extensible encoding of
-  control flow operations.
 The functional programming community has demonstrated recursion and pattern matching are sufficient
   to implement arbitrary combinators for control flow and iteration.
 To support the definition of functional loops we enrich Relay with two more language
@@ -256,21 +237,6 @@ The guard expression in Relay's \verb|if| expression operates over rank-0 boolea
   which represent booleans.
 
 \subsection*{First-Class Functions}
-
-A computation graph is a single computation
-  from multiple inputs to multiple outputs.
-While it is tempting to reinterpret a graph as a function,
-  graphs lack functional abstraction and named recursion.
-The addition of first-class named functions dramatically increases
-  Relay's expressivity, allowing it to encode generic
-  higher-order functions and thus capture higher-level program structure.
-First-class functions also enable simpler implementations
-  of importers that map higher-level programs to our IR.
-For example, an instance of TensorFlow's looping construct \verb|tf.while_loop|
-  can be represented as a single specialized loop function
-  or a generic fold over the loop state.
-See Figure~\ref{fig:tf_to_relay_loop} for an example of this conversion (via
-  the Relay TensorFlow frontend).
 
 A computation graph is a single expression
   from multiple inputs (i.e. its free variables) to multiple outputs.
@@ -304,19 +270,7 @@ The increase in expressivity introduced by the Relay IR introduces
   new optimizations challenges, which we
   discuss in Chapter~\ref{ch:related}.
 
-Earlier, we extended the language with tuples to
-  emulate behavior of existing IRs.
-Deep networks require additional data types like lists,
-  trees, and graphs~\citep{char-rnn, tree_lstm, graph_lstm}.
-Relay borrows a generic and principled way to
-  extend a language with new data types:
-  algebraic data types (ADTs).
-To support them we add (1) a type declaration mechanism and
-  (2) pattern matching.
-One may question why Relay has \verb|if| when it could be subsumed by \verb|match|:
-  \verb|if| is still necessary because tensors are primitives, not ADTs.
-  % and thus do not have a recursion principle that characterizes their match behavior.
-
+% --------------------------------------------------------------------------------------------------------
 The resulting language is a familiar strict functional language,
   resembling the core of languages like OCaml and SML.
 Our language makes domain-specific deviations from existing work,

@@ -30,7 +30,7 @@
 %         \alt[variable]{\lvar\ \maybe{\typeanno}}
 %     \end{jmpgrammar}
 %   \end{figure}
-  \begin{figure}[t]
+  \begin{figure}[!ht]
     % \ContinuedFloat
     \begin{jmpgrammar}
       \bnfrule{Expr}{\expr} \is[local var]{\lvar}
@@ -68,6 +68,6 @@
         \alt[type call]{\type \kwd{[} \seq{\type} \kwd{]}}
         \alt[type name]{\typename}
     \end{jmpgrammar}
-    \caption{\textmd{The BNF Grammar for the Relay{} language.}}
+    \caption{\textmd{The BNF Grammar for the Relay language expressions and types.}}
     \label{fig:short_bnf}
   \end{figure}

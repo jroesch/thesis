@@ -22,8 +22,7 @@ By incorporating shape analysis into a broader type system,
 In this subsection, we describe how to extend a polymorphic type system with shape
   information and type inference with shape inference.
 
-
-  Computation graph IRs rely on typing in the form of
+Computation graph IRs rely on typing in the form of
   datatype and shape inference.
 Datatype and shape inference is the process of computing the
   concrete datatypes (e.g., \verb|float32|, \verb|int32|) and shapes (e.g., $(10, 5)$, $(100, 1, 32)$) of all
@@ -120,9 +119,7 @@ For example, we can represent a tensor type as \texttt{Tensor[(1, 10, Any), floa
 This concept has been introduced in other frameworks.
 We do not support tensor types with dynamic ranks given the relatively limited use cases and optimization opportunities.
 
-xity.
-
-\subsection*{Operators and Type Relations}
+\subsection{Operators and Type Relations}
 Operators are one of the key primitives that differs from those of
 general-purpose programming languages.
 Relay's use of opaque operators enables backends to choose different
@@ -171,11 +168,16 @@ For example, we use a relation that describes the
   broadcasting rule for all element-wise operations.
 
 
-\noindent
-{\bf Operator Type Relation} A type relation describes the relationship between the types of operator inputs and outputs. The type system of TVM's Relay IR relies on these type relations to infer and bidirectionally propagate type and shape relationships between inputs and outputs of operators across the whole program.
-For example, the type relation for broadcasting operators (e.g. \texttt{broadcast\_add}) performs the shape calculation following the NumPy broadcasting rules\footnote{\url{https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html}}.
+\subsection{Operator Type Relation}
+A type relation describes the relationship between the types of operator inputs and outputs.
+The type system of TVM's Relay IR relies on these type relations to infer and bidirectionally
+  propagate type and shape relationships between inputs and outputs of operators across the whole program.
+For example, the type relation for broadcasting operators (e.g. \texttt{broadcast\_add}) performs the shape
+  calculation following the NumPy broadcasting rules\footnote{\url{https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html}}.
 
-The type relation must be generalized to properly handle dynamic shapes. For example, a program which grows a tensor on each loop iteration (a case existing in the decoder of many NLP models) is both impossible to type and compile without proper type system support. With the introduction of Any, we are able to improve the existing type relations to support dynamic models.
+The type relation must be generalized to properly handle dynamic shapes. For example, a program which grows a tensor on
+each loop iteration (a case existing in the decoder of many NLP models) is both impossible to type and compile without proper type system support.
+With the introduction of Any, we are able to improve the existing type relations to support dynamic models.
 
 There are two cases that must be handled after we introduce Any~to the type relations.
 First, operators such as {\tt arange}\footnote{{\tt arange} generates a range of values in a (start, stop, step) interval the arrays output size is a function of input arguments.} and {\tt unique}\footnote{{\tt unique} selects the unique elements of a tensor.} have dynamic output shapes depending on the input data, which will be described in Any.

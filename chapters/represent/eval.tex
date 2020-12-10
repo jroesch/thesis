@@ -1,14 +1,6 @@
 \section{Evaluation}
 \label{sec:eval}
 
-% 5. Methodology and evaluation: how do you plan to evaluate whether your ideas
-% work or your hypotheses are correct?
-
-In my proposal I make three specific claims we must evaluate,
-\textbf{To develop an intelligent (1) end-to-end deep learning compiler that can
-automatically adapt (2) high-level programs to run on new hardware devices automatically
-with (3) human level performance.}
-
 We evaluated Relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx FPGAs) and over
   diverse vision and NLP workloads to demonstrate that (1) Relay enables \emph{composability} of
   graph-level optimizations, (2) Relay delivers \emph{performance} on inference tasks competitive
@@ -27,8 +19,8 @@ We evaluated Relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx F
       models to execute efficiently on a variety of
       backends, such as FPGA accelerators, which require quantization, layout
       optimizations, and bit-packing transformations.
-    % \item \textbf{Relay supports expressive models}: It can compile models with complex control flow
-    % like Char-RNN to a single lean binary, beating PyTorch inference performance by up to 3x.
+    \item \textbf{Relay supports expressive models}: It can compile models with complex control flow
+      like Char-RNN to a single lean binary, beating PyTorch inference performance by up to 3x.
   \end{enumerate}
 
   We evaluated the following vision models:
@@ -51,23 +43,23 @@ We evaluated Relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx F
     model zoo
     \citep{pytorch_rnn_tut, tree_lstm, gluon_model_zoo}.
 
-  \subsection{Experimental Methodology}
-  % Because we only evaluate inference in this paper,
-  %   we frequently make use of random inputs to models when measuring
-  %   performance.
-  % There were two exceptions where we evaluated on real data because
-  %   it was readily available: CharRNN and TreeLSTM.
+\subsection{Experimental Methodology}
+  Because we only evaluate inference in this paper,
+    we frequently make use of random inputs to models when measuring
+    performance.
+  There were two exceptions where we evaluated on real data because
+    it was readily available: CharRNN and TreeLSTM.
 
-  % % For models where the input is random,
-  % %   we run 1000 timed iterations.
-  % % Before the timed runs,
-  % %   we run 8 untimed ``warm-up'' iterations to ensure any caching and JIT compilation
-  % %   employed in lower levels of the stack are included in the 1000 timed runs.
-  % % This way,st
-  % %   the timed runs reflect the \textit{stable} performance of the system.
-  % % For our purposes, ``performance'' refers to end-to-end framework time on
-  % %   inference tasks (i.e., the time it takes to run a trained model) in a
-  % %   single-machine setting.
+  For models where the input is random,
+    we run 1000 timed iterations.
+  Before the timed runs,
+    we run 8 untimed ``warm-up'' iterations to ensure any caching and JIT compilation
+    employed in lower levels of the stack are included in the 1000 timed runs.
+  This way,st
+    the timed runs reflect the \textit{stable} performance of the system.
+  For our purposes, ``performance'' refers to end-to-end framework time on
+    inference tasks (i.e., the time it takes to run a trained model) in a
+    single-machine setting.
 
   Our vision experiments from Chapter~\ref{ch:related} and Section~\ref{sec:perf-gpu} were run on a machine with an AMD Ryzen
     Threadripper 1950X 16-Core CPU,
@@ -81,82 +73,45 @@ We evaluated Relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx F
   We evaluated Relay's handling of accelerators on a VTA design with a
     $16\times16$ matrix-vector 8-bit tensor core clocked at 333MHz on the Ultra-96 platform.
 
-  % In terms of software, we used
-  %   Cuda version 10.0,
-  %   CuDNN version 7.5.0,
-  %   TVM commit \texttt{cefe07e2a}\footnote{NLP experiments required custom modifications that may be made public later},
-  %   MxNet version 1.4.0,
-  %   Pytorch version 1.0.1post2,
-  %   and TensorFlow version 1.13.1.
+  In terms of software, we used
+    Cuda version 10.0,
+    CuDNN version 7.5.0,
+    TVM commit \texttt{cefe07e2a}\footnote{NLP experiments required custom modifications that may be made public later},
+    MxNet version 1.4.0,
+    Pytorch version 1.0.1post2,
+    and TensorFlow version 1.13.1.
 
   The Relay vision experiments utilized aggressively tuned TVM schedules on the GTX 1080 Ti GPU,
     improving performance significantly.
-  % \subsection{Relay Enables Composable Optimizations}
-  % \label{sec:optimizations}
-
-  % \begin{figure}[h]
-  %   \includegraphics[width=0.5
-  %   \textwidth]{fig/eval/optimization_levels.pdf}
-  %   \caption{Speedup from increasing the number of graph transformations in Relay (\texttt{-O1}, \texttt{2}, \texttt{3}), relative to no optimizations at all (\texttt{-O0}). We show that, by composing passes, we can monotonically improve performance on vision benchmarks running on the NVIDIA GTX 1080 Ti.}
-  %   \label{fig:opt-eval}
-  % \end{figure}
-
-  % We demonstrate that Relay can facilitate composable optimizations,
-  % by evaluating vision workloads under incremental optimization levels, denoted \texttt{-On}:
-  % \begin{itemize}
-  %   \item \texttt{-O0} does not apply any program transformation passes.
-  % % (it applies a single pass to translate the ``batch norm'' operator into simpler arithmetic
-  % % operators but Relay{} has no other implementation of ``batch norm'').
-  %   \item \texttt{-O1} applies an operator fusion pass.
-  %   \item \texttt{-O2} additionally applies constant folding, using Relay{}'s interpreter to evaluate away operations on constants.
-  %   \item \texttt{-O3} additionally applies four more passes:
-  %       (1) \texttt{FoldScaleAxis}, which folds scaling operations into the axis options of other operators,
-  %       (2) \texttt{AlterOpLayout}, which alternates operator layouts for better cache performance,
-  %       (3) \texttt{CanonicalizeOps}, which canonicalizes the ``bias add'' operator in terms of expanding dimensions and broadcasting for further analysis,
-  %       (4) \texttt{CommonSubexpElim}, which lifts common subexpressions.
-  % \end{itemize}
-
-  % Figure~\ref{fig:opt-eval} shows mean inference speedup relative to
-  %   \texttt{-O0} as Relay applies optimizations more aggressively.
-  % Average performance improves by up to 2$\times$ when all optimizations are applied.
-  % Most networks benefit greatly from operator fusion.
-  % Nature-DQN~\citep{dqn} has simple operators, which don't benefit from optimizations
-  %   such as layout transform, explaining why its performance doesn't improve beyond \texttt{-O1}.
-  % ResNet-18~\citep{resnet} and VGG-16~\citep{vgg} are two dense convolutional neural
-  %   networks which benefit from \texttt{-03} optimizations.
-  % These networks contain dense \texttt{conv2d} operators that benefit
-  %   from the \texttt{AlterOpLayout} pass.
-  % Overall, these results show that Relay lets us compose optimizations
-  %   in a way that is beneficial to diverse workloads.
 
   \subsection{Relay Provides Competitive Performance}
   \label{sec:perf-gpu}
 
   \begin{figure}[h]
-    % \includegraphics[width=0.6
-    % \textwidth]{fig/eval/vision_1080Ti_relay.pdf}
-    % \captionof{figure}{
-    %   Inference slowdown of popular frameworks relative to Relay on vision
-    %     benchmarks running on NVIDIA GTX 1080 Ti GPUs.
-    %   Relay provides performance competitive to the state of the art.
-    %   We ran 1000 trials for each model and used the AoT compiler.
-    % }
-    % \label{fig:vision-eval}
+    \includegraphics[width=
+    \textwidth]{fig_splash19/eval/vision_1080Ti_relay.pdf}
+    \caption{
+      Inference slowdown of popular frameworks relative to Relay on vision
+        benchmarks running on NVIDIA GTX 1080 Ti GPUs.
+      Relay provides performance competitive to the state of the art.
+      We ran 1000 trials for each model and used the AoT compiler.
+    }
+    \label{fig:vision-eval}
   \end{figure}
 
   \begin{figure}[h]
-    % \includegraphics[width=0.6
-    % \textwidth]{fig/eval/nlp_TitanV_relay.pdf}
-    % \captionof{figure}{
-    %   Inference slowdown relative to Relay on NLP benchmarks running on NVIDIA
-    %     Titan-V GPUs.
-    %   NLP workloads feature control flow,
-    %     which makes them more challenging to optimize.
-    %   Relay provides performance competitive to state of the art (up to
-    %     2.4$\times$ speedup over MxNet on GRU).
-    %   We ran 1000 trials for each model, except for CharRNN, on which we used 100 trials.
-    % }
-    % \label{fig:nlp-eval}
+    \includegraphics[width=
+    \textwidth]{fig_splash19/eval/nlp_TitanV_relay.pdf}
+    \caption{
+      Inference slowdown relative to Relay on NLP benchmarks running on NVIDIA
+        Titan-V GPUs.
+      NLP workloads feature control flow,
+        which makes them more challenging to optimize.
+      Relay provides performance competitive to state of the art (up to
+        2.4$\times$ speedup over MxNet on GRU).
+      We ran 1000 trials for each model, except for CharRNN, on which we used 100 trials.
+    }
+    \label{fig:nlp-eval}
   \end{figure}
 
   An age-old story in compilers literature is that increasing expressivity
@@ -171,7 +126,7 @@ We evaluated Relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx F
     TensorFlow, TensorFlow-XLA (Accelerated Linear Algebra), PyTorch, and MxNet.
   We ran the vision and NLP workloads on GTX 1080 Ti and Titan-V GPUs, respectively.
 
-  \paragraph{Vision Evaluation}
+  \subsection{Vision Evaluation}
   % Figure~\ref{fig:vision-eval} compares Relay against state of the art frameworks
   %   running vision workloads on a GTX 1080 Ti GPU.
   We ran each model with
@@ -185,7 +140,7 @@ We evaluated Relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx F
     specific implementations, enables it to outperform
     existing frameworks that don't perform inter-operator optimizations.
 
-  \paragraph{NLP Evaluation}
+  \subsection{NLP Evaluation}
   % Figure~\ref{fig:vision-eval} compares Relay against state-of-the-art NLP models on a Titan-V GPU.
   % Implementations of the NLP models were not available in all frameworks;
     we used MxNet baselines for RNN, GRU, and LSTM and PyTorch for Char-RNN and TreeLSTM.
@@ -202,25 +157,10 @@ We evaluated Relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx F
     implementation performs competitively against
     the hand-optimized version.
 
-  \subsection{Relay Handles Challenging Backends}
-  \label{sec:low-power}
+  \subsection{Targeting Deep Learning Accelerators on FPGAs}
 
   \begin{figure}[h]
-    % \includegraphics[width=\textwidth]{fig/eval/vision_arm.pdf}
-    \caption{
-      Inference time (ms) of vision DNNs on low-power platforms using
-        different data types.
-      Relay allows us to reduce inference time on power-constrained devices by
-        easily substituting \texttt{float32} multiplications with \texttt{int8}
-        multiplications and \texttt{int16} or \texttt{int32} accumulations (denoted
-        at \texttt{int8}/\texttt{int16} and \texttt{int8}/\texttt{int32} respectively).
-      We used 1000 trials for each model.
-    }
-    % \label{fig:arm-eval}
-  \end{figure}
-
-  \begin{figure}[h]
-    % \includegraphics[width=0.6\textwidth]{fig/eval/vision_fpga.pdf}
+    \includegraphics[width=\textwidth]{fig_splash19/eval/vision_fpga.pdf}
     \caption{
       Inference time (ms) of vision DNNs on Ultra-96 FPGA-enabled SoC.
       We compare vision workloads that Relay compiles onto the embedded Cortex
@@ -232,21 +172,6 @@ We evaluated Relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx F
     % \label{fig:fpga-eval}
   \end{figure}
 
-  Relay can handle challenging scenarios: consider edge inference where energy is a first order
-    constraint due to thermal limitations or limited battery life.
-  One option is to apply more aggressive quantization: instead of performing expensive
-    arithmetic in the floating point domain, simpler and narrower fixed point data is used.
-  Another option is hardware acceleration: instead of evaluating
-    compute-intensive operations on the CPU, we can offload to a specialized accelerator.
-
-  \paragraph{Quantized Inference on ARM CPUs and GPUs}
-  We evaluate the effects of quantized inference applied by Relay on vision workloads running
-  on the Raspberry-Pi3 and Firefly RK3399 ARM-based platforms.
-  % Figure~\ref{fig:arm-eval} shows the effects of different levels
-  %   of quantization applied to low-power devices~\citep{roesch2019relay}.
-  % The numbers show that as we opt for a more aggressive quantization scheme such as \texttt{int8/16} (i.e. 8-bit multiplication and 16-bit accumulation), we achieve much improved performance.
-
-  \paragraph{Targeting Deep Learning Accelerators on FPGAs}
   We evaluated inference time on five models including MobileNet-G \citep{mobilenet}, a grouped variant of the MobileNet architecture; ResNet-18, ResNet-34, and ResNet-50\citep{resnet}; and Deep Convolutional Generative Adversarial Networks \citep{dcgan}, a generative DNN used in unsupervised learning.
   Overall, Relay helps us efficiently offload deep learning operators onto specialized accelerators like VTA.
   Our results in Figure~\ref{fig:fpga-eval} show that we can achieve between 2.5 to 11.7$\times$ reduction in single-batch inference latency by offloading critical operators to the FPGA accelerator.
