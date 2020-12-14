@@ -1,19 +1,24 @@
 \chapter{Future Work}
 \label{ch:future}
 
-Relay and TVM are continuing to evolve.
-We look forward to the unified IR,
-    and other emerging directions in the TVM ecosystem based on Relay.
+This thesis demonstrates a principled approach to optimizing dynamic neural networks
+    that generalizes the performance enjoyed by static neural networks to a greater
+    number of networks.
+There are still open questions on how to optimize and compile networks
+    as general purpose tensor programs to arbitrary hardware targets.
+TVM is continuing to evolve rapidly
+    with many changes in the past year not detailed
+    in this thesis.
+In particular completing the IR unification, improved
+    dynamic model support, training support, automatic
+    scheduling for new hardware targets and much more.
+The remainder of this section touches on some of the
+    challenges that lie in front of this work.
 
-% 4. A description of proposed work remaining for your dissertation.  Describe
-% the main challenges and innovations that are needed to accomplish the
-% proposed hypotheses, with as much description as possible of how you will
-% tackle each one.
+\subsection{Unified IR}
+...
 
-My proposed future work consists of completing in progress work on the VM,
-and frontends, as well as work on automatic tensorization.
-
-\subsection{VM Next Steps}
+\subsection{Dynamic Models}
 
 Current systems research has been focused on improving
     a narrow subset of the models machine learning
@@ -50,7 +55,7 @@ The real challenge is how to handle the efficient compilation,
           for dynamically sized computations.
 \end{itemize}
 
-\subsection{Beacon and PyTorch}
+\subsection{Training Support}
 
 Beacon demonstrates how to build a framework
     by utilizing only TVM, instead of bespoke
@@ -86,7 +91,7 @@ Second show that by using techniques from JIT compilation we
 Finally that we can use Relay to optimize static traces effectively
     resulting in state of the art performance.
 
-\subsection{Automatic Tensorization}
+\subsection{Automatic Scheduling}
 
 The remaining piece of work to be done is mapping
     computation to the hardware intrinsics manifested by the hardware.
@@ -125,16 +130,6 @@ Previous work has relied on hand engineered cost models for extraction, but
 We plan to apply learning to help search over the equivalence structure to
     extract the optimal program.
 
-    \section{Conclusion}
-\label{sec:conclusion}
-
-We propose to build an intelligent end-to-end deep learning compiler that can
-automatically adapt high-level programs to run on new hardware devices automatically
-with human level performance. We have already constructed a state of the art compiler
-which outperforms all popular deep learning frameworks and can reliably support most
-existing frameworks. We have continued to work on tighter integration with frameworks,
-and better support for Relay's dynamic features. Automatic tensorizaton remains an unsolved
-problem, that I plan on tackling in my final year. Although these pieces constitute a
-complete solution there remains exciting work outside the scope of my thesis on
-supporting new datatypes such as posits, new platforms with uTVM, a highly
-parametric version of VTA, and much more.
+These directions represent potentially years more work, and will be hopefully
+    realized by collaborators PhD theses, future publications, the open source
+    community and development teams at OctoML.
