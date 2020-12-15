@@ -77,43 +77,52 @@ As discussed in Chapter~\ref{ch:related} Automatic Differentiation has a long hi
   and numerous applications across many fields.
 The style of automatic differentiation popular when we began this work was the
   what is known as a Wengert-list, a runtime data structure which tracks
-  all the operations performed on each variable, this recorded tape can then
-  be played to compute the derivative with respect to each variable.
+  all operations performed, as well as its inputs and outputs, recording them on tape
+  that can be later replayed to compute the partial derivative with respect to each variable.
 Approaching automatic differentiation in this style leads to a relatively simple
   implementation which can handle arbitrary language features.
-Dynamic approaches although straight forward have a few short comings
-  including the need to track extra runtime state and computation,
-  overload all relevant operations, and most importantly prevents
-  ahead of time optimization.
+When performing differentiation we need not consider data
+  structures, control, scope, or any other language features as they
+  have been computed away.
+We only see a trace of operations of unrolled in time, allowing us
+  to simply apply the chain rule from basic calculus.
+This approach is beautifully simple as we do not need to formulate
+  clever ways to account for each language feature.
+Unfortunately the dynamic nature of this solution requires tracking extra runtime state
+  and performing computation for each operation, as well as providing an incomplete
+  view on the computation which often limits available optimizations.
 
-When we began this project we were interested in an approach which
-  provides the expressivity of the dynamic approach without
-  sacrificing our ability to optimize, or deploy the code.
-In 2017 people began to look into applying previously explored
-  ideas which cast automatic differentiation as a source code
-  transformation.
+A design goal of Relay is to provide a target agnostic substrate on which
+  to build more complex compilers.
+When starting to work on training and automatic differentiation we had
+  the same design goal, we wanted to enable training frameworks which
+  could use a single code base to provide state-of-the-art performance
+  without compromising expressivity.
+For example train a model on a cloud GPU or a micro-controller with
+  the same code.
+To do so we needed an automatic differentiation method that can run
+  in multiple execution environments, and handle all of Relay's increased
+  expressivity.
+
+We can work backwards from our requirements to eliminate some courses
+  of action.
+We need an algorithm which handles Relay's dynamic features, maintains
+  key properties such as static typing, enables ahead of time optimization,
+  and be compiled through standard flows.
 During the period we did this work there were numerous
-  groups working on this problem for various systems
+  groups working on variations of this problem for numerous systems
   as detailed in Chapter~\ref{ch:related}.
-Relay introduced some new challenges for us, a hypothesis we
-  believed is that true dynamic features would come be required
-  by models.
-Due to this we needed a technique which can handle dynamic
-  features at runtime.
-Competing work such ass ZZZ, YYYYYYYY< ZZzZ.
-Don't solve this problem.
-
-Our design goals can be summed up as:
+We believe our design uniquely achieves a few tenuous properties:
 \begin{itemize}
-  \item Handle closures, control flow, and data structures.
+  \item Handles all language features including closures,
+        references, control flow, and data structures.
+  \item Maintains static typing of programs, and by extension shape inference.
   \item Can be performed as an ahead of time source code
-    transformation.
-  \item Can be optimized to remove unnecessary computation.
+    transformation allowing program to be uniformly optimized.
 \end{itemize}
 
-After many iterations we discovered that we could use a
-  technique that achieves these three goals with relative
-  simplicity.
+After many iterations we discovered a technique that achieves these
+  three goals with relative simplicity.
 
 \subsection{Higher-Order, Higher-Order Automatic Differentiation}
 \label{sec:autodiff}
