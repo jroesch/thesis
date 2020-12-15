@@ -152,9 +152,9 @@ Furthermore, it is becoming increasingly important to compute not
   but potentially $n$th-order gradients~\citep{neural_ode, darts}.
 These two challenges were our original motivation to pursue
   a new automatic differentiation technique.
-Our AD algorithm is built on what if we just
-Our AD algorithm is conceptually similar to Lantern's,
-  with a few key differences.
+Our AD algorithm is conceptually a source code transformation
+  version of the Wengert List or tape-based method of AD.
+We make a few core changes.
 First, our algorithm is defined as a source code
   transformation.
 Given an expression, Relay produces a corresponding
@@ -162,8 +162,8 @@ Given an expression, Relay produces a corresponding
 Figure \ref{fig:autodiff_rules} provides a denotation from
   Relay expression to Relay expression that defines our
   AD algorithm.
-Second, our algorithm eschews delimited continuations in favor of
-  an approach using closures and references.
+Second, our algorithm eschews ideas such as delimited continuations
+  in favor of an approach using closures and references.
 Relay simply pairs all tensor values with a reference
   that tracks its partial derivative with respect to its
   output.
@@ -189,8 +189,6 @@ All tracing needed to compute derivatives is done at run time, enabling
   support for higher order functions, higher order gradients,
   data-dependent control flow, and mutability without requiring changes
   to the algorithm.
-% TODO: Remove or rectify this sentence, because the current interface to
-% autodiff is via an IR pass.
 Finally, Relay exposes this transformation as an operator, allowing users
   to compute the gradient of a function \verb|f| simply by writing \verb|grad(f)|.
 
@@ -219,82 +217,48 @@ Because our algorithm enjoys a closure property,
 \subsection{Partial Evaluator}
 \label{sec:partial_eval}
 
-\usemintedstyle{borland}
-\begin{figure}
-  \centering
-  % \texttt{\bf Identity Function}
-  \judgbox{\texttt{\bf Identity Function}}{}
-    \begin{minted}{rust}
-fn <s, bt>(%d: Tensor[s, bt]) {
-  %d
-}
-    \end{minted}
+\input{chapters/differentiate/pe_example.tex}
 
-  \judgbox{\texttt{\bf Post-AD}}{}
 
-    \begin{minted}{rust}
-fn <s, bt>(%d: Tensor[s, bt]) {
-  let %x = ref(fn () { () });
-  let %x1 = (%d, ref(zeros_like(%d)));
-  let %x2 =
-    (fn <s, bt>(
-      %d1: (Tensor[s, bt],
-            ref(Tensor[s, bt]))) {
-      %d1
-    })(%x1);
-  %x2.1 := ones_like(%x2.0);
-  let %x3 = read(%x)();
-  (%x2.0, (read(%x1.1),))
-}
-    \end{minted}
-  \judgbox{\texttt{\bf Post-PE}}{}
+Existing deep learning IRs have relied on
+  a mixture of staging and constant evaluation
+  in order to optimize user programs.
+Partial evaluation is a generalized form of constant
+  evaluation that can reduce partially constant
+  programs.
+A partial evaluator (PE) allows the use of high-level abstractions
+  without limiting code that \textit{could} in practice be
+  compiled to a particular target.
+Relay is the first compiler to apply partial evaluation
+  techniques to deep learning, the
+  core approach of which is based on \citep{pe_ref}.
+Partial evaluation, when composed with other
+  optimizations like fusion, yields a variety
+  of useful optimizations without requiring
+  a separate implementation of each.
+For example, the partial evaluator can be used to perform
+  loop unrolling, which then enables further fusion,
+  without any additional compiler passes.
 
-    \begin{minted}{rust}
-fn <s, bt>(%d: Tensor[s, bt]) {
-  let %x = fn () {
-    let %x1 = ();
-    %x1
-  };
-  let %x2 = ref(%x);
-  let %x3 = zeros_like(%d);
-  let %x4 = ref(%x3);
-  let %x5 = (%d, %x4);
-  let %x6 =
-    fn <s, bt>(
-      %d1: (Tensor[s, bt],
-            ref(Tensor[s, bt]))) {
-      %d1
-    };
-  let %x7 = ones_like(%d);
-  %x4 := %x7;
-  let %x8 = ();
-  let %x9 = (%x7,);
-  let %x10 = (%d, %x9);
-  %x10
-}
-    \end{minted}
-
-  \judgbox{\texttt{\bf Post-DCE}}{}
-
-    \begin{minted}{rust}
-fn <s, bt>(%d: Tensor[s, bt]) {
-  (%d, (ones_like(%d),))
-}
-  \end{minted}
-  \caption{
-    Example of running the compiler pass pipeline for AD on the identity
-    function.
-    First, we run the base AD pass on the original function (described in Section \ref{sec:autodiff}).
-    Then, we run the partial evaluator,
-      which primarily optimizes away the reads and calls in \texttt{\%x2} and
-      \texttt{\%x3} in post-AD.
-    Since it conservatively determines whether a subexpression is effectful,
-      it generates many bindings which are dead code.
-    At this point, we run the dead code elimination pass to crunch the code back down.
-  }
-  \label{fig:pe-example}
-\end{figure}
-\usemintedstyle{default}
+Existing deep learning IRs have relied on
+  a mixture of staging and constant evaluation
+  in order to optimize user programs.
+Partial evaluation is a generalized form of constant
+  evaluation that can reduce partially constant
+  programs.
+A partial evaluator (PE) allows the use of high-level abstractions
+  without limiting code that \textit{could} in practice be
+  compiled to a particular target.
+Relay is the first compiler to apply partial evaluation
+  techniques to deep learning, the
+  core approach of which is based on \citep{pe_ref}.
+Partial evaluation, when composed with other
+  optimizations like fusion, yields a variety
+  of useful optimizations without requiring
+  a separate implementation of each.
+For example, the partial evaluator can be used to perform
+  loop unrolling, which then enables further fusion,
+  without any additional compiler passes.
 
 In order to handle differentiating the full IR,
   our AD algorithm makes use of closures and references.
@@ -342,29 +306,7 @@ Afterwards, we separately apply DCE.
 The result of this entire process is illustrated
   in Figure~\ref{fig:pe-example}.
 
-\subsection{Partial Evaluator}
-\label{l}
-Existing deep learning IRs have relied on
-  a mixture of staging and constant evaluation
-  in order to optimize user programs.
-Partial evaluation is a generalized form of constant
-  evaluation that can reduce partially constant
-  programs.
-A partial evaluator (PE) allows the use of high-level abstractions
-  without limiting code that \textit{could} in practice be
-  compiled to a particular target.
-Relay is the first compiler to apply partial evaluation
-  techniques to deep learning, the
-  core approach of which is based on \citep{pe_ref}.
-Partial evaluation, when composed with other
-  optimizations like fusion, yields a variety
-  of useful optimizations without requiring
-  a separate implementation of each.
-For example, the partial evaluator can be used to perform
-  loop unrolling, which then enables further fusion,
-  without any additional compiler passes.
-
-Relay's partial evaluator works by defining a interpreter
+  Relay's partial evaluator works by defining a interpreter
   where the value domain is partially static values.
 The partially static domain represents simple values,
   such as constant tensors, as themselves.
@@ -396,130 +338,3 @@ Finally, the evaluator constructs a new program with
 %   differentiation algorithm that makes use of hard to optimize
 %   features such as references of closures, as the partial evaluator
 %   can remove unneeded abstraction.
-
-\section{Partial Evaluator}
-Existing deep learning IRs have relied on
-  a mixture of staging and constant evaluation
-  in order to optimize user programs.
-Partial evaluation is a generalized form of constant
-  evaluation that can reduce partially constant
-  programs.
-A partial evaluator (PE) allows the use of high-level abstractions
-  without limiting code that \textit{could} in practice be
-  compiled to a particular target.
-Relay is the first compiler to apply partial evaluation
-  techniques to deep learning, the
-  core approach of which is based on \citep{pe_ref}.
-Partial evaluation, when composed with other
-  optimizations like fusion, yields a variety
-  of useful optimizations without requiring
-  a separate implementation of each.
-For example, the partial evaluator can be used to perform
-  loop unrolling, which then enables further fusion,
-  without any additional compiler passes.
-
-Relay's partial evaluator works by defining a interpreter
-  where the value domain is partially static values.
-The partially static domain represents simple values,
-  such as constant tensors, as themselves.
-The representations
-  of aggregate values mirror their structure; for example,
-  tuples become a tuple of partially static values.
-The partially static domain represents dynamic values,
-  which may not be known until execution time,
-  alongside the static values traditionally supported by
-  constant evaluators.
-Our partial evaluator must solve two important problems:
-  managing effectful computations and handling references.
-In order to handle effects, the evaluator keeps the generated
-  program in A-normal form to ensure effects are properly ordered
-  and restrict duplication of effectful computations.
-The partial evaluator supports references by
-  simulating the store at partial evaluation time.
-The explicit store is threaded throughout execution
-  and provides a flow-sensitive PE.
-Finally, the evaluator constructs a new program with
-  the static subcomputations evaluated away.
-The reconstructed program contains all original
-  expressions, as well as evaluated expressions,
-  because interleaving dead-code elimination (DCE) is
-  non-trivial.
-Afterwards, we separately apply DCE.
-The partial evaluator has use cases beyond inference
-  optimizations, separately it enabled the design of an automatic
-  differentiation algorithm that makes use of hard to optimize
-  features such as references of closures, as the partial evaluator
-  can remove unneeded abstraction.
-
-  Existing deep learning IRs have relied on
-  a mixture of staging and constant evaluation
-  in order to optimize user programs.
-Partial evaluation is a generalized form of constant
-  evaluation that can reduce partially constant
-  programs.
-A partial evaluator (PE) allows the use of high-level abstractions
-  without limiting code that \textit{could} in practice be
-  compiled to a particular target.
-Relay is the first compiler to apply partial evaluation
-  techniques to deep learning, the
-  core approach of which is based on \citep{pe_ref}.
-Partial evaluation, when composed with other
-  optimizations like fusion, yields a variety
-  of useful optimizations without requiring
-  a separate implementation of each.
-For example, the partial evaluator can be used to perform
-  loop unrolling, which then enables further fusion,
-  without any additional compiler passes.
-
-Relay's partial evaluator works by defining a interpreter
-  where the value domain is partially static values.
-The partially static domain represents simple values,
-  such as constant tensors, as themselves.
-The representations
-  of aggregate values mirror their structure; for example,
-  tuples become a tuple of partially static values.
-The partially static domain represents dynamic values,
-  which may not be known until execution time,
-  alongside the static values traditionally supported by
-  constant evaluators.
-Our partial evaluator must solve two important problems:
-  managing effectful computations and handling references.
-In order to handle effects, the evaluator keeps the generated
-  program in A-normal form to ensure effects are properly ordered
-  and restrict duplication of effectful computations.
-The partial evaluator supports references by
-  simulating the store at partial evaluation time.
-The explicit store is threaded throughout execution
-  and provides a flow-sensitive PE.
-Finally, the evaluator constructs a new program with
-  the static subcomputations evaluated away.
-% The reconstructed program contains all original
-%   expressions, as well as evaluated expressions,
-%   because interleaving dead-code elimination (DCE) is
-%   non-trivial.
-% Afterwards, we separately apply DCE.
-% The partial evaluator has use cases beyond inference
-%   optimizations, separately it enabled the design of an automatic
-%   differentiation algorithm that makes use of hard to optimize
-%   features such as references of closures, as the partial evaluator
-%   can remove unneeded abstraction.
-
-% Existing deep learning IRs have relied on
-%   a mixture of staging and constant evaluation
-%   in order to optimize user programs.
-% Partial evaluation is a generalized form of constant
-%   evaluation that can reduce partially constant
-%   programs.
-% A partial evaluator (PE) allows the use of high-level abstractions
-%   without limiting code that \textit{could} in practice be
-%   compiled to a particular target.
-% Relay is the first compiler to apply partial evaluation
-%   techniques to deep learning, the
-%   core approach of which is based on \citep{pe_ref}.
-% Partial evaluation, when composed with other
-%   optimizations like fusion, yields a variety
-%   of useful optimizations without requiring
-%   a separate implementation of each.
-% For example, the partial evaluator can be used to perform
-%   loop unrolling, which then enables further fusion,
-%   without any additional compiler passes.
