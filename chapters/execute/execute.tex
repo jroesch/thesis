@@ -1,26 +1,28 @@
 \chapter{Executing Relay}
 \label{ch:execute}
 
-The final piece of the puzzle is taking a sufficiently
-    lowered Relay program and executing it.
+Once a Relay program has gone through all optimization
+  and lowering passes we must execute it.
 In theory a naive interpretation strategy could be applied
     to the entire Relay program.
 In fact the Relay definitional interpreter
   implements a naive recursive AST traversal
-  and applies JIT compilation to kernels.
+  which applies JIT compilation to each kernel invocation
+  contained in the program.
 A definitional interpreter is sufficient
   for specifying the behavior of a language,
-  but not for efficiently executing one.
+  but not necessarily for efficiently executing one.
 After applying generic optimizations,
   most compilers have per target compilation
   pipelines which lower programs to a specific
   backend.
-Finally dynamic behaviors require
-  runtime support, such as memory allocation,
+Many of the behaviors contained in these target
+  specific lowered programs require not only
+  program transformations but also runtime
+  support such as memory allocation,
   device selection, or scheduling.
-
-The remainder of this chapter focuses on the back
-  half of the Relay compiler and its runtime mechanisms.
+The remainder of this chapter focuses on the backend
+  of the Relay compiler and its runtime mechanisms.
 We describe the general backend compilation strategy,
   lowering Relay to the graph runtime, the virtual machine,
   ahead of time compiler, and hardware accelerators.
@@ -33,7 +35,6 @@ In this chapter we evaluate Relay's performance specifically
 
 To begin we first refresh the reader on the end-to-end
   dataflow of the Relay compiler.
-
 First, a frontend converts its input format into the Relay IR.
 Next, the Relay compiler typechecks and optimizes the program.
 Processes such as automatic differentiation can be performed
@@ -42,10 +43,10 @@ Next we extract primitive functions
   from the Relay program, functions which may be lowering to TE or TIR,
   the process for selecting these
   is defined in Section \ref{sec:fusion}.
-We then perform scheduling and lowering on these
+We then schedule and lower these
   expressions to produce low-level target-specific versions
   of these functions.
-We then further transform the code which can not be lowered
+We then further transform the code which cannot be lowered
   into TIR via a sequence of passes depending on which backend
   we are targeting.
 Finally we execute the remaining Relay code via a TVM runtime
@@ -59,7 +60,7 @@ The focus of this chapter is describing this process in
 
 There are several ways to write an Relay program.
 A user can build an in-memory representation of
-    a program in C++ or Python,
+    a program in C++, Rust or Python,
     parse one written in the Relay text format,
     load one from the on-disk serialization format,
     or import one from popular frameworks and interchange formats
@@ -134,12 +135,12 @@ It is structured as an inefficient interpreter that performs
   AST traversal to execute the program.
 Each time we want to run a sub-expression we must traverse each child node
   a large cost that can be easily avoided.
-Furthermore we perform JIT compilation of concrete observed shapes in the
-  interpreter, a flexible, but also costly choice.
-This approach is conceptually simple but inefficient, as the AST traversal heavily relies on indirection.
+This approach is conceptually simple but inefficient, as
+  the AST traversal heavily relies on indirection.
+Furthermore we perform JIT compilation with concrete observed shapes
+  in the interpreter, a flexible, but also costly choice.
 For example the initial Relay prototype reused the existing ``graph runtime'', to obtain
   acceptable performance for vision tasks.
-
 The graph runtime is heavily over engineered for completely static
   models.
 The graph runtime can only execute simple control-free,
@@ -147,6 +148,8 @@ The graph runtime can only execute simple control-free,
 We can optimize Relay programs and map a subset of them
     to the graph runtime, but any use of new Relay features
     are unsupported.
+The graph runtime does not support control-flow, dynamic shapes,
+  recursion, closures, or data structures.
 
 \section{Virtual Machine}
 \label{sec:vm}
@@ -154,40 +157,30 @@ We can optimize Relay programs and map a subset of them
 Existing approaches to dynamic model optimization apply or extend existing
   deep learning frameworks~\citep{xu2018cavs, gao2018low, yu2018dynamic, jeong2018improving, jeong2019janus, dynet, tf_fold}.
 As discussed in Section~\ref{sec:dl_frameworks} frameworks are large monolithic pieces
-  of software that still has serve portability and performance challenges.
+  of software with both portability and performance challenges.
 Existing work which builds on frameworks extends the programming model either
-  via sophisticated additions~\citep{yu2018dynamic} or significant runtime overhead~\citep{tf_fold, jeong2019janus}.
-Other work~\citep{xu2018cavs, gao2018low, tf_fold} which is focused on optimizing specific types of models
-  is often hard to generalize to new models, or generalize over all models.
-Moreover, approaches which inherit from frameworks rely on third-party kernel libraries such as
-  OpenBLAS~\citep{xianyi2014openblas}, cuDNN~\citep{cudnn}, and MKL-DNN~\citep{mkldnn} to achieve competitive performance.
-These libraries expose a fixed set of operators for the corresponding hardware, compromising the portability of dynamic models
-  which require a large number of operators with varying data types and shapes.
+  via sophisticated additions~\citep{yu2018dynamic} or significant
+  runtime overhead~\citep{tf_fold, jeong2019janus}.
+Other work~\citep{xu2018cavs, gao2018low, tf_fold} which is focused on
+  optimizing specific types of models is hard to generalize to new models,
+  or generalize over all models.
+Moreover, approaches which inherit from frameworks rely on third-party kernel
+  libraries such as OpenBLAS~\citep{xianyi2014openblas},
+  cuDNN~\citep{cudnn}, and MKL-DNN~\citep{mkldnn} to achieve competitive performance.
+These libraries expose a fixed set of operators for the corresponding hardware,
+  compromising the portability of dynamic models which require a large number of i
+  specialized operators with varying data types and shapes.
 Designing a new interface independent of existing frameworks
-  provides a clean programming model but often at the cost of performance, due to dynamic interpretation of the model~\citep{dynet}.
-
-However, deep learning compilers have been primarily restricted
-  to static models due to lack of support for dynamism.
-Specifically, in order to compile and execute the dynamic models,
-  a system requires an intermediate representation (IR) which can statically represent dynamic constructs,
-  a code generator which can generate kernels for dynamically varying data shapes,
-  and a runtime to handle the dynamic execution and kernel dispatch accordingly.
-In addition, dynamic-specific optimizations, such as dynamic memory planning, the process of statically optimizing dynamic allocations,
-  are necessary to achieve desirable performance.
-None of these features existed in deep learning compilers.
-
-To this end, we designed Relay VM, a high-performance and portable system for compiling, optimizing,
-  and executing dynamic neural networks on multiple platforms.
-To the best of our knowledge, Relay VM is the first attempt to
-  systematically handle dynamic models from a compiler perspective.
-
-In summary, the Relay VM is built around three core design contributions:
-\begin{itemize}
-  \item Leverage Relay IR extensions for dynamically shaped tensors
-  \item Dynamic Memory, Device Placement, and Code Generation optimizations
-  \item A tensor based abstract machine, and virtual machine implementation which
-        supports platform-independent dynamic execution.
-\end{itemize}
+  provides a clean programming model but often at the cost of performance,
+  due to dynamic interpretation of the model~\citep{dynet}.
+Due to our ability to design a new IR and extensions for dynamic features
+  we solve the majority of these challenges via the use of compilation.
+Even though we can elide dynamism in many cases, there are still
+  programs which need truly dynamic features, especially in more
+  advanced scenarios like training.
+To this end, we designed Relay VM, a high-performance and
+  portable system for executing compiled dynamic neural networks
+  on multiple platforms.
 
 \subsection{A Tensor Virtual Machine}
 
@@ -234,10 +227,15 @@ Traditional programs manipulate small scalar values
   and consist of a large number of low-level instructions.
 The sheer quantity of instructions requires instruction execution
   and dispatch to be extremely efficient.
+Any instructions that don't directly correspond to the high-level
+  instruction, such as managing VM state, or dynamic type tests
+  are overhead.
 In the context of machine learning we manipulate primarily tensor values,
   using a (relatively) low number of high level instructions.
 ML programs’ cost centers are expensive operator invocations,
   such as GEMM or convolution, over a large input.
+In this setting invoking the wrong kernel, or invoking a kernel inefficiently
+  is the essential overhead.
 Due to the execution profile exhibited by ML programs,
   micro-optimizations present in scalar VMs are dramatically less important,
   and thus the removal of dispatch overhead from ahead of time compilation
@@ -245,7 +243,7 @@ Due to the execution profile exhibited by ML programs,
 
 \subsection{VM Compiler}
 
-TODO PUT IN FIGURE
+% TODO PUT IN FIGURE
 
 In order to execute on the VM we wrote a new compiler which
   can lower Relay directly on to the VM bytecode, and then
@@ -280,13 +278,12 @@ The transformed program has a nearly one to one correspondence
   with the VM ISA.
 The VM ISA is detailed in detail in the above figure.
 
-The Relay dialect we transform the program into as discussed in Chapter~\ref{ch:optimizations}
-  is designed to closely match the ISA.
-The design VM ISA is motivated by the simple observation that
+The Relay dialect we transform the program into
+  is designed to closely match the ISA, as discussed in Chapter~\ref{ch:optimizations}.
+The VM's ISA is motivated by our previous observation that
   kernel execution dominates neural network execution time.
 If we treat kernel invocation as a single instruction,
   the cost of surrounding instructions is negligible in the total execution.
-
 As a result, our design is quite different from traditional language virtual machines,
   which contain many instructions that perform little work,
   leading to a profile where the cost of each instruction executed matters.
@@ -340,7 +337,8 @@ When a VM function is invoked,
 The dispatch loop checks the op-code and executes
   the appropriate logic, then repeats.
 As our instructions are coarse-grained (i.e. they can be viewed as super-instructions),
-  the number of branches generated by the dispatch-loop is lower than traditional programming language VMs,
+  the number of branches generated by the dispatch-loop is lower
+  than traditional programming language VMs,
   adding negligible overhead compared to ahead of time compilation.
 
 VM uses a tagged object representation reminiscent of those
@@ -403,8 +401,8 @@ In addition, there are certain operators such as Non Maximum Suppression (\textt
   where the complexity of computing the output shapes is on par with the complexity of executing the operator itself.
 In order to avoid the redundant computation, we use an {\em upper bound} shape function to
   quickly estimate an upper bound shape for the output.
-We also require such operators to return the output shape along with output value, so as to use the real shape to slice the output tensors into precise output shape and layout.
-%\yida{use a diagram to summarize three modes and remove the text}
+We also require such operators to return the output shape along with output value,
+  so as to use the real shape to slice the output tensors into precise output shape and layout.
 
 It is worth noting that in the presence of dynamic shape functions, operator fusion
   needs to be specially taken care of.
@@ -427,23 +425,26 @@ As a result, we explicitly define the fusion policy to prevent this from happeni
 
 \subsection{Ahead-of-time}
 
-Given we sep from our abstract machine into machine code.
-But due to the granularity of the operations, dispatch time makes
-  up a very small portion of the execution time.
-More importantly, the VM provides flexibility traditionally attributed
-  to virtual machines and a clear compiler/runtime split.
-We see the potential of VM to be integrated as a runtime module into a larger system.
-For example, VM can provide resource isolation where multiple inference
-  instances share the same hardware in the cloud.
-Furthermore, a Quality of Service (QoS)-aware system, e.g., \citep{kang2018hotmobile, Yachir2009rsj},
-  could leverage VM to pause the current model execution for a higher priority or time-critical model.
-Last, because of the simplicity of the VM design, one can verify the implementation of VM for security and privacy purposes.
+% TODO
+
+% Given we s from our abstract machine into machine code.
+% But due to the granularity of the operations, dispatch time makes
+%   up a very small portion of the execution time.
+% More importantly, the VM provides flexibility traditionally attributed
+%   to virtual machines and a clear compiler/runtime split.
+% We see the potential of VM to be integrated as a runtime module into a larger system.
+% For example, VM can provide resource isolation where multiple inference
+%   instances share the same hardware in the cloud.
+% Furthermore, a Quality of Service (QoS)-aware system, e.g., \citep{kang2018hotmobile, Yachir2009rsj},
+%   could leverage VM to pause the current model execution for a higher priority or time-critical model.
+% Last, because of the simplicity of the VM design, one can verify the implementation of VM for security and privacy purposes.
 
 
 \section{Supporting Hardware Accelerators}
 \label{sec:accel}
 
 \subsection{Bring Your Own Code Generation}
+\label{sec:byoc}
 
 In conjunction with my collaborators at AWS we implemented an
   extensible framework for hooking hardware accelerators into
@@ -456,6 +457,7 @@ Bring Your Own Code Generation (BYOC) is a mechanism introduced
 TODO
 
 \subsection{VTA}
+\label{sec:vta}
 
 Hardware specialization is a powerful way to accelerate
   a known set of applications and workloads.
@@ -488,7 +490,7 @@ In order to tackle this problem I have collaborated on the design for \vta (Vers
 \end{itemize}
 
 My collaborators and I published a paper on VTA in
-  the IEEE Micro Journal Special Issue on Deep Learning Acceleration.
+  the IEEE Micro Journal Special Issue on Deep Learning Acceleration~\citep{moreau2018vta}.
 \vta and its children projects are a critical part of the research
   agenda at UW SAMPL lab, and we won a multi-million dollar grant to
   pursue automatically mapping Relay programs to hardware designs.
