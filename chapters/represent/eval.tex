@@ -7,41 +7,25 @@ We evaluated Relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx F
   with state-of-the-art frameworks (TensorFlow, PyTorch, MxNet), and (3) Relay provides
   \emph{portability} over difficult-to-compile-to hardware backends such as FPGAs
 
-\subsection{Relay: A high-level IR for Deep Learning}
-  In particular, our evaluation is composed of three parts:
-  \begin{enumerate}
-    \item \textbf{Relay enables composable optimizations}: Relay
-      supports composing program transformations into multiple optimization tiers.
-    \item \textbf{Relay provides competitive performance}: Despite increasing
-      expressiveness, Relay's performance is competitive with the
-      state of the art on popular models.
-    \item \textbf{Relay handles challenging backends}: Relay can compile
-      models to execute efficiently on a variety of
-      backends, such as FPGA accelerators, which require quantization, layout
-      optimizations, and bit-packing transformations.
-    \item \textbf{Relay supports expressive models}: It can compile models with complex control flow
-      like Char-RNN to a single lean binary, beating PyTorch inference performance by up to 3x.
-  \end{enumerate}
+We evaluated the following vision models:
+  \textit{Deep Q-Network (DQN)}, a DNN that achieved state-of-the-art performance
+  on 49 Atari games in 2015;
+  \textit{MobileNet}, a DNN designed for image recognition on mobile and
+  embedded devices;
+  \textit{ResNet-18}, a DNN for image recognition that achieved state-of-the-art
+  performance on ImageNet detection tasks in 2015;
+  \textit{VGG-16} (named for the Visual Geometry Group
+  at Oxford), a CNN used for image recognition tasks
+  \citep{dqn, mobilenet, resnet, vgg}.
 
-  We evaluated the following vision models:
-    \textit{Deep Q-Network (DQN)}, a DNN that achieved state-of-the-art performance
-    on 49 Atari games in 2015;
-    \textit{MobileNet}, a DNN designed for image recognition on mobile and
-    embedded devices;
-    \textit{ResNet-18}, a DNN for image recognition that achieved state-of-the-art
-    performance on ImageNet detection tasks in 2015;
-    \textit{VGG-16} (named for the Visual Geometry Group
-    at Oxford), a CNN used for image recognition tasks
-    \citep{dqn, mobilenet, resnet, vgg}.
-
-  We evaluated the following NLP models:
-    \textit{CharRNN}, a generator character-level
-    RNN from a PyTorch tutorial;
-    \textit{TreeLSTM}, a generalization of LSTMs to
-    tree-structured network topologies;
-    \textit{RNN, GRU, and LSTM}, a selection of models from the Gluon
-    model zoo
-    \citep{pytorch_rnn_tut, tree_lstm, gluon_model_zoo}.
+We evaluated the following NLP models:
+  \textit{CharRNN}, a generator character-level
+  RNN from a PyTorch tutorial;
+  \textit{TreeLSTM}, a generalization of LSTMs to
+  tree-structured network topologies;
+  \textit{RNN, GRU, and LSTM}, a selection of models from the Gluon
+  model zoo
+  \citep{pytorch_rnn_tut, tree_lstm, gluon_model_zoo}.
 
 \subsection{Experimental Methodology}
   Because we only evaluate inference in this paper,
@@ -84,7 +68,7 @@ We evaluated Relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx F
   The Relay vision experiments utilized aggressively tuned TVM schedules on the GTX 1080 Ti GPU,
     improving performance significantly.
 
-  \subsection{Relay Provides Competitive Performance}
+  \subsection{Vision Workloads}
   \label{sec:perf-gpu}
 
   \begin{figure}[h]
@@ -169,7 +153,7 @@ We evaluated Relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx F
         multitude of graph-level transformations.
       We used 10 trials for each model.
     }
-    % \label{fig:fpga-eval}
+    \label{fig:fpga-eval}
   \end{figure}
 
   We evaluated inference time on five models including MobileNet-G \citep{mobilenet}, a grouped variant of the MobileNet architecture; ResNet-18, ResNet-34, and ResNet-50\citep{resnet}; and Deep Convolutional Generative Adversarial Networks \citep{dcgan}, a generative DNN used in unsupervised learning.
@@ -181,13 +165,3 @@ We evaluated Relay on several systems (x86 CPUs, ARM CPUs, NVIDIA GPUs, Xilinx F
     \item \textit{Push-button quantization}: Relay can take a \texttt{fp32} model and convert its parameters to \texttt{int8} in order to enable inference on specialized accelerators.
     \item \textit{Accelerator-friendly data packing:} Relay reorganizes data so it can be effortlessly consumed by a specialized TPU-like accelerator~\citep{tpuv1}.
   \end{enumerate}
-
-The scenario presented in the introduction demonstrates the three-pronged \textbf{extensibility challenge}
-  for DL IRs:
-% \begin{enumerate} % [label=\arabic*.]
-%   \item \textit{Expressivity}: It should be straightforward to write models involving complex data structures (e.g., trees, graphs, and lists) and control flow.
-%   \item \textit{Composability}: It should be straightforward to add and compose new optimizations
-%     with existing ones (e.g., quantization, operator fusion, and automatic differentiation).
-%   \item \textit{Portability}: It should be straightforward to add new hardware backends
-%     (e.g., TPU, Inferentia, and FPGAs)~\citep{tpuv1, inferentia}.
-% \end{enumerate}
