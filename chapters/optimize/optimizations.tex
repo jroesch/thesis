@@ -704,25 +704,28 @@ In these cases symbolic codegen cannot completely replace manually tuned 3rd par
 \label{sec:accel-opts}
 
 Many accelerates provide non-traditional programming
-    abstractions to compilers and users.
-For example many traditional platforms can have
-    code generated via LLVM.
-These simply expose an LLVM backend which generates
-    a well known ISA.
+    abstractions to both compilers and users.
+In order to implement code generation for a
+  traditional platform, compiler authors could
+  simply expose an LLVM backend an leverage
+  all LLVM infrastructure.
 Many accelerators are not programmable in this style
     and require a mixture of driver interactions
     and static and dynamic code generation to
     drive a program to completion.
 Even on very popular accelerators such as GPU
-    violate the typical CPU programming model.
+    violate the typical CPU programming model
+    requiring custom transformations, runtimes,
+    and optimizations.
 In order to lower generic deep learning programs
     to these types of accelerators it is
-    essential we are able to optimize programs.
+    essential we are able to optimize and transform
+    programs to run on this hardware.
 For example some accelerators only support
     low-bit datatypes converting quantization
     from an optimization to a necessary program
     transformation.
-
+% BYOC?
 Although DL accelerators form a diverse family of designs,
   one property they have in common is a restricted computing model.
 The consequence of this is that individual accelerators
@@ -769,7 +772,11 @@ Many of optimizations, especially those around program partitioning can
 We have explored two very different rewriting approaches in TVM
   the first was specifying dataflow patterns for end users to
   match dataflow graph properties and select subgraphs.
-The second was the use of Egg TODO a library
+The second was the use of Egg
+%CITE
+a library
   for utilizing equivalence graphs to perform saturated rewriting.
 We describe both approaches in the context of the TVM stack
   below.
+
+% FLESH OUT with examples.
