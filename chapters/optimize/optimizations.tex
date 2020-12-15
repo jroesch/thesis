@@ -615,37 +615,45 @@ The result of the heterogeneous device placement composes with memory planning
 
 Deep learning compilers~\citep{tvm_osdi18, halide} have demonstrated competitive performance
   compared to manually tuned kernels on multiple platforms.
-Recent trends apply machine learning based search to further reduce or eliminate complex manual performance tuning,
-  existing work applies both template based~\citep{chen2018learning, zheng2020flextensor} and beam search based~\citep{adams2019learning} ones.
+Recent trends apply machine learning based search to further reduce
+  or eliminate complex manual performance tuning,
+  existing work applies both template based~\citep{chen2018learning, zheng2020flextensor}
+  and beam search based~\citep{adams2019learning} ones.
 
-However existing work which focuses on tuning in the presence of fully static shape information falls short
-  in the presence of symbolic or dynamic shapes.
-There are two inherent challenges with regard to performing code generation for symbolic shapes.
+However existing work which focuses on tuning in the presence of fully
+  static shape information falls short in the presence of symbolic or dynamic shapes.
+There are two inherent challenges with regards to performing code generation for symbolic shapes.
 \begin{itemize}
     \item How to achieve the same performance of kernels generated with symbolic shapes as
           that with static shapes when applying the same schedule?
-    \item How to extend the machine learning based approach to tune kernels with symbolic shapes?
+    \item How to extend the machine learning based auto-tuning to kernels with symbolic shapes?
 \end{itemize}
 
 Loop parallelism and loop tiling are common optimization techniques that exploit multi-core capabilities
   by achieving data access patterns which are memory hierarchy aware for both CPUs and GPUs.
-However, the combination of these techniques lead to complex loop boundary conditions.
+However, the combination of these techniques often introduce complex loop boundary conditions.
 In many static cases, it is possible to prove these conditions always hold,
   and thus eliminate checks which hamper further optimizations such as unrolling.
-While straightforward to handle with static shapes, it becomes a non-trivial challenge when performing symbolic code generation.
+While straightforward to handle with static shapes, it becomes a non-trivial challenge
+  when performing symbolic code generation.
 If not carefully handled, the boundary condition checks will stay, leading to poor performance.
 
 To address this issue, we generate multiple kernels according to the residues modulo of the tiling
   factor and then dispatch based on the actual shape at runtime.
-For example, suppose a symbolic dimension $x$ is divided by a factor of 8, we then duplicate the generated kernel
-  for 8 times, and replace the symbolic var $x$ by $8k+r$ in each copy, where $k = \lfloor x / 8 \rfloor$ and $r \in [0..7]$.
-Lastly, we automatically generate a dispatch function that invokes the corresponding kernel based on the residue.
-% %because this function is also generated in the IR we can compile and optimize it like other code ahead of time.
+For example, suppose a symbolic dimension $x$ is divided by a factor of 8, we then
+  generated eight duplicated kernels replacing the symbolic var $x$ by $8k+r$ in each copy,
+  where $k = \lfloor x / 8 \rfloor$ and $r \in [0..7]$.
+Lastly, we automatically generate a dispatch function which invokes
+  the corresponding kernel based on the residue.
 By applying this technique in conjunction with an enhanced symbolic expression simplification pass,
   we can eliminate most boundary checks to achieve performance that is nearly identical
   to kernels compiled with a single static shape.
-Lastly, we automatically generate a dispatch function that invokes the corresponding kernel based on the residue.
-
+Lastly, we automatically generate a dispatch function that invokes the
+  corresponding kernel based on the residue.
+This strategy can be viewed as a form of polymorphic inline caching~\citep{inline_caches},
+  where the cache is not keyed by type, but shape.
+Both the dispatch logic and kernels are represented as TIR code enabling them
+  to be optimized and compiled using standard mechanisms.
 
 In addition, the dispatch function can be extended to invoke either compiler generated kernels
   or third party library whichever is faster from the profiling results.
@@ -655,7 +663,8 @@ In extreme cases where resources are extremely limited,
   or reduce the tiling factor to find an acceptable trade-off
   between code size and performance.
 In case where resources are extremely limited, we can either generate fewer number of kernels
-than the tiling factor or reduce the tiling factor to find an acceptable trade-off between code size and performance.
+  than the tiling factor or reduce the tiling factor to find an acceptable
+  trade-off between code size and performance.
 
 A known issue to machine learning based tuning is that it may take a long time (usually hours) to find
   the best schedule for a single kernel.
@@ -677,45 +686,19 @@ Based on this observation, we devise the following mechanism
     \item Pick the configuration that performs best on average among shapes previously evaluated.
 \end{enumerate}
 
-% \begin{enumerate}
-%     \itemsep 0em
-%     \item First replace the symbolic dimensions by a large enough value (e.g., 64) so that the search space can cover most possibilities, and run the tuning algorithm on the static shape for a sufficient number of iterations.
-%     %
-%     \item Pick top $k$ configurations, apply them to a selection of other shapes, and evaluate their performance.
-%     %
-%     \item Pick the configuration that performs best on average among shapes previously evaluated.
-% \end{enumerate}
-
 We found that $k=100$ covers most of the best configurations for other shapes.
 Current popular dynamic models usually only require kernels with one symbolic variable.
 As a result, we choose the values of power of two up to 256 in the cross evaluation of other shapes.
 If there is more than one symbolic variable, a more sophisticated selection approach might be
   required to limit the evaluation time of step 2.
 We leave this to the future work.
-Further, if the workload distribution is known, we could adjust the weighting of known shapes when picking the best configuration for step 3.
+Further, if the workload distribution is known, we could adjust the weighting
+  of known shapes when picking the best configuration for step 3.
 
-Though we address both challenges, we admit that our approach has limitations when all dimensions are unknown.
+Though we address both challenges, we admit that our approach has limitations when
+  all dimensions are unknown.
 In these cases symbolic codegen cannot completely replace manually tuned 3rd party libraries yet,
   but is complimentary when partial shapes are known.
-
-% % Our codegen approach for dynamic shapes is designed to integrate well with TVM's codegen. We implement a bucketing
-% % based codegen strategy, which generates a set of shape-specialized variants and code which selects between them. One
-% % attractive consequence of this design is that it allows us to integrates with the current version of AutoTVM~\citep{chen2018learning}, TVM's auto-tuning framework
-% % to further optimize kernels.
-
-Though we address both challenges, we admit that our approach has limitations when all dimensions are unknown.
-In these cases symbolic codegen cannot completely replace manually tuned 3rd party libraries yet,
-  but is complimentary when partial shapes are known.
-
-% When an operator appears with dynamic shape it often will only vary along a single dimension.
-We are able to handle cases that deal with imperfect tiling strategies but the critical performance piece
-  is choosing a tuned operator with the appropriate tile size.
-% We reuse the machinery of the VM to support invoking a bucketed operator.
-For each operator with a dynamic shape we will generate tile sizes for powers of two,
-  and then for a given input size round to the nearest power of two tile size and select that operation.
-The code for selecting between buckets is also realized as TVM expression allowing further optimization of the combined kernel.
-This strategy can be viewed as a form of polymorphic inline caching~\citep{inline_caches},
-  where the cache is not keyed by type, but shape.
 
 \section{Accelerator-Specific Optimizations}
 \label{sec:accel-opts}
@@ -729,7 +712,7 @@ These simply expose an LLVM backend which generates
 Many accelerators are not programmable in this style
     and require a mixture of driver interactions
     and static and dynamic code generation to
-    drive a program to compeletion.
+    drive a program to completion.
 Even on very popular accelerators such as GPU
     violate the typical CPU programming model.
 In order to lower generic deep learning programs
@@ -749,9 +732,9 @@ For example, some accelerators cannot execute unbounded loops,
   host device (often a CPU) which interacts with the device runtime
   as well as programming it.
 
-Below we highlight a few of these optimizations that were used for
-VTA discussed in section XXX, as well as accelerators supported by
-TVM.
+Below we highlight a few of these optimizations that were used
+  to implement support for the VTA~\citep{moreau2018vta} accelerator
+  discussed in Chapter~\ref{ch:execute}.
 
 \textit{Axis scale folding} is an optimization that removes scaling
   operations that occur before or after convolution-like operators.
