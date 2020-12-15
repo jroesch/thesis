@@ -4,11 +4,6 @@
 Popular DL compiler intermediate representations (IRs) offer different tradeoffs
 between expressivity, composability, and portability~\citep{
   tensorflow, pytorch_ad, chainer_learningsys2015, tangent, theano, glow}.
-Extending these frameworks to accommodate
-  the rapidly diversifying landscape of
-  DL models and hardware platforms presents
-  challenging tradeoffs between
-  expressivity, composability, and portability.
 Early frameworks adopted IRs
   specialized for then-state-of-the-art models and/or
   emerging hardware accelerators.
@@ -68,10 +63,9 @@ Leveraging these features leads to powerful use cases,
   for example we are able to easily get best in class performance on many devices by mixing and matching TVM,
   with native kernel libraries to obtain the best performance, without the end user needing to adapt their program
   in anyway.
-The rest of the section describes Relay’s IR and type system design, and presents some preliminary
+The rest of this chapter describes Relay’s IR and type system design, and presents some preliminary
   performance results.
-
-We make the following contributions:
+We focus on the following contributions:
 \begin{itemize}
   \item The Relay IR, a tensor-oriented, statically typed
     functional IR,
@@ -79,22 +73,6 @@ We make the following contributions:
   Relay's design is motivated by the insight that functional IRs, used by
   languages from the ML family\footnote{``ML'' as in ``Meta Language,'' not
   ``Machine Learning''} can be readily adapted to support DL.
-  With its \textit{expressive} semantics,
-    including control flow, data structures, and first-class functions,
-    Relay can represent entire state-of-the-art models.
-  \item The insight that common features in ML frameworks,
-    such as quantization and shape inference,
-    can be reframed as standard compiler passes.
-  By using this reframing we can tap into
-    decades of traditional compilers research to design
-    \textit{composable} optimization passes.
-  \item
-    A platform-agnostic representation of operators and domain specific
-      optimizations which work in concert to provide \textit{portability}
-      across hardware backends.
-  \item
-  Below we describe Relay, a tensor-oriented, statically typed,
-    functional IR.
   Collections of \textit{ad hoc} extensions in previous frameworks
     that patched shortcomings in expressiveness are subsumed by a handful of well-known language
     constructs like let expressions, ADTs, first-class functions, and references.
@@ -103,27 +81,20 @@ We make the following contributions:
     allows optimizations to more readily compose.
   \item
   By representing DL models as functional programs, we reframe traditional
-    DL framework problems as compiler problems.
+    deep learning framework features as compiler problems.
   Backpropagation becomes a source code transformation,
     transforming an arbitrary Relay function into its gradient function;
     \textit{ad hoc} shape inference becomes principled type inference;
     graph rewriting becomes program optimization;
     and the executor becomes (depending on what the context demands) an
     interpreter, virtual machine, or ahead-of-time compiler.
-  Using this correspondence, we adapt existing
-    PL techniques to the DL domain.
+  By using this reframing we can tap into
+    decades of traditional compilers research to design
+    \textit{composable} optimization passes.
   \item
-    A notable example of this approach is Relay's type system (Section \ref{sec:type_system}).
-    Since operators have complicated semantics, shape inference is usually
-      performed when shapes are fully concrete;
-      however, at compile time, one does not have that luxury.
-    We therefore extend a Hindley-Milner type system with type relations that encode shape
-      constraints induced by operators.
-    This allows Relay passes to reason about shape information at compile time.
-  \item To provide portability,
-    we define a platform-agnostic operator language
-    and a compiler pass manager, which facilitates the development of
-    passes that transform the IR to target new hardware backends.
+    A platform-agnostic representation of operators and domain specific
+      optimizations which work in concert to provide \textit{portability}
+      across hardware backends.
 \end{itemize}
 
 \section{IR}
@@ -160,10 +131,6 @@ Hence, Relay's primary value type is a tensor and operators are included as lang
   (see the \verb|tensor constant| and \verb|operator| rules in Figure \ref{fig:short_bnf}).
 Relay leaves the implementation of each operator opaque; the operators
   are represented by a lower-level IR, which is optimized independently.
-
-One can understand Relay by starting from a subset of Relay
-  that represents an idealized computation graph IR and
-  incrementally growing to the full Relay IR.
 A computation graph, in its simplest presentation, is a directed acyclic
   graph with multiple inputs and a single output.
 The syntax of an equivalent computation graph is realized by
@@ -171,9 +138,13 @@ The syntax of an equivalent computation graph is realized by
   and (3) \verb|operator|s, see Figure~\ref{fig:short_bnf} for the corresponding rules.
 
 \subsection{Operators}
-...
 
-\subsection*{Multiple Outputs}
+Operators are the primitive computation of Relay and represented using
+  an opaque function signature, and backed by fragments of TVM's TE or TIR
+  which can be lowered to low-level device specific code to realize
+  the abstract operations with specialized implementations.
+
+\subsection{Multiple Outputs}
 
 Many common operators like \verb|split|, which splits
   a tensor along a particular axis, require multiple outputs.
@@ -183,11 +154,12 @@ In order to handle these programs,
 Multiple outputs can be modeled as tuples, which can
   be added with just two rules (1) \verb|tuple formation|
   and (2) \verb|tuple projection|.
-Using a construct such a tuples cleanly handles not only multiple
-  outputs but operations which return multiple aggregate values
-  as a single output can also be a tuple itself.
+Instead of using multiple outputs as a builtin concept the use
+  of tuples allow us to represent operations which not only return
+  one level of data structure, but can also use nested structures
+  such as tuples of tuples.
 
-\subsection*{Let}
+\subsection{Let}
 
 By construction, computation graphs enjoy implicit sharing of subcomputations
   via multiple outgoing dependency edges.
@@ -210,18 +182,20 @@ The lack of lexical scope in computation graphs complicates language features,
   such as liveness,
   because the high-level program structure is absent~\citep{funarg, funarg_sol}.
 The addition of a humble \verb|let| binding, a central concept in functional languages,
+  provides explicit sharing and a solution to the problems outlined above.
 
-\subsection*{Control Flow}
+\subsection{Control Flow}
 
-Emerging models, particularly in the domain of natural language processing, increasingly
-  rely on data-dependent control flow, forcing frameworks based on computation graph IRs
+Emerging models, particularly in the domain of natural language processing,
+  increasingly rely on data-dependent control flow,
+  forcing frameworks based on computation graph IRs
   to incorporate control flow, often through \textit{ad hoc} and difficult-to-extend constructs.
 For example, TensorFlow Fold~\citep{tf_fold} extends TF with special combinators that
   dynamically compute a graph for each shape permutation;
   these high-level constructs are opaque to further optimizations.
 Even in the presence of control flow-free models, looping
   constructs are necessary to implement optimization algorithms
-  such as SGD
+  such as SGD.
 The central challenge is a flexible and extensible encoding of
   control flow operations.
 It is well known in functional programming literature that recursion and pattern matching are sufficient
@@ -229,14 +203,8 @@ It is well known in functional programming literature that recursion and pattern
 To support the definition of functional combinators
   we enrich Relay with two more language
   features to implement arbitrary combinators: \verb|if| and first-class recursive functions.
-The functional programming community has demonstrated recursion and pattern matching are sufficient
-  to implement arbitrary combinators for control flow and iteration.
-To support the definition of functional loops we enrich Relay with two more language
-  features to implement arbitrary combinators: \verb|if| and first-class recursive functions.
-The guard expression in Relay's \verb|if| expression operates over rank-0 boolean tensors,
-  which represent booleans.
 
-\subsection*{First-Class Functions}
+\subsection{First-Class Functions}
 
 A computation graph is a single expression
   from multiple inputs (i.e. its free variables) to multiple outputs.
@@ -255,7 +223,7 @@ For example, an instance of TensorFlow's looping construct \verb|tf.while_loop|
 See Figure~\ref{fig:tf_to_relay_loop} for an example of this conversion (via
   the Relay TensorFlow frontend).
 
-\subsection*{Data Abstraction}
+\subsection{Data Abstraction}
 Many models make use of additional data types beyond
   tuples, such as lists, trees, and graphs~\citep{char-rnn, tree_lstm, graph_lstm}.
 Relay borrows from functional languages

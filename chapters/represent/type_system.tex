@@ -6,22 +6,6 @@ Relay's type system is essential
 Typing guarantees both well-formedness of the program
   and provides crucial tensor shape information to perform allocation,
   check correctness, and facilitate loop optimizations.
-Shape information is also valuable for data layout transformations and tensorization,
-  two transformations often demanded by hardware accelerators.
-In computation graph IRs, only numeric data types
-  and shapes are tracked for each operator.
-Symbolic shapes (i.e., shape polymorphism) are only handled
-  dynamically, inhibiting certain types of optimizations.
-
-It is possible to model arbitrarily complex static properties, such
-  as shape information, with a dependent type theory~\citep{selsam_certigrad}, but such
-  a design incurs significant user complexity.
-By incorporating shape analysis into a broader type system,
-  Relay's type system balances the desire for static tensor shapes
-  with usability.
-In this subsection, we describe how to extend a polymorphic type system with shape
-  information and type inference with shape inference.
-
 Computation graph IRs rely on typing in the form of
   datatype and shape inference.
 Datatype and shape inference is the process of computing the
@@ -32,7 +16,10 @@ Deep learning frameworks and compilers use static shape information
 Precise static shape information is also valuable for traditional loop
   optimizations, data layout transformations, tensorization, and
   optimizations that are necessary to map to hardware accelerators' unique ISAs.
-
+In computation graph IRs, only numeric data types
+  and shapes are tracked for each operator.
+Symbolic shapes (i.e., shape polymorphism) are only handled
+  dynamically, inhibiting certain types of optimizations.
 Shape inference is usually formulated as a simple analysis over the dataflow graph that
   propagates shape information.
 Shape inference looks remarkably similar to type inference.
@@ -45,14 +32,15 @@ If we type Relay as simply typed lambda calculus,
   and lacks shape information.
 Even with the addition of polymorphism, there is no representation of static
   shape information.
-It is possible to model arbitrarily complex static properties, such
-  as shape information, with dependent type theory, but such
+  It is possible to model arbitrarily complex static properties, such
+  as shape information, with a dependent type theory~\citep{selsam_certigrad}, but such
   a design incurs significant user complexity.
 Adopting a well known type system allows the application of
   classic techniques, but standard type systems do not
   provide a solution for tracking static shape information.
-Relay's type system is designed to balance the desire for static tensor shapes
-  without limiting the language's expressiveness.
+By incorporating shape analysis into a broader type system,
+  Relay's type system balances the desire for static tensor shapes
+  with usability.
 In this subsection we describe how to extend a polymorphic type system with shape
   information and type inference with shape inference.
 
@@ -87,7 +75,7 @@ In this subsection we describe how to extend a polymorphic type system with shap
 \end{figure}
 
 
-\subsection*{Tensor Types}
+\subsection{Tensor Types}
 
 The primitive value in Relay is a tensor, which has
   a shape and a base type (\verb|tensor type| in Figure \ref{fig:short_bnf}).
@@ -105,9 +93,6 @@ A dimension may be a variable or arithmetic expression that indicates how the
 Functions may be polymorphic over shapes, which results
   in shape constraints that must be solved during type inference.
 Sec.~\ref{sec:inference} describes the process.
-Relay also supports a special shape called \verb|Any|, which is used
-  to mark a dynamic shape when static relationships are not profitable
-  to model.
 
 In the context of dynamic models, many data shapes can only be determined at runtime.
 Therefore, the previous assumption of static data shapes does not hold.
@@ -120,58 +105,48 @@ This concept has been introduced in other frameworks.
 We do not support tensor types with dynamic ranks given the relatively limited use cases and optimization opportunities.
 
 \subsection{Operators and Type Relations}
-Operators are one of the key primitives that differs from those of
-general-purpose programming languages.
-Relay's use of opaque operators enables backends to choose different
-lowering strategies based on the hardware target.
-Relay's operator set is extensible, meaning that users may add new operations.
-Supporting common or user-defined tensor operators requires a type system that can
-adapt to complex shape relationships between input and output types
-(e.g., elementwise operators with broadcasting semantics).
-
-To handle the constraints between operators' argument shapes, Relay's type system
-introduces type relations.
-A type relation is implemented as a function in the
-meta-language and represents a symbolic relationship between
-the input and output types.
-When developers add a new operator to Relay, they may constrain its
-type with an existing relation or add their own.
-Function types may include
-one or more type relations over a subset of the argument types and the return type.
-The type checker enforces that these relationships hold at each call site.
-
 A difference between general purpose programming models and those tailored to deep learning
   is the use of operators as the primitive unit of computation.
-The ability to add new operations to Relay requires a type system that can adapt to
-  complex shape relationships between input and output types.
-Many operators have types that can be defined
-  as functions of the input types.
+Relay's use of opaque operators enables backends to choose different
+  lowering strategies based on the hardware target.
+Relay's operator set is extensible, meaning that users may add new operations.
+Supporting common or user-defined tensor operators requires
+  a type system that can adapt to complex shape
+  relationships between input and output types
+(e.g., elementwise operators with broadcasting semantics).
+For example some operators have result types which can be
+  written as a function of the input types.
+For example, we use a relation that describes the
+  broadcasting rule for all element-wise operations.
 Unfortunately some are not only functions,
   but also relations that specify constraints between input and output shapes.
-A key extension of Relay over traditional type systems is the addition of type relations
-  to express these constraints.
-When developers add a new operator to Relay, they may constrain its
-  type with existing relations or add their own.
+To handle the constraints between operators' argument shapes,
+  Relay's type system introduces a concept of type relations.
+A type relation is implemented as a function in the
+  meta-language and represents a symbolic relationship between
+  the input and output types.
+When developers add a new operator to Relay,
+  they may constrain its type with an existing relation or add their own.
 Function types (including those of operators) may include
-  one or more type relations over an arbitrary subset of the argument types and the return type.
+  one or more type relations over an arbitrary subset
+  of the argument types and the return type.
 The type checker enforces that these relationships hold at the call site.
 These relations may be viewed as a verification condition induced at a
   function call site, where the formula is a conjunction of the relations.
-For example, primitive operators are assigned types that are universally quantified over
-  both the input and output types.
+For example, primitive operators are assigned types that are universally
+  quantified over both the input and output types.
 We can then use a type relation to encode a constraint that must hold later
   when type checking observes specific input and output types.
-Type relations are opaque in the Relay IR: they are implemented in the
-  meta-language and registered when defining an operator.
-However, they may be reused across different implementations.
-For example, we use a relation that describes the
-  broadcasting rule for all element-wise operations.
-
+We first describe these relation in depth, then discuss how they
+  are used in type inference.
 
 \subsection{Operator Type Relation}
-A type relation describes the relationship between the types of operator inputs and outputs.
-The type system of TVM's Relay IR relies on these type relations to infer and bidirectionally
-  propagate type and shape relationships between inputs and outputs of operators across the whole program.
+A type relation describes the relationship between
+  the types of operator inputs and outputs.
+The type system of TVM's Relay IR relies on these
+  type relations to infer and bidirectionally
+  propagate type and shape relationships between
+  inputs and outputs of operators across the whole program.
 For example, the type relation for broadcasting operators (e.g. \texttt{broadcast\_add}) performs the shape
   calculation following the NumPy broadcasting rules\footnote{\url{https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html}}.
 
@@ -183,23 +158,35 @@ There are two cases that must be handled after we introduce Any~to the type rela
 First, operators such as {\tt arange}\footnote{{\tt arange} generates a range of values in a (start, stop, step) interval the arrays output size is a function of input arguments.} and {\tt unique}\footnote{{\tt unique} selects the unique elements of a tensor.} have dynamic output shapes depending on the input data, which will be described in Any.
 We can now describe the type relation using the enhanced type relation functions with Any but not before.
 For example, type relation of {\tt arange} can be expressed as follows
-\[
-arange: fn(start: fp32, stop: fp32, step: fp32) \rightarrow \langle [Any], fp32 \rangle
-\]
-Second, when input shapes of a type relation contain Any~dimension, the type relation needs to propagate Any~correctly to the output types and relax typing constraints that hold in the static cases when necessary.
-For example, type relation for {\tt broadcasting} operators determines the compatibility between corresponding
-dimensions from both inputs if they are equal or one of them is 1 according to the Numpy broadcasting rule.
-For example, the rules
-for broadcast type relation given the matching dimension from two inputs when having Any~are defined as follows:
+\begin{minted}{rust}
+arange: fn(start: fp32, stop: fp32, step: fp32) -> ([Any], fp32)
+\end{minted}
+
+Second, when input shapes of a type relation contain an \verb|Any|~dimension,
+  the type relation needs to propagate Any~correctly
+  to the output types and relax typing constraints
+  that hold in the static cases when necessary.
+For example, type relation for {\tt broadcasting} operators
+  determines the compatibility between corresponding
+  dimensions from both inputs if they are equal or
+  one of them is 1 according to the Numpy broadcasting rule.
+For example, the rules for broadcast type relation given
+  the matching dimension from two inputs when having
+    Any~are defined as follows:
 \begin{align*}
   \textrm{broadcast\_rel}(Any, 1) &\rightarrow Any \\
   \textrm{broadcast\_rel}(Any, d) &\rightarrow d ~~~~~~(d > 1) \\
   \textrm{broadcast\_rel}(Any, Any) &\rightarrow Any.
 \end{align*}
-Note that due the presence of dynamic shapes these type relation rules can no longer rule out all type errors at compile-time.
-For example, for the second rule shown above, when Any~is neither 1 nor $d$ at runtime, it then violates the broadcast type constraints.
-To address this, we take the gradual typing~\citep{gradualtyping} approach and leave certain type checking at runtime after Any~is instantiated by a
-concrete value (see \autoref{sec:compilation:shape-func} for more details).
+Note that due the presence of dynamic shapes these type
+  relation rules can no longer rule out all type errors at compile-time.
+For example, for the second rule shown above, when
+  Any~is neither 1 nor $d$ at runtime, it then violates
+  the broadcast type constraints.
+To address this, we take the gradual typing~\citep{gradualtyping}
+  approach and leave certain type checking at runtime after
+  Any~is instantiated by a concrete value (see \autoref{sec:compilation:shape-func}
+  for more details).
 One could eliminate these errors using a more advanced type system, but at increased complexity.
 
 \section{Type Inference}
@@ -220,9 +207,6 @@ performs a pass over the AST generating types (potentially involving type variab
 as well as populating the set of relations,
 then it solves the incurred constraints,
 and finally it assigns types to each expression in the AST.
-A type relation is implemented as a function in the
-meta-language and represents the symbolic relations between
-the input and output types of an object-language function.
 When the type inference algorithm visits a function call site, the function's type relations are
 instantiated to the types at the call site and added to a queue of relations waiting to be
 solved.
@@ -384,15 +368,8 @@ This information is passed to downstream compilation
   and can reduce the search space during the symbolic codegen.
 We can use this analysis in the downstream compilation
   to generate shape-specialized code during codegen.
-
 We treat concrete dimension and symbolic dimension as a sub-shape of Any.
 
-Rules for invoking a function, suppose fn type is $fn\langle T_1, \dots, T_n\rangle$,
-and arguments are $T'_1, \dots, T'_n$, the rules are defined as follows
-\begin{align*}
-  \textrm{union}(T_i, T'_i) &\rightarrow T_i \\
-  \textrm{join}(T_i, T'_i) &\rightarrow T'_i
-\end{align*}
 
 \subsection{Shape Function}
 \label{sec:type_systemTech:shape-func}

@@ -107,7 +107,7 @@ We compared Relay to \nnvm,
   TensorFlow, TensorFlow-XLA (Accelerated Linear Algebra), PyTorch, and MxNet.
 Results are summarized in Figure~\ref{fig:expressivity-eval}.
 
-\subsection*{Vision Evaluation}
+\subsection{Vision Evaluation}
 
 \begin{figure*}[htbp!]
   \centering
@@ -136,7 +136,7 @@ Relay's ability to apply aggressive inter-operator optimizations
 Operator fusion over long chains of operations is particularly effective,
   because it can generate \textit{new} hardware-specific fused implementations.
 
-\subsection*{NLP Evaluation}
+\subsection{NLP Evaluation}
 % TODO: We need to explain the difference between "RNN" (the Gluon one) and
 % "CharRNN". I don't think *we* even know what the diff is.
 Implementations of the NLP models were not available in all frameworks;
@@ -189,7 +189,7 @@ To demonstrate portability,
     those that are merely \textit{beneficial} for low-power platforms and
     those that are \textit{necessary} to target hardware accelerators.
 
-\subsection*{Quantized Inference on ARM Platforms}
+\subsection{Quantized Inference on ARM Platforms}
 To demonstrate the effectiveness of our generic quantization (see Section~\ref{sec:quant}),
   we use Relay to evaluate both \textit{accuracy} and \textit{performance} of different
   quantization schemes on vision workloads.
@@ -221,7 +221,7 @@ Interestingly,
   the \texttt{int8/int32} scheme performs slightly worse than \texttt{float32} on both platforms,
   which likely stems from the existence of faster hardware intrinsics for 16-bit operations on these systems.
 
-\subsection*{Targeting Deep Learning Accelerators on FPGAs}
+\subsection{Targeting Deep Learning Accelerators on FPGAs}
 % Suppose a company wishes to accelerate inference by offloading DL operators onto a specialized accelerator.
 % The first design they try supports \textit{single-batch} inference.
 % As they become familiar with the characteristics of their workloads,
