@@ -99,7 +99,7 @@ We focus on the following contributions:
 
 \section{IR}
 
-\input{chapters/short_grammar.tex}
+\input{figures/represent/short_grammar.tex}
 
 The Relay IR is a high-level, functional, differentiable language.
 Relay is designed to support
@@ -238,13 +238,8 @@ The increase in expressivity introduced by the Relay IR introduces
   new optimizations challenges, which we
   discuss in Chapter~\ref{ch:related}.
 
-% --------------------------------------------------------------------------------------------------------
 The resulting language is a familiar strict functional language,
   resembling the core of languages like OCaml and SML.
-Our language makes domain-specific deviations from existing work,
-  and we have provided a full listing
-  of its syntax, operational semantics, and type rules
-  in the appendix.
 A functional language provides a few notable advantages.
 Its pure fragment represents idealized computation graphs free
   from effects. This fragment can be easily optimized by end users who
@@ -262,17 +257,6 @@ How does one backpropagate over pattern-matching, control, data types, and mutat
 In the following subsection we demonstrate how one can adapt techniques
   from type inference and checking to Relay.
 
-% Another important semantic choice is that all Relay operators expose a functional interface, i.e they consume inputs and outputs.
-% The functional semantics allow us to later introduce mutable buffers without requiring complex interprocedural program analysis.
-% Our second principle was a transparent separation from the abstract representation of machine learning models, and kernels.
-% The abstraction is successfully introduced by computation graph IRs, but in an opaque way which limits cross layer optimization.
-% Many gestalt approaches use a single language that defines all kernels and models, requiring users to both reason about all levels during optimization.
-
-% We are able to represent abstract operations with well known types at the Relay level via the introduction of a user extensible shape dependent
-%   type system which can represent a wide range of operator’s types.
-
-% Our final guiding principle has been target independence.
-\input{chapters/represent/tf_figure.tex}
-
+\input{figures/represent/tf_figure.tex}
 \input{chapters/represent/type_system.tex}
 \input{chapters/represent/eval.tex}

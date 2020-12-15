@@ -265,12 +265,7 @@ The compiler performs a set of transformations on the high-level
 
 \subsection{VM ISA}
 
-\begin{table*}[th]
-\centering
-\small
 \input{chapters/execute/isa_table}
-\caption{The opcode and the description of the Relay instruction set \label{tab:isa}}
-\end{table*}
 
 After performing the above optimization pipeline the VM compiler
   itself is relatively straightforward.
@@ -320,11 +315,7 @@ The Relay bytecode is hardware-independent which eases bytecode serialization,
 
 \subsection{VM Interpreter}
 
-\begin{figure}[th]
-  \input{chapters/execute/fig_interpreter}
-  \caption{An excerpt from the VM dispatch loop.}
-  \label{fig:vm_interpreter}
-\end{figure}
+\input{chapters/execute/fig_interpreter}
 
 The VM compiler generates a VM executable,
   a serialized combination of both target specific kernels

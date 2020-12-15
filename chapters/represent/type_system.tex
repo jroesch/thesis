@@ -1,6 +1,36 @@
 \section{Type System}
 \label{sec:type_system}
 
+\begin{figure}[t]
+  \begin{footnotesize}
+    \judgbox{\typecheck{\typeCtx}{\varCtx}{\expr}{\type}}{Expression $\expr$ has type $\type$ in type context $\typeCtx$ and variable context $\varCtx$.}
+    \begin{inference}
+    \jmpInfer{Relation-T}
+       {\Delta, T_1 : \texttt{Type}, \ldots, T_n : \texttt{Type} \vdash (Rel(T_1, T_2, \ldots, T_n) \in \{ \top, \bot \}) }
+       {\typecheck{\typeCtx}{\varCtx}{Rel}{\texttt{Relation}}}
+
+    \jmpInfer{Type-Func-Def}
+      {\forall{i \in [1, r]} \, \Delta; \Gamma \vdash R_i(T_1, \ldots, T_n, O) \\
+       \Delta; \Gamma, a_1 : T_1, \ldots, a_n : T_n, \\
+       f : \kwd{fn}( T_1, \ldots, T_n) \rightarrow O \kwd{ where } R_1, \ldots, R_r \vdash body : O}
+        {\Delta; \Gamma \vdash \kwd{def @} f\kwd{(}a_1\kwd{:} T_1\kwd{,} \ldots
+        a_n\kwd{:} T_n\kwd{)} \rightarrow O \kwd{ where } R_1, \ldots, R_r \kwd{ \{ } body \kwd{ \}} : \\
+        \kwd{fn}(T_1, \ldots, T_n) \rightarrow O \kwd{ where } R_1, \ldots, R_r }
+
+    \jmpInfer{Type-Call}
+       {\Delta; \Gamma \vdash f : \kwd{fn} (T_1 \kwd{,} \ldots \kwd{,} T_n) \rightarrow O
+         \kwd{ where } R_1, \ldots, R_r
+         \\ \Delta; \Gamma \vdash a_1 : T_1, \ldots, a_n : T_n
+         \\ \forall{i \in [1, r]} \, \Delta; \Gamma \vdash R_i(T_1, \ldots, T_n, O)}
+       {\typecheck{\typeCtx}{\varCtx}{f(a_1, \ldots, a_n)}{O}}
+    \end{inference}
+  \end{footnotesize}
+  \caption{Examples of Relay's typing inference rules, namely the rules for function definitions and function calls,
+    where $\Delta$ is the environment for types and $\Gamma$ is the environment for variables. These demonstrate
+    that type relations must hold at each call site.}
+  \label{fig:partial-inference-rules}
+\end{figure}
+
 Relay's type system is essential
   to optimizations.
 Typing guarantees both well-formedness of the program
@@ -43,37 +73,6 @@ By incorporating shape analysis into a broader type system,
   with usability.
 In this subsection we describe how to extend a polymorphic type system with shape
   information and type inference with shape inference.
-
-\begin{figure}
-  \begin{footnotesize}
-    \judgbox{\typecheck{\typeCtx}{\varCtx}{\expr}{\type}}{Expression $\expr$ has type $\type$ in type context $\typeCtx$ and variable context $\varCtx$.}
-    \begin{inference}
-    \jmpInfer{Relation-T}
-       {\Delta, T_1 : \texttt{Type}, \ldots, T_n : \texttt{Type} \vdash (Rel(T_1, T_2, \ldots, T_n) \in \{ \top, \bot \}) }
-       {\typecheck{\typeCtx}{\varCtx}{Rel}{\texttt{Relation}}}
-
-    \jmpInfer{Type-Func-Def}
-      {\forall{i \in [1, r]} \, \Delta; \Gamma \vdash R_i(T_1, \ldots, T_n, O) \\
-       \Delta; \Gamma, a_1 : T_1, \ldots, a_n : T_n, \\
-       f : \kwd{fn}( T_1, \ldots, T_n) \rightarrow O \kwd{ where } R_1, \ldots, R_r \vdash body : O}
-        {\Delta; \Gamma \vdash \kwd{def @} f\kwd{(}a_1\kwd{:} T_1\kwd{,} \ldots
-        a_n\kwd{:} T_n\kwd{)} \rightarrow O \kwd{ where } R_1, \ldots, R_r \kwd{ \{ } body \kwd{ \}} : \\
-        \kwd{fn}(T_1, \ldots, T_n) \rightarrow O \kwd{ where } R_1, \ldots, R_r }
-
-    \jmpInfer{Type-Call}
-       {\Delta; \Gamma \vdash f : \kwd{fn} (T_1 \kwd{,} \ldots \kwd{,} T_n) \rightarrow O
-         \kwd{ where } R_1, \ldots, R_r
-         \\ \Delta; \Gamma \vdash a_1 : T_1, \ldots, a_n : T_n
-         \\ \forall{i \in [1, r]} \, \Delta; \Gamma \vdash R_i(T_1, \ldots, T_n, O)}
-       {\typecheck{\typeCtx}{\varCtx}{f(a_1, \ldots, a_n)}{O}}
-    \end{inference}
-  \end{footnotesize}
-  \caption{Examples of Relay's typing inference rules, namely the rules for function definitions and function calls,
-    where $\Delta$ is the environment for types and $\Gamma$ is the environment for variables. These demonstrate
-    that type relations must hold at each call site.}
-  \label{fig:partial-inference-rules}
-\end{figure}
-
 
 \subsection{Tensor Types}
 
@@ -193,33 +192,35 @@ One could eliminate these errors using a more advanced type system, but at incre
 \label{sec:inference}
 
 The most interesting parts of the type system
-are where shape computation occurs.
+  are where shape computation occurs.
 We highlight a few examples of Relay's inference
-rules in Fig.~\ref{fig:partial-inference-rules};
-the full typing rules can be found in the appendix.
+  rules in Fig.~\ref{fig:partial-inference-rules}.
 In this subsection we focus on design decisions behind Relay's type system
-and the implementation of type inference.
+  and the implementation of type inference.
+
 To incorporate type relations into Relay's type system, we enrich
-a Hindley-Milner type inference algorithm with
-a constraint solver for type relations.
-Relay's inference algorithm has three steps: first it
-performs a pass over the AST generating types (potentially involving type variables)
-as well as populating the set of relations,
-then it solves the incurred constraints,
-and finally it assigns types to each expression in the AST.
-When the type inference algorithm visits a function call site, the function's type relations are
-instantiated to the types at the call site and added to a queue of relations waiting to be
-solved.
-The relationships between the call's type variables and its relations are are added to a
-bipartite undirected dependency graph where the two disjoint sets are type variables and type relations.
-Traditional unification constraints are represented using a modified union-find structure that
-integrates with the dependency graph.
+  a Hindley-Milner-style type inference algorithm with
+  a constraint solver.
+Relay's inference algorithm has three steps: first, it
+  performs a pass over the AST,
+  generating types and a set of relations,
+  then it solves the incurred constraints,
+  and finally annotates each sub-expression with its inferred type.
+
+When the type inference algorithm visits a function call site,
+  the function's type relations are
+  instantiated with the concrete argument types at the call site.
+Each instantiated relation is added to the queue of relations to solve.
+The relationship between a call's type variables and relations is added as an edge to
+  a bipartite dependency graph where the two disjoint sets are type variables and type relations.
+Traditional unification constraints are represented using a
+  modified union-find structure that integrates with this dependency graph.
 
 Once the queue is populated, the algorithm will dequeue a relation and attempt to solve it.
 There are two cases when solving a type relation:
 \begin{enumerate}
 \item If all the relation's type variables
-are concrete, we call the type relation function. If that function returns true, the
+are concrete, we run the relation function. If that function returns true, the
 constraint is discharged. Otherwise, type checking fails.
 \item If any type is fully or partially symbolic, the
   algorithm will propagate
@@ -232,117 +233,13 @@ discard it to avoid unnecessarily visiting it again.
 \end{enumerate}
 
 Our fine-grained dependence graph provides the transitive dependencies
-between relations and unification variables.
+  between relations and unification variables.
 The use of fine-grained dependencies enables our algorithm to
-only retry a minimal number of relations when we
-learn a new variable assignment.
+  only retry a minimal number of relations when we
+  learn a new variable assignment.
 We run this to fixpoint or until the queue is empty.
 If the queue is not empty and no progress is made between iterations,
-then at least one variable is under constrained and inference fails.
-Note that a type relation's implementation can
-compromise type soundness, as they are axiomatic descriptions
-of operations implemented outside of Relay.
-Luckily, in practice, the number of type relations needed to express most of Relay's
-operators is relatively small, and their implementations are generally straightforward
-and amenable to exhaustive testing.
-The above sections discuss the core of Relay, a full-length paper under submission\citep{roesch2019relay}
-details its design and implementation.
-
-To incorporate type relations into Relay's type system, we enrich
-a Hindley-Milner-style type inference algorithm with
-a constraint solver.
-Relay's inference algorithm has three steps: first, it
-performs a pass over the AST, generating types and a set of relations,
-then it solves the incurred constraints,
-and finally annotates each sub-expression with its inferred type.
-
-% a queue of relations. dequeue a relation and attempt to solve it by invoking it's opaque
-% type-relation function.
-% 1. all type variables concrete & relationship holds => solved. discard relation
-% 2. all type variables concrete & relationship doesn't hold => type error
-% 3. types are partially symbolic => propagate unif. constraints to its inputs and output. if
-% all type variables are solved/assigned/concrete, discard relation. otherwise add it and the
-% relations that depend on the solved variables to queue. those that are already on the queue should
-% be reprioritized
-
-When the type inference algorithm visits a function call site, the function's type relations are
-instantiated with the concrete argument types at the call site.
-Each instantiated relation is added to the queue of relations to solve.
-The relationship between a call's type variables and relations is added as an edge to
-a bipartite dependency graph where the two disjoint sets are type variables and type relations.
-Traditional unification constraints are represented using a modified union-find structure that
-integrates with this dependency graph.
-
-Once the queue is populated, the algorithm will dequeue a relation and attempt to solve it.
-There are two cases when solving a type relation:
-\begin{enumerate}
-\item If all the relation's type variables
-are concrete, we the relation function. If that function returns true, the
-constraint is discharged. Otherwise, type checking fails.
-\item If any type is fully or partially symbolic, the
-  algorithm will propagate
-  existing concrete type information via unification.
-All relations affected by new assignments to type
-  variables (as determined by the dependency graph)
-  are moved to the beginning of the queue.
-If the current type relation is now completely solved, we
-discard it to avoid unnecessarily visiting it again.
-\end{enumerate}
-
-We run this to fixpoint or until the queue is empty.
-If the queue is non-empty and no progress is made between iterations,
-then at least one variable is underconstrained and inference fails.
-Note that a type relation's implementation can
-compromise type soundness, as they are axiomatic descriptions
-of operations implemented outside of Relay.
-In practice, the number of type relations needed to express Relay's
-operators is small, and their implementations are straightforward
-and amenable to exhaustive testing.
-
-To incorporate type relations into Relay's type system, we enrich
-  a Hindley-Milner-style type inference algorithm with
-  a constraint solver.
-Relay's inference algorithm has three steps: first, it
-  performs a pass over the AST, generating types and a set of relations,
-  then it solves the incurred constraints,
-  and finally annotates each sub-expression with its inferred type.
-
-% a queue of relations. dequeue a relation and attempt to solve it by invoking it's opaque
-% type-relation function.
-% 1. all type variables concrete & relationship holds => solved. discard relation
-% 2. all type variables concrete & relationship doesn't hold => type error
-% 3. types are partially symbolic => propagate unif. constraints to its inputs and output. if
-% all type variables are solved/assigned/concrete, discard relation. otherwise add it and the
-% relations that depend on the solved variables to queue. those that are already on the queue should
-% be reprioritized
-
-When the type inference algorithm visits a function call site, the function's type relations are
-  instantiated with the concrete argument types at the call site.
-Each instantiated relation is added to the queue of relations to solve.
-The relationship between a call's type variables and relations is added as an edge to
-  a bipartite dependency graph where the two disjoint sets are type variables and type relations.
-Traditional unification constraints are represented using a modified union-find structure that
-  integrates with this dependency graph.
-
-Once the queue is populated, the algorithm will dequeue a relation and attempt to solve it.
-There are two cases when solving a type relation:
-\begin{enumerate}
-  \item If all the relation's type variables
-  are concrete, we the relation function. If that function returns true, the
-  constraint is discharged. Otherwise, type checking fails.
-  \item If any type is fully or partially symbolic, the
-    algorithm will propagate
-    existing concrete type information via unification.
-  All relations affected by new assignments to type
-    variables (as determined by the dependency graph)
-    are moved to the beginning of the queue.
-  If the current type relation is now completely solved, we
-  discard it to avoid unnecessarily visiting it again.
-\end{enumerate}
-
-We run this to fix-point or until the queue is empty.
-If the queue is non-empty and no progress is made between iterations,
-  then at least one variable is unconstrained and inference fails.
+  then at least one variable is under constrained and inference fails.
 Note that a type relation's implementation can
   compromise type soundness, as they are axiomatic descriptions
   of operations implemented outside of Relay.
@@ -350,7 +247,7 @@ In practice, the number of type relations needed to express Relay's
   operators is small, and their implementations are straightforward
   and amenable to exhaustive testing.
 
-One caveat of the Any~dimension is that unknown dimensions will
+One caveat of introducing an Any~dimension is that unknown dimensions will
   propagate during type inference, reducing chances for shape specialization.
 For example, if we use an operator such as {\tt arange} to produce a
   tensor with dynamic shape (i.e., \texttt{Tensor[(Any,), float32]})

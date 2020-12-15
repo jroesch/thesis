@@ -1,46 +1,28 @@
-
-\begin{comment}
-
-    \begin{tabular}{@{}ll@{}}
+\begin{table*}[h!]
+    \begin{tabular}{@{}p{0.15\textwidth}p{0.375\textwidth}p{0.1\textwidth}p{0.375\textwidth}@{}}
     \toprule
-    Instruction                                                   & Description                                                                \\ \midrule
-    Move                                                          & Moves data from one register to another.                                    \\
-    Ret                                                           & Returns the object in register result to caller's register.                 \\
-    Invoke                                                        & Invokes a function at in index.                                               \\
-    InvokeClosure                                                 & Invokes a Relay closure.                                                      \\
-    InvokePacked                                                  & Invokes the function containing registered operators in TOPI.                \\
-    AllocStorage                                                  & Allocates a storage block.                                                  \\
-    AllocTensor                                                   & Allocates a tensor value of a certain shape.                                 \\
-    AllocTensorReg                                                & Allocates a tensor based on a register.                                      \\
-    AllocDatatype                                                 & Allocates a data type using the entries from a register.                     \\
-    AllocClosure                                                  & Allocates a closure with a lowered virtual machine function.                  \\
-    GetField                                                      & Gets the value at a certain index from an VM object.                          \\
-    GetTag                                                        & Gets the tag of an Algebraic Data Types (ADT) constructor.                    \\
-    If                                                            & Jumps to the true or false offset depending on the condition.                 \\
-    Goto                                                          & Unconditionally jumps to an offset.                                            \\
-    LoadConst                                                     & Loads a constant at an index from the constant pool.                         \\
-    LoadConsti                                                    & Loads a constant immediate.                                                  \\
-    DeviceCopy                                                    & Copy a chunk of data from one device to another.                             \\
-    ShapeOf                                                       & Compute the shape of a tensor.                                               \\
-    Fatal                                                         & Raises fatal in the VM.                                                      \\
+    Instruction    & Description                                                  \\\midrule
+    Move           & Moves data from one register to another.                     \\
+    Ret            & the object in register result to caller's register.          \\
+    Invoke         & Invokes a function at an index.                              \\
+    InvokeClosure  & Invokes a Relay closure.                                     \\
+    InvokePacked   & Invokes the function including operator kernel.              \\
+    AllocStorage   & Allocates a storage block.                                   \\
+    AllocTensor    & Allocates a tensor value of a certain shape.                 \\
+    AllocTensorReg & Allocates a tensor based on a register.                      \\
+    AllocADT.      & Allocates a data type using the entries from a register.     \\
+    AllocClosure   & Allocates a closure.                                         \\
+    GetTag         & Gets the tag of an Algebraic Data Types (\texttt{ADT}) cstr. \\
+    GetField       & Gets the value at a certain index from an VM object.         \\
+    ReshapeTensor  & Changes the shape of a tensor without altering its data.     \\
+    If             & Jumps to the true or false offset with a condition.          \\
+    Goto           & Unconditionally jumps to an offset.                          \\
+    LoadConst      & Loads a constant at an index from the constant pool.         \\
+    LoadConsti     & Loads a constant immediate.                                  \\
+    DeviceCopy     & Copies a chunk of data from one device to another.           \\
+    ShapeOf        & Retrieves the shape of a tensor.                             \\
+    Fatal          & Raises fatal in the VM.                                      \\
     \bottomrule
     \end{tabular}
-
-
-    \end{comment}
-
-    \begin{tabular}{@{}p{0.1\textwidth}p{0.375\textwidth}p{0.1\textwidth}p{0.375\textwidth}@{}}
-    \toprule
-    Instruction    & Description                                                  & Instruction   & Description.                                            \\ \midrule
-    Move           & Moves data from one register to another.                     & GetField      & Gets the value at a certain index from an VM object.          \\
-    Ret            & the object in register result to caller's register.          & ReshapeTensor & Changes the shape of a tensor without altering its data.      \\
-    Invoke         & Invokes a function at an index.                              & If            & Jumps to the true or false offset with a condition.           \\
-    InvokeClosure  & Invokes a Relay closure.                                     & Goto          & Unconditionally jumps to an offset.                           \\
-    InvokePacked   & Invokes the function including operator kernel.              & LoadConst     & Loads a constant at an index from the constant pool.          \\
-    AllocStorage   & Allocates a storage block.                                   & LoadConsti    & Loads a constant immediate.                                   \\
-    AllocTensor    & Allocates a tensor value of a certain shape.                 & DeviceCopy    & Copies a chunk of data from one device to another.              \\
-    AllocTensorReg & Allocates a tensor based on a register.                      & ShapeOf       & Retrieves the shape of a tensor.                               \\
-    AllocADT.      & Allocates a data type using the entries from a register.     & Fatal         & Raises fatal in the VM.                                       \\
-    AllocClosure   & Allocates a closure. & GetTag        & Gets the tag of an Algebraic Data Types (\texttt{ADT}) cstr.       \\
-    \bottomrule
-    \end{tabular}
+    \caption{The opcode and the description of the Relay instruction set \label{tab:isa}}
+\end{table*}

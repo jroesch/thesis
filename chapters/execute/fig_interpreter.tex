@@ -1,4 +1,5 @@
-\begin{minted}{cpp}
+\begin{figure}[h]
+\begin{minted}[fontsize=\footnotesize]{cpp}
 void RunLoop() {
   this->pc = 0;
   Index frame_start = frames.size();
@@ -35,3 +36,6 @@ void RunLoop() {
   }
 }
 \end{minted}
+\caption{An excerpt from the VM dispatch loop.}
+\label{fig:vm_interpreter}
+\end{figure}
