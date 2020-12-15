@@ -21,31 +21,55 @@ Modern deep learning frameworks have realized that the
   structured imposed by backpropagation is not fundamental
   and model definitions can be expressed more uniformly.
 For example we can break down a deep neural network training
-  process into a network definition, a function defined over tensor inputs,
-  a loss function, which computes a scalar score from tensor
-  inputs, the gradients of the loss function with respect to each parameter,
-  and an update step which modifies the parameters on each iteration.
-Furthermore barring differentiation, the above pieces can all be expressed
-  in the tensor computations exposed by deep learning frameworks.
+  process into (1) a network definition, a function defined over tensor inputs,
+  (2) a loss function, which computes a scalar score from tensor
+  inputs, and (3) an update step which modifies each of the parameters using their gra
+  gradient with respect to the loss function.
+All of these pieces can be written as programs which manipulate tensors,
+  except for the gradient which requires transforming
+  one computation into another which computes its directional derivative.
 
-Fortunately there is a wide body of literature on automatic differentiation,
-  the process of automatically computing gradients given a function,
-  enabling the final missing piece.
 Early systems such as Theano demonstrated that automatic
-  differentiation enables ML researchers to progress more rapidly
-  by deriving the gradient of a network instead hand deriving
+  differentiation, the process of automatically computing gradients,
+  enables ML researchers to progress more rapidly
+  by deriving the gradient of a network and loss instead hand deriving
   the gradient based on their program and writing a secondary gradient function.
 There are many ways to approximate or compute the gradient of a function
   but automatic differentiation is favored due to its precise gradient
-  result and runtime efficiency.
-Furthermore automatic differentiation can be reframed as a source
-  code transformation allowing us to just transform the gradient
-  into a standard tensor program and optimize it uniformly.
-The rest of this chapter explores how we can generalize previous
-  work on automatic-differentiation of higher-order imperative programs
-  to Relay, as well as cast it as a source code transformation enabling
-  novel application of partial evaluation to the optimization of automatic
-  differentiation.
+  values and runtime efficiency.
+Early automatic differentiation work made use of runtime data structures
+  which store a trace of all operations invoked and computes the gradient
+  dynamically by just applying chain rule.
+This approach is very flexible as it allows users to implement a small number
+  of primitive gradients and handle a large variety of programs which combine
+  these primitives.
+Unfortunately this purely runtime based approach means that even if a program
+  is known a priori we must dynamically construct and execute its gradient.
+The dynamic nature induces both static overhead, but also limits ahead of time
+  optimization, or deployment to resource limited devices.
+
+In order to address these weaknesses many have reformulated
+  automatic differentiation as a source code transformation
+  where AD transforms a function which computes its gradient.
+The generated gradient function is just a standard tensor programming
+  enabling uniform optimization and compilation.
+This approach has enjoyed recent popularity due its conceptual
+  elegance and uniformity.
+For example you have a quantization technique it can be applied
+  to both the forward and backward passes of your
+  network without needing a special version of quantized AD.
+Unfortunately these source code transformations do not cleanly
+  generalize to all language features or dynamic behaviors such
+  as closures, mutation, control-flow, data structures or dynamic allocations.
+There have been numerous previous approaches attempting to handle a large number
+  of features as described in Chapter~\ref{ch:related}.
+
+The rest of this chapter explores how we can take the simplicity of
+  tape-based AD which can handles higher-order imperative languages
+  and convert it into a source code transformation which can handle all
+  dynamic features without giving up the ability to compile and optimize.
+We close the chapter focusing on how partial evaluation is essential to this
+  approach.
 
 \subsection{Automatic-Differentiation}
 
