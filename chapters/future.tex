@@ -4,8 +4,8 @@
 This thesis demonstrates a principled approach to optimizing dynamic neural networks
     that generalizes the performance enjoyed by static neural networks to a greater
     number of networks.
-There are still open questions on how to optimize and compile networks
-    as general purpose tensor programs to arbitrary hardware targets.
+There are still open questions on how to optimize and compile
+    generic tensor programs to arbitrary hardware targets.
 TVM is continuing to evolve rapidly
     with many changes in the past year not detailed
     in this thesis.
@@ -16,120 +16,71 @@ The remainder of this section touches on some of the
     challenges that lie in front of this work.
 
 \subsection{Unified IR}
-...
 
-\subsection{Dynamic Models}
+TVM has been working on unifying its multiple levels of
+    IR into a family of dialects which can invoke functions
+    at different level of abstractions.
+The start of this work is complete but using the
+    new unified world to meaningfully improve optimizations
+    is something that has not yet been demonstrated.
+For example one could lower an entire Relay program
+    to a single GPU kernel using the new machinery,
+    but no one has attempted such an optimization yet.
 
-Current systems research has been focused on improving
-    a narrow subset of the models machine learning
-    researchers are producing.
-These models do not make use of
-    challenging semantic features such as unbounded
-    loops, dynamic control-flow, data types, or
-    closures.
-Existing state-of-the-art optimizing compilers for deep learning provide
-    limited support for efficiently compiling these type of operations.
-There are two clear levels to support full dynamism,
-    dynamism introduced by the frontend language
-    such as found in PyTorch and other expressive
-    dynamic neural network frameworks.
-The second level of dynamism is innate to models,
-    take for example a model which dynamically
-    produces the inputs for an inner RNN.
-Part of my recent work has been extending Relay's type system to
-    support dynamically sized tensors.
-Extending the type system is a simple change, we just introduce
-    a single new dimension \verb|Any| which represents a dimension
-    that is statically unknown.
-We can now assign types which commit to an unknown tensor shape.
-The real challenge is how to handle the efficient compilation,
-    and execution of code which makes use dynamism
-    specifically:
-\begin{itemize}
-    \item Recovery of static shape information from dynamic programs,
-          to increase chances for optimization.
-    \item Dynamically sized tensor code generation,
-          to emit efficient code for tensors with
-          unknown dimensions.
-    \item Efficient memory allocation, and reclamation
-          for dynamically sized computations.
-\end{itemize}
+\subsection{Going further with Dynamic Models}
+
+There are still problems which are unsolved in Relay's
+    current iteration.
+There are analyses that can be further improved such as
+    recover further static shape information for optimization
+    using a more precise analysis.
+Or features not yet supported such as dynamically ranked tensors.
+There are still interesting challenges to solve here as
+    models evolve and demand more from compilers.s
 
 \subsection{Training Support}
 
-Beacon demonstrates how to build a framework
-    by utilizing only TVM, instead of bespoke
-    platform specific libraries.
-Beacon's design enables whole program optimizations.
-We will continue to develop Beacon as a platform for training
-    research specifically training optimizations.
-Beacon provides complete control over the model definition, and the generated IR.
-Relay's current frontends do make use of novel Relay
-    features including data structures, control-flow, and
-    closures.
-Beacon is a way forward to explore these features and their optimization
-    and representation.
-To fully evaluate Beacon we require the Relay VM to efficiently
-    execute whole programs.
-Although Beacon is a compelling research prototype, it is still missing many
-    features compared to the industrial strength frameworks such as TensorFlow and PyTorch.
-In order to really understand the potential opportunities we would like to integrate
-    Relay into an existing framework to demonstrate its potential.
-There are two active efforts towards this goal, one is being lead at Amazon
-    to build a new version of MxNet which utilizes Relay as its execution
-    mechanism.
-The second effort is a collaboration I recently started with
-    the PyTorch team to use Relay to accelerate PyTorch.
-We plan to submit a paper on this work at the end of the year.
-The goal of the PyTorch effort is to demonstrate three important
-    ideas.
-First demonstrate the model dynamism occurs in practice, and is
-    essential to a large class of models.
-Second show that by using techniques from JIT compilation we
-    can find stable traces of execution that can be effectively
-    statically optimized.
-Finally that we can use Relay to optimize static traces effectively
-    resulting in state of the art performance.
+A team at OctoML and AMD have begun work on using TVM
+    to accelerate training by building a framework
+    that lowers all computation to Relay which
+    can make use of all the techniques described
+    in this thesis.
+Although the work just began we were able to
+    get models working on AMD GPUS with no custom
+    code needed a feat most frameworks have
+    failed to achieve.
+There significant work to make this a state
+    of the art competitive approach with existing
+    frameworks but an interesting area going forward
+    as TVM allows training to be deployed to any
+    supported device.
 
 \subsection{Automatic Scheduling}
 
-The remaining piece of work to be done is mapping
-    computation to the hardware intrinsics manifested by the hardware.
-We have dubbed this process ``automatic tensorization'', the process by which we
-    we transform computations in an attempt to maximize performance on the target
-    hardware.
-Automatic tensorization is a challenging problem which introduces
-    semantic equivalence and phase ordering problems.
-I believe the first step towards this is the introduction of a unified
-    tensor IR, because tensorization depends on moving computation between
-    IR levels arbitrarily.
-We require explicit, and serializable scheduling IR which can be manipulated
-    programmatically.
-TVM today supports a simple form of tensorization today, a user may describe
-    an intrinsic in terms of a TVM expression, and then after several steps
-    of scheduling replace an equivalent computation with the intrinsic,
-    but only if the reference program, and loop nest match syntactically.
-This process is incredibly fragile, for example if I write my intrinsic with
-    indexing expression that is not identical, but semantically equivalent
-    it will fail for example $i + 1$ versus $1 + i + 0$.
-Although this challenge is easily surmountable by using a simplifier,
-    we can quickly engineer cases where it doesn't match, for example
-    if we too quickly apply another optimization we may permanently
-    remove that potential optimization.
-Unfortunately as the degrees of freedom in TVM continue to grow, we
-    will continue to face many more versions of this phase ordering
-    problem.
-We suggest to apply techniques from formal methods, and previous compiler
-    research specifically Equality Saturation~\citep{eqsat}, to enable searching
-    over equivalent programs.
-A challenge not previously solved in equality saturation is the ``extraction''
-    of a program.
-Previous work has relied on hand engineered cost models for extraction, but
-    advances in ML based cost models~\citep{autotvm} appears to show a path
-    forward.
-We plan to apply learning to help search over the equivalence structure to
-    extract the optimal program.
+A final promising area being explored at OctoML is
+    automatic scheduling of tensor programs, including
+    tensorization.
+Originally in TVM a user must provide the network,
+    operator definitions, and schedules.
+AutoTVM introduced the ability to define a template
+    schedule where some parameters such as tiling
+    factor, or loop split can be learned using ML.
+Ansor then introduced ability to learn both the
+    template and the parameters using ML guided
+    search.
+The finally vision of these systems is to allow
+    a Relay program to be lowered to TVM's TIR
+    and then scheduled automatically allowing
+    users to interpolate between manually
+    knowledge and fully automatically.
+This would enable users to leverage the
+    expressivity of Relay, then lower to TIR,
+    and finally rewrite the code to achieve
+    near optimal performance using ML guided
+    search.
 
 These directions represent potentially years more work, and will be hopefully
     realized by collaborators PhD theses, future publications, the open source
     community and development teams at OctoML.
+The work done in this this presents a compelling foundation on which to build
+    these future efforts.
