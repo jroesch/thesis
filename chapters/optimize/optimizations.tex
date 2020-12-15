@@ -64,7 +64,7 @@ Relay performs fusion in two steps, detailed below.
 \section{Extraction}
 
 First, Relay identifies subexpressions containing
-  fusion-eligible and factors them into local functions that
+  fusion-eligible operators and factors them into local functions that
   are marked as primitive.
 Primitive functions can later be lowered to platform-specific
   code.
@@ -84,6 +84,7 @@ Finally, Relay constructs an expression from each equivalence class,
   constructs a function with the expression as the body and the free variables
   as parameters,
   and marks it as primitive.
+  % TODO add fusion diagram back
 
 \section{Lowering}
 
@@ -317,79 +318,37 @@ For certain network architectures such as MobileNet and ResNet, 16-bit to 32-bit
 The current framework demonstrates the importance of applying
   various quantization schemes based on networks and hardware platforms.
 
-  \subsection{Quantized Inference on ARM Platforms}
-  To demonstrate the effectiveness of our generic quantization (see Section~\ref{sec:quant}),
-    we use Relay to evaluate both \textit{accuracy} and \textit{performance} of different
-    quantization schemes on vision workloads.
-  To evaluate \textit{accuracy},
-    we tested various quantization schemes
-    (denoted $m/n$ for $m$-bit quantization and $n$-bit accumulation)
-    against a \texttt{float32} baseline on three vision models,
-    as shown in the table below:
-  \begin{center}
-    \begin{tabular}{|c|c||c|c||c|c|}
-      \hline
-      \multicolumn{2}{|c}{\textbf{ResNet-18}} & \multicolumn{2}{c}{\textbf{MobileNet V2}} & \multicolumn{2}{c|}{\textbf{Inception V3}} \\
-      \multicolumn{1}{|c}{QS}    & \multicolumn{1}{c}{Acc.}   &  \multicolumn{1}{c}{QS}  & \multicolumn{1}{c}{Acc.}  & \multicolumn{1}{c}{QS}  & \multicolumn{1}{c|}{Acc.} \\
-      \hline
-      \texttt{fp32} & 70.7 \%    & \texttt{fp32} & 70.9 \%       & \texttt{fp32} & 76.6 \% \\
-      8/32         & 69.4 \%    & 8/32         & 66.9 \%       & 16/32        & 76.6 \% \\
-      8/32         & 69.4 \%    & 8/16         & 66.9 \%       & 8/32         & 75.2 \% \\
-      \hline
-    \end{tabular}
-  \end{center}
-  Figure~\ref{fig:portability-eval} shows the results of different
-    levels of quantization on \textit{performance} when applied to the Raspberry Pi 3
-    and Firefly RK3399 ARM-based platforms.
-  The numbers show that as we opt for a more aggressive quantization scheme
-    (e.g., 8/16),
-    we achieve much improved performance with hardly a drop in accuracy.
-  Interestingly,
-    on some model/platform pairs,
-    the \texttt{int8/int32} scheme performs slightly worse than \texttt{float32} on both platforms,
-    which likely stems from the existence of faster hardware intrinsics for 16-bit operations on these systems.
-
-% \begin{figure*}[htbp!]
-%   \centering
-%   % TODO: These graphs seem a little small.  Is there any more space hacking we can do?
-%   \includegraphics[scale=0.53]{fig_splash19/eval/graph/quant_comp/raspberry_pi_quantization.png}
-%   \hspace{-0.075in}
-%   \includegraphics[scale=0.53]{fig_splash19/eval/graph/quant_comp/rk3399_quantization.png}
-%   % TODO: Use real numbers for this.
-%   \includegraphics[scale=0.53]{fig_splash19/eval/graph/fpga_comp/fpga_eval.png}
-%   \caption{\textmd{
-%     \textit{(left)} Inference time of vision DNNs on low-power platforms using
-%       different data types.
-%     Relay allows us to reduce inference time on power-constrained devices by
-%       easily substituting \texttt{float32} multiplications with \texttt{int8}
-%       multiplications and \texttt{int16} or \texttt{int32} accumulations (denoted
-%       as \texttt{int8}/\texttt{int16} and \texttt{int8}/\texttt{int32}, respectively).
-%     We used 1000 trials for each model.
-%     \textit{(right)}
-%     Batch-size-normalized inference time of vision DNNs and a TreeLSTM running on two DNN accelerator variants implemented on an edge FPGA.
-%     One accelerator performs single-batch inference, while the other implements multi-batch inference.
-%     % Multi-batch inference provides tangible throughput improvements on TreeLSTM due to the memory bandwidth constrained nature of the workload.
-%     The two hardware designs have the same number of compute units that are arranged differently to take advantage of different types of tensor computation.
-%     Relay applies a multitude of graph-level transformations required to run different workloads onto these DNN hardware designs.
-%     We used 12 trials for each model.
-%   }}
-%   \label{fig:portability-eval}
-% \end{figure*}
-
-% Relay can handle challenging scenarios: consider edge inference where energy is a first order
-% constraint due to thermal limitations or limited battery life.
-% One option is to apply more aggressive quantization: instead of performing expensive
-% arithmetic in the floating point domain, simpler and narrower fixed point data is used.
-% Another option is hardware acceleration: instead of evaluating
-% compute-intensive operations on the CPU, we can offload to a specialized accelerator.
-
-% \paragraph{Quantized Inference on ARM CPUs and GPUs}
-% We evaluate the effects of quantized inference applied by Relay on vision workloads running
-% on the Raspberry-Pi3 and Firefly RK3399 ARM-based platforms.
-% % Figure~\ref{fig:arm-eval} shows the effects of different levels
-% %   of quantization applied to low-power devices~\citep{roesch2019relay}.
-% % The numbers show that as we opt for a more aggressive quantization scheme such as \texttt{int8/16} (i.e. 8-bit multiplication and 16-bit accumulation), we achieve much improved performance.
-
+\subsection{Quantized Inference on ARM Platforms}
+To demonstrate the effectiveness of our generic quantization (see Section~\ref{sec:quant}),
+  we use Relay to evaluate both \textit{accuracy} and \textit{performance} of different
+  quantization schemes on vision workloads.
+To evaluate \textit{accuracy},
+  we tested various quantization schemes
+  (denoted $m/n$ for $m$-bit quantization and $n$-bit accumulation)
+  against a \texttt{float32} baseline on three vision models,
+  as shown in the table below:
+\begin{center}
+  \begin{tabular}{|c|c||c|c||c|c|}
+    \hline
+    \multicolumn{2}{|c}{\textbf{ResNet-18}} & \multicolumn{2}{c}{\textbf{MobileNet V2}} & \multicolumn{2}{c|}{\textbf{Inception V3}} \\
+    \multicolumn{1}{|c}{QS}    & \multicolumn{1}{c}{Acc.}   &  \multicolumn{1}{c}{QS}  & \multicolumn{1}{c}{Acc.}  & \multicolumn{1}{c}{QS}  & \multicolumn{1}{c|}{Acc.} \\
+    \hline
+    \texttt{fp32} & 70.7 \%    & \texttt{fp32} & 70.9 \%       & \texttt{fp32} & 76.6 \% \\
+    8/32         & 69.4 \%    & 8/32         & 66.9 \%       & 16/32        & 76.6 \% \\
+    8/32         & 69.4 \%    & 8/16         & 66.9 \%       & 8/32         & 75.2 \% \\
+    \hline
+  \end{tabular}
+\end{center}
+Figure~\ref{fig:portability-eval} shows the results of different
+  levels of quantization on \textit{performance} when applied to the Raspberry Pi 3
+  and Firefly RK3399 ARM-based platforms.
+The numbers show that as we opt for a more aggressive quantization scheme
+  (e.g., 8/16),
+  we achieve much improved performance with hardly a drop in accuracy.
+Interestingly,
+  on some model/platform pairs,
+  the \texttt{int8/int32} scheme performs slightly worse than \texttt{float32} on both platforms,
+  which likely stems from the existence of faster hardware intrinsics for 16-bit operations on these systems.
 
 \section{Partial Evaluator}
 \label{sec:t formartial_eval}
@@ -421,7 +380,7 @@ We describe the implementation and some
 A key challenge preventing existing deep learning compilers from handling dynamism
   is the lack of a uniform and dynamic representation.
 For example, optimizations and runtime of existing IRs,
-  e.g., TVM's NNVM~\citep{tvm_osdi18}, always assume the presence of static shape information.
+  e.g., TVM's NNVM~\citep{tvm_osdi18} assume the presence of static shape information.
 These assumptions introduce quite a few challenges for optimizing dynamic behaviors.
 This section describes how we transform standard TVM programs into our dynamic dialect
   which enables us to easily apply static optimizations to dynamic programs, much as we
@@ -430,8 +389,10 @@ Particularly, we detail three key components required to compile dynamic models.
 
 \begin{itemize}
     \item An extended type system which enables static tracking of dynamic shapes.
-    \item A series of optimization passes that make dynamic output shapes, allocation, and device placement explicit.
-    \item A set of code generation techniques for producing code of kernels with dynamic input and output shapes.
+    \item A series of optimization passes that make dynamic output shapes, allocation,
+          and device placement explicit.
+    \item A set of code generation techniques for producing code of kernels with dynamic input
+          and output shapes.
 \end{itemize}
 
 \subsection{Dynamic Memory Planning}
@@ -461,18 +422,22 @@ Due to the coarse-grained memory semantics of deep learning models,
 Moreover, as discussed in~\autoref{sec:compilation:shape-func},
   we have introduced new ways to account for the handling of dynamic allocations,
   which further complicate memory analysis.
-In order to perform dynamic memory planning we have extended Relay's IR,a
-  with a memory dialect.
+In order to perform dynamic memory planning we have extended Relay's IR with
+  a set of new primitives we dub the ``memory dialect''.
 The memory dialect is a subset of Relay programs where all memory allocations are
   explicit.
 The key to this transformation is an inter-procedural change of calling convention,
-  with each operator now taking its outputs explicitly it is possible to track and transform allocations.
+  with each operator now taking its outputs explicitly it is possible to
+  track and transform allocations.
 In particular, we have introduced four new IR constructs,
   (a) \verb|invoke_mut(op, inputs, outputs)| which takes outputs as mutable in-out arguments,
-  (b) \texttt{alloc\_storage(size, alignment, device)} which allocates a region of memory of a particular size,
-  (c) \texttt{alloc\_tensor(storage, offset, shape, dtype, attrs)} which allocates a tensor at a particular storage offset
+  (b) \texttt{alloc\_storage(size, alignment, device)} which allocates a region of memory
+      of a particular size,
+  (c) \texttt{alloc\_tensor(storage, offset, shape, dtype, attrs)} which allocates
+    a tensor at a particular storage offset
     with a shape and data type, and
-  (d) \verb|kill(tensor)| which frees a tensor before its reference count becomes zero due to exiting the frame.
+  (d) \verb|kill(tensor)| which frees a tensor before its reference count
+    becomes zero due to exiting the frame.
 Note that in the below code examples \texttt{Tensor<d1, ..., dn>}
 is shorthand for a tensor of shape \texttt{(d1, ..., dn)} containing floating point values.
 
@@ -498,9 +463,11 @@ fn main() -> Tensor<10> {
 \end{minted}
 
 The above transformation replaces all operator invocations with a call to
-  \verb|invoke_mut|, a corresponding allocation of backing storage, and a single tensor placed at offset zero.
+  \verb|invoke_mut|, a corresponding allocation of backing storage, and a single
+  tensor placed at offset zero.
 The key insight is to internalize a notion of memory allocation into the IR,
-  enabling static optimization of both static and dynamic allocations presence of control and dynamic shapes.
+  enabling static optimization of both static and dynamic allocations presence of
+  control and dynamic shapes.
 We realize our shape functions as fragments of TVM's tensor expression language
   which computes the output shape for a particular operator.
 As detailed in~\autoref{sec:compilation:shape-func} our shape functions
@@ -542,16 +509,20 @@ The shape function requires input shapes as arguments which further require us t
 \verb|shape_of| will be directly mapped to a VM instruction to retrieve the shape of a tensor at runtime.
 More description of it will be provided in \autoref{sec:compliation:hetero}.
 
-Now that the all allocations are explicit in the IR we can provide analogous optimizations in the static
-case on dynamic programs, for example we have implemented a storage coalescing pass which groups storage
-into a larger region which we can then multiplex tensor allocations on to.
+Now that the all allocations are explicit in the IR we can provide analogous
+  optimizations in the static case on dynamic programs,
+  for example we have implemented a storage coalescing pass which groups storage
+  into a larger region which we can then multiplex tensor allocations on to.
 
 The key insight is to internalize a notion of memory allocation into the IR,
-  enabling static optimization of both static and dynamic allocations in the presence of control and dynamic shapes.
-Now that all allocations are explicit in the IR, we can provide analogous optimizations in the static case on dynamic programs,
-  for example we have implemented a storage coalescing pass to group storage
-  into a larger region which allows the multiplexing of multiple tensor allocations to a single piece of storage.
-Further optimization like liveness analysis and graph coloring algorithm can be applied to the program to reuse the storages.
+  enabling static optimization of both static and dynamic allocations in the presence
+  of control and dynamic shapes.
+Now that all allocations are explicit in the IR, we can provide analogous optimizations
+  in the static case on dynamic programs, for example we have implemented a storage coalescing
+  pass to group storage into a larger region which allows the multiplexing of multiple tensor
+  allocations to a single piece of storage.
+Further optimization like liveness analysis and graph coloring algorithm can be applied to
+  the program to reuse storage.
 
 \subsection{Heterogeneous Device Placement}
 \label{sec:optimizations:hetero}
@@ -560,10 +531,12 @@ As discussed in Section \autoref{sec:compilation:shape-func}, shape functions ar
   calculate the output shape of an operator.
 These functions must execute on the CPU due to the host-interaction model of GPU like devices.
 In the case of heterogeneous execution (i.e., CPU and GPU) it is essential to carefully schedule
-  the execution of shape functions and kernels as improper scheduling can be disastrous for performance.
-For instance, considerable overhead will occur if inputs to shape functions must be copied from
-  GPU due to the cost of data transfers and synchronization.
-To minimize the performance penalty, we analyze the program allocations to place sub-expressions on the most suitable devices.
+  the execution of shape functions and kernels as improper scheduling creates memory copies
+  which can be disastrous for performance.
+For instance copying the inputs to shape functions from the GPU results
+  in considerable performance penalty.
+To minimize overhead we analyze allocations and memory transfers so we can place
+  each sub-expression on the correct device.
 
 We introduce a unification based analysis for computing the correct device placement and
   allocation based on the previous scheduling of the compute kernels.
@@ -590,25 +563,6 @@ In the case of heterogeneous execution (i.e., CPU and GPU),
 Otherwise, considerable overhead from data transfers and device synchronization will
   occur if the inputs to shape functions and kernels need to be copied from or to GPU.
 To minimize the performance penalty, we analyze the program to place sub-expressions on the most suitable devices.
-
-We introduce a unification based analysis for computing the correct device placement
-  and allocation based on the previous scheduling of the compute kernels.
-The goal of our device analysis is to assign each IR node properly to minimize
-  the number of cross-device copies.
-We introduce a concept of \texttt{DeviceDomain} to represent the domain of a device,
-  including source and destination.
-Each expression in the IR defaults to the empty domain, meaning no constraint on its device placement.
-In addition, a new IR construct, \verb|device_copy|, is introduced to facilitate the heterogeneous execution
-  of the Relay VM runtime.
-It represents a data transfer between different devices and is inserted when a cross-device data copy is mandatory.
-The latter is used to retrieve the shape of a tensor at runtime and is used to efficiently compute
-  the input shapes for shape functions.
-Our analysis is formulated as a set of device placement rules which describes how device constraints flow,
-  and then we use unification, a technique common in type inference and compilers, to compute the precise device placement.
-\autoref{fig:hetero} depicts some highlights of the rules to assign and propagate the device types:
-  (a) both inputs and outputs of shape function are assigned to CPU,
-  (b) the output of \verb|device_copy| is assigned to the device that is copied to,
-  (c) all arguments to \verb|invoke_mut| should have the same device domain.
 
 % TODO import rules from appendix.
 
@@ -655,16 +609,6 @@ We introduce two operations, \texttt{union(s, t)} and \texttt{find(s)},
 These two operations are applied until all IR nodes are annotated.
 The result of the heterogeneous device placement composes with memory planning
   and shape function insertion resulting in correctly placed allocations.
-Based on these rules, we use a union-find data structure to
-  bidirectionally propagate and unify the device placement of each IR node.
-We introduce two operations, \texttt{union(s, t)} and \texttt{find(s)},
-  to achieve \texttt{DeviceDomain} unification throughout the entire program.
-\texttt{union(s,t)} unions the equivalence device domains of \texttt{s}
-  and \texttt{t} into one equivalence domain when the device types match.
-\texttt{find(s)} returns the representative of the device domain that \texttt{s} belongs to.
-These two operations are applied until all IR nodes are annotated.
-The result of the heterogeneous device placement composes with memory planning and shape function insertion resulting in
-correctly placed allocations.
 
 \subsection{Dynamic Kernel Code Generation}
 \label{sec:compliation:codegen}
