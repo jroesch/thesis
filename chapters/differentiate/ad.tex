@@ -31,9 +31,8 @@ All of these pieces can be written as programs which manipulate tensors,
 
 Early systems such as Theano demonstrated that automatic
   differentiation, the process of automatically computing gradients,
-  enables ML researchers to progress more rapidly
-  by deriving the gradient of a network and loss instead hand deriving
-  the gradient based on their program and writing a secondary gradient function.
+  accelerates research in machine learning by removing the need to manually
+  derive gradients.
 There are many ways to approximate or compute the gradient of a function
   but automatic differentiation is favored due to its precise gradient
   values and runtime efficiency.
@@ -50,24 +49,23 @@ The dynamic nature induces both static overhead, but also limits ahead of time
 
 In order to address these weaknesses many have reformulated
   automatic differentiation as a source code transformation
-  where AD transforms a function which computes its gradient.
+  where AD transforms a function into one which computes its gradient.
 The generated gradient function is just a standard tensor programming
   enabling uniform optimization and compilation.
 This approach has enjoyed recent popularity due its conceptual
   elegance and uniformity.
-For example you have a quantization technique it can be applied
-  to both the forward and backward passes of your
-  network without needing a special version of quantized AD.
+For example a quantization technique defined as a program
+  transform can then be applied to the forward and backward passes
+  of your network without needing a special version of quantized AD.
 Unfortunately these source code transformations do not cleanly
   generalize to all language features or dynamic behaviors such
   as closures, mutation, control-flow, data structures or dynamic allocations.
 There have been numerous previous approaches attempting to handle a large number
   of features as described in Chapter~\ref{ch:related}.
-
-The rest of this chapter explores how we can take the simplicity of
-  tape-based AD which can handles higher-order imperative languages
-  and convert it into a source code transformation which can handle all
-  dynamic features without giving up the ability to compile and optimize.
+The rest of this chapter explores how to build on the simplicity of
+  tape-based AD, by adapting it higher-order imperative languages,
+  resulting in a source code transformation which supports dynamic features
+  without giving up the ability to compile and optimize.
 We close the chapter focusing on how partial evaluation is essential to this
   approach.
 
@@ -98,12 +96,11 @@ When starting to work on training and automatic differentiation we had
   the same design goal, we wanted to enable training frameworks which
   could use a single code base to provide state-of-the-art performance
   without compromising expressivity.
-For example train a model on a cloud GPU or a micro-controller with
-  the same code.
-To do so we needed an automatic differentiation method that can run
-  in multiple execution environments, and handle all of Relay's increased
+For example train a model on a cloud GPU or a micro-controller without
+  needing to change your workflow.
+Exploring training demanded an automatic differentiation method that can
+  execute in multiple execution environments while handling Relay's increased
   expressivity.
-
 We can work backwards from our requirements to eliminate some courses
   of action.
 We need an algorithm which handles Relay's dynamic features, maintains
@@ -112,7 +109,13 @@ We need an algorithm which handles Relay's dynamic features, maintains
 During the period we did this work there were numerous
   groups working on variations of this problem for numerous systems
   as detailed in Chapter~\ref{ch:related}.
-We believe our design uniquely achieves a few tenuous properties:
+We ruled out existing approaches
+  as many of them violated our requirements, some required dynamic typing
+  and/or reflection, others required complex AD rules per language feature,
+  were only defined on SSA, or used staging to remove features not supported
+  by less expressive IRs.
+After many iterations we discovered a design which uniquely achieved these
+  three goals with relative simplicity:
 \begin{itemize}
   \item Handles all language features including closures,
         references, control flow, and data structures.
@@ -121,8 +124,22 @@ We believe our design uniquely achieves a few tenuous properties:
     transformation allowing program to be uniformly optimized.
 \end{itemize}
 
-After many iterations we discovered a technique that achieves these
-  three goals with relative simplicity.
+% Relay requires an algorithm that operates as a source code transformation
+%   and supports higher-order functions and higher-order gradients.
+% There is a large body of work on performing AD
+%   of programs.
+% Several full-length papers have been written about automatic
+%   differentiation (AD).
+% This section highlights the important differences
+%   between our approach and other recent work.
+% Previous approaches like Lantern~\citep{lantern} (see Chapter~\ref{ch:related})
+%   define a generic and powerful version of AD.
+% Lantern uses delimited continuations to implement AD.
+% Delimited continuations are an elegant solution
+%   but require language and compiler support,
+%   as well garbage collection.
+% Furthermore, delimited continuations are challenging
+%   to reason about when performing optimization.
 
 \subsection{Higher-Order, Higher-Order Automatic Differentiation}
 \label{sec:autodiff}
@@ -133,23 +150,9 @@ Previous automatic differentiation (AD) techniques used on
 Furthermore, it is becoming increasingly important to compute not
   only first-order gradients of functions
   but potentially $n$th-order gradients~\citep{neural_ode, darts}.
-Relay requires an algorithm that operates as a source code transformation
-  and supports higher-order functions and higher-order gradients.
-There is a large body of work on performing AD
-  of programs.
-Several full-length papers have been written about automatic
-  differentiation (AD).
-This section highlights the important differences
-  between our approach and other recent work.
-Previous approaches like Lantern~\citep{lantern} (see Chapter~\ref{ch:related})
-  define a generic and powerful version of AD.
-Lantern uses delimited continuations to implement AD.
-Delimited continuations are an elegant solution
-  but require language and compiler support,
-  as well garbage collection.
-Furthermore, delimited continuations are challenging
-  to reason about when performing optimization.
-
+These two challenges were our original motivation to pursue
+  a new automatic differentiation technique.
+Our AD algorithm is built on what if we just
 Our AD algorithm is conceptually similar to Lantern's,
   with a few key differences.
 First, our algorithm is defined as a source code
