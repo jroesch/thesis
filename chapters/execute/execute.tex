@@ -265,7 +265,7 @@ The compiler performs a set of transformations on the high-level
 
 \subsection{VM ISA}
 
-\input{chapters/execute/isa_table}
+\input{figures/execute/isa_table}
 
 After performing the above optimization pipeline the VM compiler
   itself is relatively straightforward.
@@ -315,7 +315,7 @@ The Relay bytecode is hardware-independent which eases bytecode serialization,
 
 \subsection{VM Interpreter}
 
-\input{chapters/execute/fig_interpreter}
+\input{figures/execute/fig_interpreter}
 
 The VM compiler generates a VM executable,
   a serialized combination of both target specific kernels
@@ -430,6 +430,9 @@ As a result, we explicitly define the fusion policy to prevent this from happeni
 %   could leverage VM to pause the current model execution for a higher priority or time-critical model.
 % Last, because of the simplicity of the VM design, one can verify the implementation of VM for security and privacy purposes.
 
+\section{Evaluation}
+
+\input{chapters/execute/eval.tex}
 
 \section{Supporting Hardware Accelerators}
 \label{sec:accel}
