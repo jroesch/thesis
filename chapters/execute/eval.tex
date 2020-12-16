@@ -192,6 +192,3 @@
     (b) the advantage of the proposed memory planning pass, and (c) the performance discrepancy between symbolic and static codegen.
 
     \noindent {\bf Overhead in handling dynamism} In order to understand the overhead that Relay spends to take care of dynamism, we compared it to TVM where static sequence length and TVM static runtime is used to execute BERT.
-    %\yida{how do you map this to the aforementioned four points?}
-    % \autoref{tab:overhead} details the performance difference between Relay and TVM.  TVM is 5\% to 25\% faster than Relay on static shapes, though the absolute latency difference is small. The overhead comes from two aspects: (a) kernels generated with symbolic shapes cause extra overhead in the index computation. (b) other instructions in the virtual machine are required to handle the dynamic execution, such as shape functions, dynamic memory allocation, instruction dispatch, etc.
-    % On Nvidia GPU, most of bytecode latency is overlapped with the GPU execution thanks to heterogeneous device placement (\autoref{sec:compliation:hetero}), and therefore the overhead of other instructions is negligible.

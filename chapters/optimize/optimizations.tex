@@ -507,7 +507,7 @@ After the transformation you may notice we have introduced calls to \verb|shape_
 The shape function requires input shapes as arguments which further require us to invoke \verb|shape_of|
   for both \verb|%x| and \verb|%y|.
 \verb|shape_of| will be directly mapped to a VM instruction to retrieve the shape of a tensor at runtime.
-More description of it will be provided in \autoref{sec:compliation:hetero}.
+More description of it will be provided in \autoref{sec:optimizations:hetero}.
 
 Now that the all allocations are explicit in the IR we can provide analogous
   optimizations in the static case on dynamic programs,
