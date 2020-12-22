@@ -470,7 +470,7 @@ Hardware vendors need software stacks, often extending a deep learning
 It is essential that frameworks can adapt to new hardware devices
   with minimal changes to applications.
 Relay provides an extensible framework for hardware accelerators,
-  and implements a backend for \vta an emerging hardware accelerator\citep{moreau2018vta}.
+  and implements a backend for \vta an emerging hardware accelerator~\citep{moreau2018vta}.
 We demonstrate how we can use an expressive general-purpose deep learning IR, plus
   a few platform specific optimizations
 
@@ -539,7 +539,7 @@ with particular attention to techniques that can compute higher-order gradients 
 \verb|Zygote.jl| \citep{zygotejl}, like Relay, uses source code transformations to
     implement automatic differentiation.
 
-\paragraph{Runtime systems} To address frameworks' challenges with dynamism,
+\subsection{Runtime systems} To address frameworks' challenges with dynamism,
 e.g. prohibitively high overhead in reconstruction of computation
 graphs and difficulties in batching together computations with
 similar input shapes recent works has proposed

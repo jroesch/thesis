@@ -124,12 +124,9 @@ We evaluated the following NLP models:
     existing frameworks that don't perform inter-operator optimizations.
 
   \subsection{NLP Evaluation}
-  % Figure~\ref{fig:vision-eval} compares Relay against state-of-the-art NLP models on a Titan-V GPU.
-  % Implementations of the NLP models were not available in all frameworks;
+  Figure~\ref{fig:vision-eval} compares Relay against state-of-the-art NLP models on a Titan-V GPU.
+  Implementations of the NLP models were not available in all frameworks;
     we used MxNet baselines for RNN, GRU, and LSTM and PyTorch for Char-RNN and TreeLSTM.
-  % We ran the models for 1000 iterations per input, except char-RNN, which we ran for 100 ???.
-  % To run the RNN, GRU, and LSTM benchmarks in MxNet, and Char-RNN, and TreeLSTM
-  %   in PyTorch.
   Relay performs better than MxNet on recursive models
     due to the fact they are implemented in Python using
     MxNet's looping constructs.
