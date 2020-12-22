@@ -87,6 +87,19 @@ In the early days of deep learning, practitioners and researchers would program
   in general-purpose languages like Python utilizing
   scientific computing libraries like NumPy,
   which provide low-level \textit{operators} such as matrix multiplication.
+Frameworks such as Theano and Torch introduced a model of
+  computation graphs, dataflow graphs composed of nodes of
+    variables, and operations on data.
+These computation graphs represent the AST of a small
+  embedded DSL that could be easily compiled and deployed
+  to platforms which implement the correct operators.
+Operators, also called kernels,
+  are dense linear algebra primitives like matrix multiplication,
+  elementwise functions like \verb|tanh|, and complex,
+  domain-specific operations like image convolution.
+Operator execution dominates the execution time of a deep learning model: many
+  operators are asymptotically slow and their input is large.
+
 In order to accelerate model execution,
     frameworks supporting accelerators such as GPU were introduced~\citep{theano} .
 Early frameworks represented models as directed ``computation graphs'',
@@ -107,122 +120,55 @@ Frameworks can be roughly categorized into those which support \textit{static} c
 Frameworks which use static graphs are said to be \textit{define-and-run} frameworks,
   whereas frameworks which use dynamic graphs are said to be \textit{define-by-run} frameworks.
 
-% Operators, also called kernels,
-%   are dense linear algebra primitives like matrix multiplication,
-%   elementwise functions like \verb|tanh|, and complex,
-%   domain-specific operations like image convolution.
-% Operator execution dominates the execution time of a deep learning model: many
-%   operators are asymptotically slow and their input is large.
-% While a machine learning framework may be written as a library in a high-level language
-%   like Python or Swift, operators will typically be provided as opaque function calls to
-%   specialized implementations written in a lower-level language like C++.
+As a framework, TensorFlow~\citep{tensorflow} supports dynamism via the addition
+of control flow primitives such as \emph{switch} and \emph{merge} in its graph
+representation~\citep{yu2018dynamic}. Similarly, MXNet~\citep{mxnet, mxnet-control}
+uses operators such as {\em foreach}, {\em cond}, and {\em while\_loop} to support control flow.
+  The main drawback of this approach is requiring a runtime that uses an inefficient and complex
+  control flow encoding such as TesorFlow, or a hybrid runtime such as MxNet which is inflexible
+  for deploying to edge devices.
+As a separate effort, TensorFlow Fold~\citep{tensorflowfold} adds front-end
+  syntactic sugar to TensorFlow for simplifying dynamic models via dynamic batching.
+Specifically, TensorFlow Fold conducts an analysis of the user's provided computation
+  graphs and identifies dynamic operations that can be batched together. Once such operations
+  are found, it transforms them into an intermediate representation (IR) that can be
+  ingested by TensorFlow for evaluation.
 
-% To obtain better performance, researchers began utilizing specialized
-%   accelerators such as GPUs to accelerate the execution of models.
-% In order to accessibly provide acceleration to end-users
-%   researchers designed frameworks like Theano~\citep{theano}.
-% Frameworks such as Theano and Torch introduced a model of
-%   computation graphs, dataflow graphs composed of nodes of
-%     variables, and operations on data.
-% These computation graphs represent the AST of a small
-%   embedded DSL that could be easily compiled and deployed
-%   to accelerators like the GPU.
-% ``Computation graphs'' provide a limited programming model,
-%     enabling efficient deployment.
-% Computation graphs have since been adopted as the fundamental building block of modern
-%     machine learning libraries.
+The nature of this approach can introduce large overhead as each path must
+  be executed as a different sub-computation graph, as well as limiting further optimizaiton.
 
-% Unfortunately computation graphs are an ad-hoc language engineered to solve
-%   the problems faced at the time, and do not begin to capture the full breadth
-%   of models that users would one day want to run.
-% For example,
-%   convolutional neural networks (CNNs),
-%   which are widely used in image processing and computer vision,
-%   generally utilize a fixed topology of layers
-%   with tensors of fixed dimension.
-% In contrast,
-%   recurrent neural networks (RNNs),
-%   which are widely used in natural language processing (NLP),
-%   require recursion, control flow, and
-%   operations over variable-sized data structures (e.g., lists).
-% The regular structure of CNNs facilitates
-%   optimizing compilation to
-%   common hardware accelerators (e.g., GPUs), but
-%   RNN-like models are still challenging to optimize.
-
-    As a framework, TensorFlow~\citep{tensorflow} supports dynamism via the addition
-    of control flow primitives such as \emph{switch} and \emph{merge} in its graph
-    representation~\citep{yu2018dynamic}. Similarly, MXNet~\citep{mxnet, mxnet-control}
-    uses operators such as {\em foreach}, {\em cond}, and {\em while\_loop} to support control flow.
-     The main drawback of this approach is requiring a runtime that uses an inefficient and complex
-     control flow encoding such as TesorFlow, or a hybrid runtime such as MxNet which is inflexible
-     for deploying to edge devices.
-
-     As a separate effort, TensorFlow Fold~\citep{tensorflowfold} adds front-end
-     syntactic sugar to TensorFlow for simplifying dynamic models via dynamic batching.
-
-     Specifically, TensorFlow Fold conducts an analysis of the user's provided computation
-     graphs and identifies dynamic operations that can be batched together. Once such operations
-     are found, it transforms them into an intermediate representation (IR) that can be
-     ingested by TensorFlow for evaluation.
-
-     The nature of this approach can introduce large overhead as each path must
-     be executed as a different sub-computation graph, as well as limiting further optimizaiton.
-
-    Dynet~\citep{neubig2017dynet} and PyTorch~\citep{pytorch} use host language features
-    to dynamically (i.e., Python's control flow) to construct a dynamic model architecture.
-    This allows a friendly and flexible programming model.
-    %as users can conveniently write code which appears no different then standard Python.
-    However, it requires the creation of new static data flow graph for each path through
-    the program introducing control flow overhead, and limiting the scope of optimization
-    to a single trace through the program, a trace which often only executed once~\citep{xu2018cavs}. These challenges were similarly faced by tracing-JIT based systems in the JIT compiler literature. JAX~\citep{jax2018github} also supports both control flow and dynamic features in its programming model, but is fundamentally limited by the ability for XLA, TensorFlow's deep learning compiler to optimize and compile dynamic code. To the best of our knowledge XLA still requires all loop nests to be static at code generation time.
-
-    %JANUS~\citep{jeong2019janus} optimizes the dynamic model execution in TensorFlow via
-    speculative execution. It converts an imperative program that contains control
-    flow defined in the host language (Python) into a symbolic data graph in
-     TensorFlow for better performance. However, the conversion is incomplete
-     due to dynamic typing, control flow, etc.
-
-    Therefore, Janus falls back to imperative execution in
-    the host environment when certain assumption breaks, which can
-    lead to performance loss. In addition, JANUS shares the limitation in
-    portability with the underlying framework.
-
-    Jeong et al.~\citep{jeong2018improving} and JANUS~\citep{jeong2019janus}
-     both extend TensorFlow to improve the performance for dynamic models.
-
-     Jeong et al.~\citep{jeong2018improving} introduces the recursive data structure
-     in the programming model to replace the control flow primitives in the tree-like models.
-
-     The solution is hard to generalize to other dynamic models though.
-
-     JANUS~\citep{jeong2019janus} optimizes the dynamic model execution in
-     TensorFlow via speculative execution. However, the conversion from imperative programs
-     in Python to symbolic data graph in TensorFlow is incomplete due to dynamic typing,
-     control flow, etc. Therefore, JANUS suffers the performance loss when it
-     falls back to imperative execution. In addition, both work share the limitation
-     in portability with the underlying framework.
-
-    %is an extension on top of TensorFlow to address the execution challenges led by dynamic models.
-
-    imed to take the advantage of expressiveness provided by frameworks to represent
-    dynamic models and the performance benefit of ahead of time optimization.
-
-    JANUS takes the model defined in TF Eager and relies on speculative execution
-    to remove control flow for speeding up the execution.
-
-    It works well on certain models that could be executed speculatively but
-    still suffers from performance loss on the other models that fail for
+Dynet~\citep{neubig2017dynet} and PyTorch~\citep{pytorch} use host language features
+  to dynamically (i.e., Python's control flow) to construct a dynamic model architecture.
+However, it requires the creation of new static data flow graph for each path through
+  the program introducing control flow overhead, and limiting the scope of optimization
+  to a single trace through the program, a trace which often only
+  executed once~\citep{xu2018cavs}.
+These challenges were similarly faced by tracing-JIT based systems
+  in the JIT compiler literature.
+JAX~\citep{jax2018github} also supports both control flow and dynamic features in its
+  programming model, but is fundamentally limited by the ability
+  of XLA, TensorFlow's deep learning compiler to optimize and compile dynamic code.
+To the best of our knowledge XLA still requires all loop nests to be static at code generation time.
+JANUS~\citep{jeong2019janus} optimizes the dynamic model execution in TensorFlow via
     speculative execution.
-
-    Deep learning frameworks rely on third-party libraries to implement
-    operators with different data shapes, namely, they achieve good performance
-    for models with dynamic shapes on a specific hardware platform only
-    if the corresponding high-performance third-party library
-    is both used and supports an operation.
-
-    Therefore, frameworks generally perform poorly on devices,
-    such as ARM CPU, which are not in the first tier of device
+It converts an imperative program that contains control flow defined in the host language (Python)
+  into aTensorFlow graph for better performance.
+However, the conversion is incomplete due to certain dynamic features such as typing, control flow,
+  not being fully supported by the runtime.
+In these cases Janus falls back to imperative execution in
+    the host environment when execution assumptions are violated leading
+    to overheads in these cases.
+It works well when models have portions that can be executed speculatively
+  successfully but is not ideal in truly dynamic cases.
+Furthermore because deep learning frameworks rely on third-party libraries to implement
+    operators with different data shapes, JANUS and other framework based
+    techniques still don't solve the portability or performance portability
+    challenges.
+For example if a model has a dynamically shaped operator which
+  is not implemented by the corresponding high-performance third-party library
+  the Janus nor the framework can help.
+Therefore, framework based techniques generally perform poorly on devices, if at all,
+    on devices such as ARM CPU, which are not in the first tier of device
     support such as Google's TPU or Nvidia GPU in TensorFlow.
 
 \section{Define-And-Run Frameworks}
@@ -555,7 +501,7 @@ In particular Relay is designed as an extension to \tvm~\citep{tvm_osdi18},
 Previous work on the \tvm focused on producing efficient operators
   (dense linear algebra kernels), such as generalized matrix multiplication (GEMM) and convolutions.
 In theory Relay could use other high performance DSLs such as Halide~\citep{halide},
-    which \tvm derived its IR, and its split computation and schedule model.
+    which \tvm derived from its IR, and its split computation and schedule model.
 Tensor Comprehensions (TC) shares common goals with the \tvm framework, but achieves its goal
 through different techniques, such as polyhedral compilation rather than algorithmic
 schedules. TC could replace \tvm in Relay{}'s compilation.
@@ -573,14 +519,14 @@ Going one step further than Lantern,
     Relay supports accelerators.
 
 \verb|Flux.jl| \citep{fluxjl} is a DL library written in Julia \citep{julia}, a numerical
-computing language. Like Relay, \verb|Flux.jl| adds shapes to the type system; however, unlike Relay, it
-uses a mixture of compile-time inference and runtime checks to enforce shape constraints
-\citep{jlmlpl} and cannot perform platform-specific optimizations. Unlike \verb|Flux.jl|, which
-tightly coupled with Julia, Relay is language agnostic and decouples frontend and IR
-considerations.
+computing language. Like Relay, \verb|Flux.jl|
+  adds shapes to the type system; however, unlike Relay, it
+  uses a mixture of compile-time inference and runtime checks to enforce shape constraints
+  \citep{jlmlpl} and cannot perform platform-specific optimizations.
+Unlike \verb|Flux.jl|, which tightly coupled with Julia, Relay is language agnostic
+  and decouples frontend and IR considerations.
 Relay's features, such as type inference and deployment to multiple back-ends, can
-    be easily reused by frameworks in arbitrary languages.
-
+    be easily reused by new frameworks written in arbitrary programming languages.
 Additionally, previous work in higher-order differentiation from the PL community
 has informed Relay's design.
 In particular, we draw inspiration from various implementations of
@@ -589,47 +535,24 @@ with particular attention to techniques that can compute higher-order gradients 
 \verb|Zygote.jl| \citep{zygotejl}, like Relay, uses source code transformations to
     implement automatic differentiation.
 
-
-
-{\bf Runtime systems} To address frameworks' challenges with dynamism,
+\paragraph{Runtime systems} To address frameworks' challenges with dynamism,
 e.g. prohibitively high overhead in reconstruction of computation
 graphs and difficulties in batching together computations with
 similar input shapes recent works has proposed
 deep learning runtime systems~\citep{xu2018cavs, gao2018low}.
 These techniques exhibited effectiveness in improving the
 performance of dynamic models.
-
 However, these approaches suffer
 from a common limitation--they all heavily rely on the third party libraries,
 such as cuDNN~\citep{cudnn} and MKL-DNN~\citep{mkldnn},
 raising concerns about portability.
-
 In addition, they usually only support a narrow subset of dynamic models on each platform.
 
 
 \subsection{Dynamic Neural Networks}
 
-
-Systems for machine learning is an active research area with a variety of techniques for ML inference engines which support dynamic features, cross-platform execution, and per-platform code generation. We discuss related work below.
-
-% \begin{table}[tbp]
-% \begin{tabular}{|c||c|c|c|}
-% \hline
-% Frameworks      & \makecell{Multi-platform \\ Portability}  & \makecell{Model \\ Dynamism} & Compilation \\ \hline
-% TF/TF Fold      &             \xmark                     &         \cmark              &  \xmark     \\ \hline
-% PyTorch         &             \xmark                     &         {\bf !}              &  \xmark     \\ \hline
-% MXNet         &               \xmark                     &         \cmark              &  \xmark     \\ \hline
-% DyNet           &             \xmark                     &         {\bf !}              &  \xmark     \\ \hline
-% Cavs            &             \xmark                     &         \cmark              &  \xmark     \\ \hline
-% Glow            &             \cmark                     &         \xmark              &  \cmark     \\ \hline
-% TVM             &             \cmark                     &         \xmark              &  \cmark     \\ \hline
-% XLA             &             \cmark                     &         \xmark              &  \cmark     \\ \hline
-% Relay         &             \cmark                     &         \cmark              &  \cmark     \\ \hline
-% \end{tabular}
-% \caption{Summary of popular machine learning systems, in terms of whether or not being easy to port to multiple platforms, performant for dynamic model inference ({\bf !} means supported but not efficient), and capable of compiling kernels.}
-% \label{tab:ml_systems}
-% \end{table}
-
+Systems for machine learning is an active research area with a variety of techniques
+  for ML inference engines which support dynamic features, cross-platform execution, and per-platform code generation. We discuss related work below.
 One area in which deep learning has made significant advances is
   natural language processing (NLP), such as finding keywords in a
   research paper, determining the sentiment of a tweet,
@@ -641,15 +564,11 @@ state, known as \textit{recurrent neural networks}  (RNNs). Like the simple netw
 earlier, these networks have an input and an output; however, they take an additional input and
 produce an additional output known as the \textit{hidden state}. Beginning with an initial hidden
 state and a list of inputs (for example, characters from a source text), one can produce a
-list of outputs (for example, a translation of the source text). %, as in Fig.~\ref{fig:rnn_graph}.
+list of outputs (for example, a translation of the source text).
 Recurrent neural networks have found use not only in NLP, but also in speech recognition, music
 transcription, eSports, and other areas \citep{lstm, speech_recognition, OpenAI_dota}.
-
 Unfortunately, since most machine learning frameworks rely on computation graphs,
   which cannot represent recursion, RNNs are usually finitely unrolled to a fixed depth.
 This may be acceptable if the depth can be determined statically and the loop unrolled
   ahead of time; however, if the depth depends on runtime values or complex control flow,
   unrolling must be performed dynamically.
-% Since the source language is usually an interpreted language like Python, this process incurs significant
-% overhead. Even when unrolling can be computed ahead of time, it destroys information about
-% the original program, which can no longer be used for ahead-of-time optimization.

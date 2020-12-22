@@ -61,7 +61,7 @@ It enables producing shape-specialized fused operators for an open set of operat
 TVM is also able to reschedule after fusion and perform further optimization via auto-tuning.
 Relay performs fusion in two steps, detailed below.
 
-\section{Extraction}
+\subsection{Extraction}
 
 First, Relay identifies subexpressions containing
   fusion-eligible operators and factors them into local functions that
@@ -86,7 +86,7 @@ Finally, Relay constructs an expression from each equivalence class,
   and marks it as primitive.
   % TODO add fusion diagram back
 
-\section{Lowering}
+\subsection{Lowering}
 
 In a second step, the Relay compiler converts the generated primitive
   function into platform and shape specific code.
