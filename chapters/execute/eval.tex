@@ -4,7 +4,6 @@
 This section evaluates the performance of Relay on dynamic models against existing state-of-the-art solutions, as well as discussing the role of the optimizations performed by Relay. Specifically, the section seeks to answer the following questions:
 \begin{enumerate}
     \item What is the overall performance of Relay for dynamic models when compared against state-of-the-art alternatives on various hardware platforms?
-    %\item How much overhead does Relay introduce for static models on top of the state-of-the-art solutions?
     \item How much overhead does Relay VM introduce for handling dynamism at runtime?
     \item How effective are the proposed optimization techniques, such as memory planning and symbolic codegen?
 \end{enumerate}
@@ -112,7 +111,7 @@ TensorFlow & 768.7 & 125.2 & 2995.4 \\
 %\subsubsection{Memory planning}
 
 %\subsubsection{Dynamic kernel dispatch}
-\subsection{Microbenchmark}
+\subsection{Microbenchmarks}
 
 % \begin{table}[t]
 %     \centering
@@ -154,4 +153,4 @@ TensorFlow & 768.7 & 125.2 & 2995.4 \\
 This section analyzes the performance gain of Relay by using BERT as the microbenchmark. Three studies will be conducted to examine (a) the overhead introduced by the VM, %(b) the effectiveness of operator fusion\yida{Can we somehow relate this to any proposed techniques? For example, op fusion is enabled by carefully taking care of shape functions?},
 (b) the advantage of the proposed memory planning pass, and (c) the performance discrepancy between symbolic and static codegen.
 
-\noindent {\bf Overhead in handling dynamism} In order to understand the overhead that Relay spends to take care of dynamism, we compared it to TVM where static sequence length and TVM static runtime is used to execute BERT.
+\noindent {\bf Overhead in handling dynamism:} In order to understand the overhead that Relay spends to take care of dynamism, we compared it to TVM where static sequence length and TVM static runtime is used to execute BERT.

@@ -362,16 +362,6 @@ Partial evaluation is a generalized form of constant
 A partial evaluator (PE) allows the use of high-level abstractions
   without limiting code that \textit{could} in practice be
   compiled to a particular target.
-Relay is the first compiler to apply partial evaluation
-  techniques to deep learning, the
-  core approach of which is based on \citep{pe_ref}.
-Partial evaluation, when composed with other
-  optimizations like fusion, yields a variety
-  of useful optimizations without requiring
-  a separate implementation of each.
-For example, the partial evaluator can be used to perform
-  loop unrolling, which then enables further fusion,
-  without any additional compiler passes.
 We describe the implementation and some
   concrete applications of partial evaluation
   in Chapter~\ref{ch:ad}.
@@ -563,7 +553,7 @@ In the case of heterogeneous execution (i.e., CPU and GPU),
   it is essential to carefully place the execution of IR nodes to proper devices.
 Otherwise, considerable overhead from data transfers and device synchronization will
   occur if the inputs to shape functions and kernels need to be copied from or to GPU.
-To minimize the performance penalty, we analyze the program to place sub-expressions on the most suitable devices.
+To minimize the performance penalty, we analyze the program to place sub-expressions on the most suitable devices:
 
 % TODO import rules from appendix.
 
