@@ -279,9 +279,14 @@ The benefits of partial evaluation do not only extend to code
 Relay's partial evaluator works by defining a interpreter
   where the value domain is partially static values.
 The partially static domain represents simple values,
-  such as constant tensors, as themselves. The representations
-  of aggregate values mirror their structure, enabling
-  values which are a mixture of static and dynamic.
+  such as constant tensors, as themselves.
+The representations
+  of aggregate values mirror their structure; for example,
+  tuples become a tuple of partially static values.
+The partially static domain represents dynamic values,
+  which may not be known until execution time,
+  alongside the static values traditionally supported by
+  constant evaluators.
 This makes the partial evaluator more powerful
   than a constant-folding pass.
 The appendix presents an implementation of PE.
@@ -296,7 +301,7 @@ The partial evaluator supports references by
 The explicit store is threaded throughout execution
   and is managed to achieve flow sensitivity.
 After evaluation we construct a new program with
-  static subcomputations evaluated
+  static sub-computations evaluated
   away.
 The reconstructed program contains all original
   expressions, as well as evaluated expressions,
@@ -305,36 +310,3 @@ The reconstructed program contains all original
 Afterwards, we separately apply DCE.
 The result of this entire process is illustrated
   in Figure~\ref{fig:pe-example}.
-
-  Relay's partial evaluator works by defining a interpreter
-  where the value domain is partially static values.
-The partially static domain represents simple values,
-  such as constant tensors, as themselves.
-The representations
-  of aggregate values mirror their structure; for example,
-  tuples become a tuple of partially static values.
-The partially static domain represents dynamic values,
-  which may not be known until execution time,
-  alongside the static values traditionally supported by
-  constant evaluators.
-Our partial evaluator must solve two important problems:
-  managing effectful computations and handling references.
-In order to handle effects, the evaluator keeps the generated
-  program in A-normal form to ensure effects are properly ordered
-  and restrict duplication of effectful computations.
-The partial evaluator supports references by
-  simulating the store at partial evaluation time.
-The explicit store is threaded throughout execution
-  and provides a flow-sensitive PE.
-Finally, the evaluator constructs a new program with
-  the static subcomputations evaluated away.
-% The reconstructed program contains all original
-%   expressions, as well as evaluated expressions,
-%   because interleaving dead-code elimination (DCE) is
-%   non-trivial.
-% Afterwards, we separately apply DCE.
-% The partial evaluator has use cases beyond inference
-%   optimizations, separately it enabled the design of an automatic
-%   differentiation algorithm that makes use of hard to optimize
-%   features such as references of closures, as the partial evaluator
-%   can remove unneeded abstraction.
