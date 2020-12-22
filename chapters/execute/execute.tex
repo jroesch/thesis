@@ -416,19 +416,19 @@ As a result, we explicitly define the fusion policy to prevent this from happeni
 
 \subsection{Ahead-of-time}
 
-% TODO
-
-% Given we s from our abstract machine into machine code.
-% But due to the granularity of the operations, dispatch time makes
-%   up a very small portion of the execution time.
-% More importantly, the VM provides flexibility traditionally attributed
-%   to virtual machines and a clear compiler/runtime split.
-% We see the potential of VM to be integrated as a runtime module into a larger system.
-% For example, VM can provide resource isolation where multiple inference
-%   instances share the same hardware in the cloud.
-% Furthermore, a Quality of Service (QoS)-aware system, e.g., \citep{kang2018hotmobile, Yachir2009rsj},
-%   could leverage VM to pause the current model execution for a higher priority or time-critical model.
-% Last, because of the simplicity of the VM design, one can verify the implementation of VM for security and privacy purposes.
+Given we s from our abstract machine into machine code.
+But due to the granularity of the operations, dispatch time makes
+  up a very small portion of the execution time.
+More importantly, the VM provides flexibility traditionally attributed
+  to virtual machines and a clear compiler/runtime split.
+We see the potential of VM to be integrated as a runtime module into a larger system.
+For example, VM can provide resource isolation where multiple inference
+  instances share the same hardware in the cloud.
+Furthermore, a Quality of Service (QoS)-aware system, e.g., \citep{kang2018hotmobile, Yachir2009rsj},
+  could leverage VM to pause the current model execution for a higher priority or time-critical model.
+Last, because of the simplicity of the VM design, one can verify the implementation of VM for security and privacy purposes.
+Although we don't see AoT as an essential ingredient yet there have are some desire to explore AoT
+  compilation for devices such as micro controllers and is a future direction to explore.
 
 \input{chapters/execute/eval.tex}
 
@@ -445,8 +445,17 @@ Bring Your Own Code Generation (BYOC) is a mechanism introduced
   into Relay for offloading specific sub-programs to hardware
   accelerators which operate outside of the traditional TVM
   programming model.
-
-TODO
+This framework is under active development and we plan
+  on writing a paper detailing its design and implementation
+  after the publication of this thesis.
+The key contributions are a framework which uses ``dataflow''
+  patterns to describe hardware capabilities that can be
+  offloaded to hardware accelerators such as ARM's EthosN
+  device.
+For example these patterns can be used to describe fusion
+  capabilities or simply what is supported by a device
+  enabling smooth heterogenous execution for devices
+  which don't have a low-level TVM backend.
 
 \subsection{VTA}
 \label{sec:vta}
