@@ -285,13 +285,14 @@ Quantized models require low-precision operators for efficiency. Due to our oper
 and the ability to leverage AutoTVM, TVM's auto tuner, we can automatic generate kernels for arbitrary
 types without effort.
 
-\begin{figure}[t]
+\begin{figure}[b]
   \begin{minted}[fontsize=\footnotesize]{python}
   @register_annotate_function("nn.conv2d", override=True)
   def annotate_conv2d(ref_call, new_args, ctx):
       lhs, rhs = new_args
       lhs = attach_simulated_quantize(lhs, sign=False, rounding='round')
-      rhs = attach_simulated_quantize(lhs, sign=False, rounding='stochastic_round')
+      rhs = attach_simulated_quantize(
+        lhs, sign=False, rounding='stochastic_round')
       return expr.Call(ref_call.op, [lhs, rhs], ref_call.attrs)
   \end{minted}
   \caption{

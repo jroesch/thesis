@@ -76,7 +76,7 @@ Continued advances in neural networks, especially those in natural language proc
   have introduced new dynamism in models, such as control flow \citep{lstm, language_model},
   dynamic data structures \citep{tree_lstm, graph_lstm}, and dynamic shapes \citep{devlin2018bert}.
   We refer to models exhibiting these behaviors as {\em dynamic models}.
-At the time of their design, tdeep learning was revolutionizing
+At the time of their design, deep learning was revolutionizing
   computer vision but had not yet changed areas such as natural language processing (NLP).
 Unfortunately the design of frameworks have severely limited the performance
   of programs that fall outside of the well-optimized static footprint.
@@ -219,7 +219,7 @@ We can do this by building on ideas from decades of previous work in compilation
 \section{Dynamic Neural Networks}
 
 In this thesis we explore the four key aspects of compiling dynamic
-  neural networks their representation, optimization, differentiation,
+  neural networks: their representation, optimization, differentiation,
   and execution.
 We do this by building an enriched compiler framework based on TVM by introducing
   a new representation Relay which increases expressivity to handle the features
@@ -281,11 +281,11 @@ Finally once programs are optimized we must be able to
 
 \section{Thesis Organization}
 
-This thesis is organized around four pillars, representation, differentiation, optimization, and execution.
+This thesis is organized around four pillars: representation, differentiation, optimization, and execution.
 We first explore related work and background material in Chapter~\ref{ch:related}.
-We discuss the design of the Relay intermediate representation in Chapter~\ref{ch:relay}
+We discuss the design of the Relay intermediate representation in Chapter~\ref{ch:relay}.
 We then demonstrate how automatic differentiation and training support can be adapted to Relay in Chapter~\ref{ch:ad}.
 We present numerous program optimization in Chapter~\ref{ch:optimizations},
   followed by how to lower, execute, and compile these programs in
   Chapter~\ref{ch:execute}.
-Finally we look to future in Chapter~\ref{ch:future}.
+Finally we look to the future in Chapter~\ref{ch:future}.

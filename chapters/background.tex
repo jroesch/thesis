@@ -365,9 +365,16 @@ They employ quantization but do not demonstrate how/if it can be extended,
 They have shown support for CPU execution but provide no
     story for GPUs or accelerators.
 
-Unlike the deep learning frameworks, Relay is designed as an end-to-end deep learning compiler The existing deep learning compilers, including XLA~\citep{xla}, TVM~\citep{tvm_osdi18}, and Glow~\citep{glow}, offer a means to compile deep learning models to run on multiple hardware platforms, but only focus on static models and fail to support models with dynamism.
-MLIR~\citep{lattner2020mlir} provides compiler infrastructure for deep learning workloads which allows developers to implement new dialects and combine them into a sing application. Its graph-level dialect has the support for dynamism, but has not yet produced work demonstrating how to achieve good performance in dynamic scenarios.
-Relay enables a deep learning compiler to support dynamism in an efficient and flexible way by adding a dynamic type system, a dynamic code generator, a VM-based runtime and a series of dynamic-specific optimizations.
+Unlike the deep learning frameworks, Relay is designed as an end-to-end deep learning compiler.
+The existing deep learning compilers, including XLA~\citep{xla}, TVM~\citep{tvm_osdi18}, and Glow~\citep{glow},
+  offer a means to compile deep learning models to run on multiple hardware platforms,
+  but only focus on static models and fail to support models with dynamism.
+MLIR~\citep{lattner2020mlir} provides compiler infrastructure for deep learning workloads
+  which allows developers to implement new dialects and combine them into a sing application.
+Its graph-level dialect has the support for dynamism, but has not yet produced work demonstrating
+  how to achieve good performance in dynamic scenarios.
+Relay enables a deep learning compiler to support dynamism in an efficient and flexible way
+  by adding a dynamic type system, a dynamic code generator, a VM-based runtime and a series of dynamic-specific optimizations.
 
 Relay's compilation and VM design is largely inspired by production compilers and VMs,
 such as LLVM~\citep{llvm}, GCC~\citep{gcc}, and JVM~\citep{jvm}.
@@ -434,9 +441,6 @@ This is only possible if the device is supported by her framework of choice.
 Even with the addition of device-specific code,
   there is no guarantee performance will be acceptable, let alone optimal
   (or even that there will not be regression).
-Many existing IRs also do not support data-dependent control flow.
-  platform's intrinsics and design.
-
 Engineers design these platform specific model variants
   through tedious experimentation and framework-specific tweaks
   to achieve acceptable performance~\citep{mobilenet}. % xnor_net, squeezenet}.
