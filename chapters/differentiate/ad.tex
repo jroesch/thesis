@@ -26,8 +26,7 @@ For example we can break down a deep neural network training
   inputs, and (3) an update step which modifies each of the parameters using their gra
   gradient with respect to the loss function.
 All of these pieces can be written as programs which manipulate tensors,
-  except for the gradient which requires transforming
-  one computation into another which computes its directional derivative.
+  except for transforming one computation into another which computes its gradient.
 
 Early systems such as Theano demonstrated that automatic
   differentiation, the process of automatically computing gradients,
@@ -124,34 +123,17 @@ After many iterations we discovered a design which uniquely achieved these
     transformation allowing program to be uniformly optimized.
 \end{itemize}
 
-% Relay requires an algorithm that operates as a source code transformation
-%   and supports higher-order functions and higher-order gradients.
-% There is a large body of work on performing AD
-%   of programs.
-% Several full-length papers have been written about automatic
-%   differentiation (AD).
-% This section highlights the important differences
-%   between our approach and other recent work.
-% Previous approaches like Lantern~\citep{lantern} (see Chapter~\ref{ch:related})
-%   define a generic and powerful version of AD.
-% Lantern uses delimited continuations to implement AD.
-% Delimited continuations are an elegant solution
-%   but require language and compiler support,
-%   as well garbage collection.
-% Furthermore, delimited continuations are challenging
-%   to reason about when performing optimization.
-
 \subsection{Higher-Order, Higher-Order Automatic Differentiation}
 \label{sec:autodiff}
 
 Previous automatic differentiation (AD) techniques used on
   computation graphs cannot be directly applied to Relay due to new
   language features such as closures, recursion, and control flow.
-Furthermore, it is becoming increasingly important to compute not
+Furthermore, it has become increasingly important to compute not
   only first-order gradients of functions
   but potentially $n$th-order gradients~\citep{neural_ode, darts}.
 These two challenges were our original motivation to pursue
-  a new automatic differentiation technique.
+  a new automatic differentiation technique in Relay.
 Our AD algorithm is conceptually a source code transformation
   version of the Wengert List or tape-based method of AD.
 We make a few core changes.
@@ -164,11 +146,13 @@ Figure \ref{fig:autodiff_rules} provides a denotation from
   AD algorithm.
 Second, our algorithm eschews ideas such as delimited continuations
   in favor of an approach using closures and references.
-Relay simply pairs all tensor values with a reference
-  that tracks its partial derivative with respect to its
+Our AD algorithm lifts each tensor value into pairs of the original value,
+  and a reference which tracks its partial derivative with respect to its
   output.
 This form of reverse mode AD is similar to how one
-  would implement forward mode AD.
+  would implement forward mode AD using dual numbers, except
+  we also reverse the program and connect the backwards
+  computations via stable references.
 Relay lifts all tensor-typed values to a pair,
   an expression of some tensor type \verb|T| becomes a tuple of \verb|(T, Ref<T>)|
   where the second component contains the sensitivity variable
@@ -179,7 +163,6 @@ For each gradient function generated, Relay allocates
 Each subcomputation affecting the gradient updates this closure; when it is
   finally executed, the built-up closure returns the final derivatives with respect to
   to the arguments.
-
 As described in Figure~\ref{fig:autodiff_rules}, only
   computations involving tensors contribute to the gradient.
 For example, we support mutability for free because mutation
