@@ -474,23 +474,6 @@ Relay provides an extensible framework for hardware accelerators,
 We demonstrate how we can use an expressive general-purpose deep learning IR, plus
   a few platform specific optimizations
 
-  \subsection{Hardware Backends}
-
-If a programmer wants to experiment with a new hardware device,
-  she must manually account for variations in hardware intrinsics, data
-  types, and data layout.
-This is only possible if the device is supported by her framework of choice.
-Even with the addition of device-specific code,
-  there is no guarantee performance will be acceptable, let alone optimal
-  (or even that there will not be regression).
-Many existing IRs also do not support data-dependent control flow.
-If she cannot capture her model (e.g., an RNN) in the IR,
-  she cannot deploy to hardware backends without requiring a host to drive
-  execution.
-In order to effectively use these devices,
-  engineers often redesign the model from scratch to better match the target
-  platform's intrinsics and design.
-
 \subsection{High Performance DSLs for Tensors}
 
 My work is focused on the end-to-end compilation of deep learning, and for
