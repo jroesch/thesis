@@ -33,7 +33,6 @@ We evaluated the following NLP models:
     performance.
   There were two exceptions where we evaluated on real data because
     it was readily available: CharRNN and TreeLSTM.
-
   For models where the input is random,
     we run 1000 timed iterations.
   Before the timed runs,
@@ -44,7 +43,6 @@ We evaluated the following NLP models:
   For our purposes, ``performance'' refers to end-to-end framework time on
     inference tasks (i.e., the time it takes to run a trained model) in a
     single-machine setting.
-
   Our vision experiments from Chapter~\ref{ch:related} and Section~\ref{sec:perf-gpu} were run on a machine with an AMD Ryzen
     Threadripper 1950X 16-Core CPU,
     an NVidia 1080 Ti GPU,
@@ -55,7 +53,6 @@ We evaluated the following NLP models:
     and 64 GB of RAM.
   We evaluated Relay's handling of accelerators on a VTA design with a
     $16\times16$ matrix-vector 8-bit tensor core clocked at 333MHz on the Ultra-96 platform.
-
   In terms of software, we used
     Cuda version 10.0,
     CuDNN version 7.5.0,
@@ -63,7 +60,6 @@ We evaluated the following NLP models:
     MxNet version 1.4.0,
     Pytorch version 1.0.1post2,
     and TensorFlow version 1.13.1.
-
   The Relay vision experiments utilized aggressively tuned TVM schedules on the GTX 1080 Ti GPU,
     improving performance significantly.
 
